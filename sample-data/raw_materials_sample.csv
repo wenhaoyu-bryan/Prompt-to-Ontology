@@ -1,0 +1,4 @@
+id,name,stock,threshold,quality_score,unit,supplier_id
+RM-101,电解液添加剂,35.0,25.0,0.92,吨,SUP-006
+RM-102,陶瓷隔膜,48.0,30.0,0.94,吨,SUP-007
+RM-103,硅碳负极材料,22.0,18.0,0.88,吨,SUP-005

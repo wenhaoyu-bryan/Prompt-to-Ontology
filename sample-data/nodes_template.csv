@@ -1,0 +1,4 @@
+Node_ID,Node_Label,Node_Type,Property_1,Property_2,Property_3,Property_4,Property_5
+N001,示例节点-原材料A,RawMaterial,100.0,50.0,吨,SUP-001,0.95
+N002,示例节点-零部件B,Component,3000.0,5000.0,件,800.0,0.02
+N003,示例节点-产品C,FinalProduct,500.0,385.0,台,FAC-001,0.77

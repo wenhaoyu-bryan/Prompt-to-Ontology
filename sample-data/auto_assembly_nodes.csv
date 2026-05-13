@@ -1,0 +1,16 @@
+Node_ID,Node_Label,Node_Type,Tier,Country,Monthly_Capacity,Quality_Score,Status,Alert_Reason
+SUP-A01,博世底盘系统事业部,Tier1_Supplier,1,德国,50000,0.96,Active,
+SUP-A02,大陆集团电子事业部,Tier1_Supplier,1,德国,45000,0.94,Active,
+SUP-A03,均胜电子安全系统,Tier2_Supplier,2,中国,30000,0.89,Active,
+SUP-A04,瑞声科技精密结构件,Tier2_Supplier,2,中国,28000,0.91,Active,
+SUP-A05,东南亚线束供应商,Tier3_Supplier,3,越南,10000,0.72,At_Risk,质检连降3月
+CMP-A01,电动助力转向总成,Subsystem,1,,18000,,Active,
+CMP-A02,ADAS域控制器,Subsystem,1,,8000,,Stock_Low,库存不足3天
+CMP-A03,全景天窗总成,Subsystem,2,,22000,,Active,
+CMP-A04,仪表盘模块,Subsystem,2,,15000,,Active,
+CMP-A05,线束总成,Subsystem,3,,3000,,Critical,供应商风险传导
+FP-A01,ES8 智能电动SUV,Vehicle,,,2500,,Behind_Schedule,产能缺口15%
+FP-A02,ET5 轿跑,Vehicle,,,1800,,On_Track,
+FP-A03,NIO Phone 2,Consumer_Electronics,,,50000,,On_Track,
+FAC-A01,合肥新桥超级工厂,Plant,,,350000,,Running,
+FAC-A02,上海临港研发中心,Plant,,,,,R&D_Only,

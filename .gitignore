@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+*.db
+
+# Node
+node_modules/
+frontend/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Neo4j data
+neo4j-data/
+
+# Environment
+.env
+venv/
+
+# Internal docs
+CLAUDE.md
+docs/
+
+# Test data
+测试数据集/
+
+# Claude Code
+.claude/
+
+# Neo4j logs
+neo4j-logs/

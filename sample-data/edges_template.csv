@@ -1,0 +1,3 @@
+Source_Node_ID,Target_Node_ID,Relationship_Type,Property_1,Property_2
+N001,N002,SUPPLIES,供应示例,2025-01
+N002,N003,ASSEMBLED_INTO,总装示例,Critical

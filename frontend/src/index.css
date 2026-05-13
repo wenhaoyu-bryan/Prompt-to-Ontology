@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+/* ============================================
+   工业智能体本体系统 — 全局样式
+   纯暗黑科技风格 bg-neutral-950
+   ============================================ */
+
+:root {
+  --primary: #3b82f6;
+  --success: #22c55e;
+  --warning: #f97316;
+  --danger: #ef4444;
+  --purple: #a855f7;
+  --bg-base: #0a0a0a;
+  --bg-panel: #171717;
+  --bg-card: #1f1f1f;
+  --border: #2a2a2a;
+  --text-primary: #f5f5f5;
+  --text-secondary: #a3a3a3;
+  --text-muted: #737373;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #333 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 日志动画 */
+@keyframes logSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.log-entry {
+  animation: logSlideIn 0.35s ease-out both;
+}
+
+/* 告警光晕 */
+@keyframes alertPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* 瞄准圈脉冲 */
+@keyframes targetPulse {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* 全屏加载 */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

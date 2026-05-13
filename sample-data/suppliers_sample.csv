@@ -1,0 +1,3 @@
+id,name,risk_level,on_time_delivery_rate,location,contact,certification
+SUP-101,韩国SK创新材料,Medium,0.87,韩国-蔚山,金部长,ISO 9001
+SUP-102,天齐锂业澳洲分部,Low,0.92,澳大利亚-珀斯,Mr. Smith,IATF 16949
