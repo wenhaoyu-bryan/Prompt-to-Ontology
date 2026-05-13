@@ -206,6 +206,8 @@ npm run dev                      # → localhost:5173
 ### 演示视频
 
 项目根目录的 `demo.mp4` 包含完整的产品演示，展示从 CSV 导入到知识图谱生成的全流程。
+<img width="1512" height="855" alt="Screenshot 2026-05-13 at 4 46 36 PM" src="https://github.com/user-attachments/assets/a59a83ec-ed23-4ffb-aafa-da8d61c5e9f6" />
+
 
 ### Vibe Coding 的收获
 
