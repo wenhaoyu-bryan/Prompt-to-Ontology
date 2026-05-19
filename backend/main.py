@@ -4,6 +4,10 @@
 """
 
 import json
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -114,9 +118,6 @@ def api_clear_dataset(request: dict):
 @app.get("/api/llm-config")
 def api_llm_config():
     """返回当前连接的 LLM 模型信息"""
-    import os
-    from dotenv import load_dotenv
-    load_dotenv()
     backend = os.environ.get("LLM_BACKEND", "none")
     config = {"backend": backend, "model": None, "configured": False}
     if backend == "minimax":
