@@ -68,10 +68,11 @@ class RuleEngine:
                 )
 
             if triggered:
-                rule_id = rule.get("rule_id") or rule_key.upper().replace("_", "")[:6]
-                # 从 risk_rules.csv 读取 rule_id，若不存在则用 rule_key
-                # 实际 rule_id 在 RiskRule 节点中，这里用规则名映射
-                rule_id = self._resolve_rule_id(rule_key, rule)
+                rule_id = rule.get("rule_id")
+                if not rule_id:
+                    import warnings
+                    warnings.warn(f"Rule '{rule_key}' has no rule_id in rules.yaml, skipping")
+                    continue
 
                 triggers.append({
                     "target": rule_id,
@@ -223,22 +224,6 @@ class RuleEngine:
             return True, ", ".join(parts)
 
         return False, ""
-
-    @staticmethod
-    def _resolve_rule_id(rule_key: str, rule: dict) -> str:
-        """
-        将 rules.yaml 的 key 映射到 RiskRule 节点的 rule_id。
-        映射表基于 sample-data/pet-food/risk_rules.csv。
-        """
-        key_to_id = {
-            "high_fat_risk": "RR001",
-            "cat_food_missing_taurine": "RR002",
-            "chicken_allergy_risk": "RR003",
-            "senior_cat_high_phosphorus": "RR004",
-            "low_protein_kitten_risk": "RR005",
-        }
-        return key_to_id.get(rule_key, rule_key.upper()[:6])
-
 
 if __name__ == "__main__":
     from pathlib import Path

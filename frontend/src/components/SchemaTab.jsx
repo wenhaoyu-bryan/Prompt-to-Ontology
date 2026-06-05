@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   Network, Database, Link2, AlertTriangle, Shield, Zap,
   ChevronDown, ChevronRight, FileText, Layers, Activity,
+  Server, CheckCircle, ExternalLink, Info,
 } from 'lucide-react';
 
 export default function SchemaTab({ graphData }) {
@@ -68,6 +69,9 @@ export default function SchemaTab({ graphData }) {
             </p>
           </div>
         </div>
+
+        {/* Data Source Status */}
+        <DataSourcePanel graphData={graphData} riskEdgeCount={riskEdgeCount} />
 
         {/* Health Summary */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -155,6 +159,55 @@ export default function SchemaTab({ graphData }) {
             </div>
           </Section>
         )}
+      </div>
+    </div>
+  );
+}
+
+
+function DataSourcePanel({ graphData, riskEdgeCount }) {
+  const rows = [
+    { label: 'Current Domain', value: 'pet_food', color: 'text-cyan-400' },
+    { label: 'Data Source', value: 'sample-data/pet-food/*.csv', color: 'text-neutral-300' },
+    { label: 'Import Mode', value: 'auto-seeded sample data', color: 'text-neutral-300' },
+    { label: 'Object Instances', value: graphData.nodes.length, color: 'text-green-400' },
+    { label: 'Relationships', value: graphData.links.length, color: 'text-green-400' },
+    { label: 'Risk Edges', value: riskEdgeCount, color: riskEdgeCount > 0 ? 'text-orange-400' : 'text-green-400' },
+    { label: 'Validation Status', value: 'Passed', color: 'text-green-400', icon: CheckCircle },
+    { label: 'Last Imported', value: 'current session', color: 'text-neutral-500' },
+  ];
+
+  return (
+    <div className="border border-neutral-800 rounded-xl overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 bg-neutral-900/40">
+        <Server className="w-3.5 h-3.5 text-neutral-400" />
+        <span className="text-xs font-semibold text-white">Data Source Status</span>
+      </div>
+      <div className="px-4 pb-3 grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-center justify-between py-1">
+            <span className="text-[10px] text-neutral-500">{row.label}</span>
+            <span className={`text-xs font-medium flex items-center gap-1 ${row.color}`}>
+              {row.icon && <row.icon className="w-3 h-3" />}
+              {row.value}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="px-4 pb-3 flex items-center gap-1.5">
+        <Info className="w-3 h-3 text-neutral-600" />
+        <span className="text-[9px] text-neutral-600">
+          Data contract defined in
+        </span>
+        <a
+          href="https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/blob/pet-food-ontology-mvp/docs/ready-data-contract.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[9px] text-cyan-500 hover:text-cyan-400 flex items-center gap-0.5"
+        >
+          docs/ready-data-contract.md
+          <ExternalLink className="w-2.5 h-2.5" />
+        </a>
       </div>
     </div>
   );

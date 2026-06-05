@@ -44,6 +44,7 @@ def _auto_import_pet_food(driver):
     from pathlib import Path
     from domain.petfood_transformer import transform
     from rule_engine import RuleEngine
+    from constraint_validator import validate_payload
     from petfood_neo4j import ensure_constraints, write_graph_payload
 
     sample_dir = Path(__file__).resolve().parent.parent / "sample-data" / "pet-food"
@@ -56,6 +57,19 @@ def _auto_import_pet_food(driver):
     registry = OntologyRegistry("pet_food")
     engine = RuleEngine(registry)
     payload = engine.apply_rules(payload)
+
+    # 校验
+    vr = validate_payload(registry, payload)
+    if not vr["valid"]:
+        print(f"⚠ Constraint validation failed ({vr['summary']['error_count']} errors), skipping import")
+        for e in vr["errors"][:5]:
+            print(f"  ❌ {e}")
+        return
+    if vr["warnings"]:
+        print(f"⚠ {vr['summary']['warning_count']} validation warnings")
+        for w in vr["warnings"][:5]:
+            print(f"  ⚠ {w}")
+
     result = write_graph_payload(payload, driver)
     print(f"✅ Pet Food 导入完成：{result['nodes_created']} 节点, {result['edges_created']} 边")
 
@@ -837,6 +851,17 @@ def api_pet_food_import_sample():
         engine = RuleEngine(registry)
         payload = engine.apply_rules(payload)
 
+        # 4.5 校验
+        from constraint_validator import validate_payload
+        vr = validate_payload(registry, payload)
+        if not vr["valid"]:
+            return {
+                "status": "validation_failed",
+                "errors": vr["errors"],
+                "warnings": vr["warnings"],
+                "summary": vr["summary"],
+            }
+
         # 5. 写入 Neo4j
         result = write_graph_payload(payload, driver)
 
@@ -848,13 +873,14 @@ def api_pet_food_import_sample():
         stats = summarize(payload)
         trigger_count = len([e for e in payload["edges"] if e["type"] == "TRIGGERS_RISK"])
 
-        return {
+        resp = {
             "status": "success",
             "nodes_created_or_merged": result["nodes_created"],
             "edges_created_or_merged": result["edges_created"],
             "label_counts": result["label_counts"],
             "relationship_counts": result["relationship_counts"],
             "triggered_risk_count": trigger_count,
+            "validation_warnings": vr["warnings"],
             "sample_questions": [
                 "这款猫粮为什么有风险？",
                 "哪些产品含 chicken？",
@@ -863,6 +889,7 @@ def api_pet_food_import_sample():
                 "帮我比较两款猫粮的风险差异。",
             ],
         }
+        return resp
     except FileNotFoundError as e:
         raise HTTPException(404, str(e))
     except Exception as e:
