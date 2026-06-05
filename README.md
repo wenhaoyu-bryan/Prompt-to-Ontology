@@ -17,35 +17,41 @@ This branch transforms the original industrial supply-chain demo into a **mini o
 
 ## Architecture
 
+The current system operates as a **Ready Data Ontology Runtime** — it assumes data is already prepared in a standard graph payload format. Data sourcing and transformation (e.g. Open Pet Food Facts scraping, CSV cleaning) are out of scope for the MVP runtime.
+
 ```
-YAML Schema (ontology/pet_food/)
-    │
+Ready Data Contract (docs/ready-data-contract.md)
+    │  Standard {nodes, edges} JSON payload
     ▼
-Transformer (CSV → Graph Payload)
-    │
+Domain Adapter / Transformer
+    │  CSV/external data → Graph Payload
     ▼
 Rule Engine (YAML Rules → TRIGGERS_RISK Edges)
+    │  4 condition types, severity + evidence + reason
+    ▼
+Constraint Validator
+    │  Node/edge schema + enum + direction checks
+    ▼
+Neo4j Ontology Graph (6 Node Types, 6 Edge Types)
     │
     ▼
-Neo4j (6 Node Types, 6 Edge Types)
-    │
+NetworkX Graph API + FastAPI Backend
+    │  26 REST endpoints
     ▼
-NetworkX Graph API (Impact Analysis, Path Finding)
-    │
-    ▼
-FastAPI Backend (26 REST Endpoints)
-    │
-    ▼
-React Frontend (Objects / Graph / Schema / Agent Tabs)
+React Workspaces (Objects / Graph / Schema / Agent)
 ```
+
+> **Note:** The transformer (CSV → Graph Payload) is a domain-specific adapter layer, not part of the core runtime. New domains plug in by providing a payload that conforms to the [Ready Data Contract](docs/ready-data-contract.md).
 
 ### Backend
 
 | Component | File | Role |
 |---|---|---|
+| Ready Data Contract | `docs/ready-data-contract.md` | Standard input specification for any domain |
 | Ontology Registry | `backend/ontology_registry.py` | Loads YAML schema definitions |
-| Transformer | `backend/domain/petfood_transformer.py` | CSV → Graph payload (nodes + edges) |
+| Transformer | `backend/domain/petfood_transformer.py` | CSV → Graph payload (domain adapter) |
 | Rule Engine | `backend/rule_engine.py` | Evaluates rules, generates TRIGGERS_RISK edges |
+| Constraint Validator | `backend/constraint_validator.py` | Validates nodes/edges against schema before import |
 | Neo4j Writer | `backend/petfood_neo4j.py` | MERGE nodes/edges into Neo4j |
 | Graph API | `backend/ontology.py` | NetworkX graph operations |
 | Agent | `backend/petfood_agent.py` | Question routing + evidence-based answers |
@@ -206,6 +212,7 @@ Prompt-to-Ontology/
 │   ├── petfood_neo4j.py           # Pet food Neo4j writer
 │   ├── petfood_agent.py           # Agent Q&A engine
 │   ├── rule_engine.py             # YAML-driven rule evaluator
+│   ├── constraint_validator.py    # Pre-import schema validation
 │   ├── ontology_registry.py       # YAML schema loader
 │   └── domain/
 │       └── petfood_transformer.py # CSV → graph payload
@@ -220,6 +227,8 @@ Prompt-to-Ontology/
 │           ├── AgentTab.jsx       # Chat interface
 │           ├── EntityInspector.jsx # Object 360° view
 │           └── D3GraphCanvas.jsx  # D3 graph canvas
+├── docs/
+│   └── ready-data-contract.md     # Standard input contract
 ├── ontology/
 │   └── pet_food/
 │       ├── object_types.yaml
@@ -237,13 +246,32 @@ Prompt-to-Ontology/
 
 ---
 
+## Legacy / Experimental Data Pipeline APIs
+
+`backend/main.py` still contains legacy endpoints from the original industrial supply-chain demo and an experimental schema-inference pipeline. These are **not** part of the Pet Food Ontology MVP runtime path:
+
+- **Schema inference endpoints** (`/api/schema/*`) — LLM-based schema extraction from uploaded files
+- **Industrial demo imports** (`/api/import/*`) — CSV import for Factory/Supplier/Component/RawMaterial graphs
+- **Legacy graph APIs** (`/api/graph/*`) — NetworkX operations on the original industrial dataset
+
+The Pet Food Ontology MVP uses a different, cleaner pipeline:
+
+```
+sample-data CSVs → transformer → rule engine → constraint validator → Neo4j
+```
+
+New domains should follow the [Ready Data Contract](docs/ready-data-contract.md) and the standard import path above, not the legacy endpoints.
+
+---
+
 ## What This Proves
 
-1. **YAML-driven schema loading** — No Python code changes needed to define a new domain
-2. **Rule engine with 4 condition types** — nutrition_threshold, ingredient_absence, ingredient_match, compound
-3. **Graph-backed evidence** — Every agent answer traces to Neo4j query results, not LLM hallucination
-4. **Structured product view** — Risk explanation with severity, evidence, and reason from graph edges
-5. **Domain-agnostic engine** — Same codebase can load industrial supply chain OR pet food ontology
+1. **Ready Data Contract** — Any domain can plug in by conforming to a standard `{nodes, edges}` payload format
+2. **YAML-driven schema loading** — No Python code changes needed to define a new domain
+3. **Constraint validation before import** — Node types, enums, edge directions, and TRIGGERS_RISK fields are all checked
+4. **Rule engine with 4 condition types** — nutrition_threshold, ingredient_absence, ingredient_match, compound
+5. **Graph-backed evidence** — Every agent answer traces to Neo4j query results, not LLM hallucination
+6. **Domain-agnostic engine** — Same codebase runs industrial supply chain OR pet food ontology
 
 ---
 
