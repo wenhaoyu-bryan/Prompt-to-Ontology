@@ -27,7 +27,8 @@ venv/
 
 # Internal docs
 CLAUDE.md
-docs/
+docs/*
+!docs/ready-data-contract.md
 Phases/
 
 # Test data
