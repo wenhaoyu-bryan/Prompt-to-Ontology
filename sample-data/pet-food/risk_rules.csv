@@ -1,0 +1,6 @@
+rule_id,rule_name,applies_to_species,condition_type,threshold,severity,explanation
+RR001,High Fat Risk,all,nutrition_threshold_fat_100g_gt,20,high,脂肪含量超过 20g/100g，可能导致肥胖或胰腺炎
+RR002,Missing Taurine Risk,cat,ingredient_absence_taurine,,critical,猫粮必须含有牛磺酸，缺乏会导致心脏病和视力问题
+RR003,Chicken Allergy Risk,all,ingredient_match_chicken,,medium,含有鸡肉或鸡肉粉，对鸡肉过敏的宠物存在风险
+RR004,Senior Cat High Phosphorus Risk,cat,compound_senior_phosphorus_gt,0.8,high,老年猫粮磷含量超过 0.8g/100g，可能加重肾脏负担
+RR005,Low Protein Kitten Risk,cat,compound_kitten_protein_lt,30,high,幼猫粮蛋白质低于 30g/100g，无法满足幼猫快速生长需求

@@ -1,0 +1,55 @@
+object_types:
+
+  PetFoodProduct:
+    description: "宠物食品产品"
+    properties:
+      - product_id
+      - barcode
+      - product_name
+      - category
+      - target_species
+      - life_stage
+      - country
+      - protein_100g
+      - fat_100g
+      - fiber_100g
+      - moisture_100g
+      - ash_100g
+      - phosphorus_100g
+      - calcium_100g
+
+  Brand:
+    description: "宠物食品品牌"
+    properties:
+      - brand_id
+      - brand_name
+      - country
+
+  Ingredient:
+    description: "食品成分/原料"
+    properties:
+      - ingredient_id
+      - ingredient_name
+      - ingredient_type
+      - risk_tag
+      - common_allergen
+
+  RiskRule:
+    description: "营养/成分风险规则"
+    properties:
+      - rule_id
+      - rule_name
+      - severity
+      - explanation
+
+  Species:
+    description: "目标物种"
+    properties:
+      - species_id
+      - species_name
+
+  LifeStage:
+    description: "生命阶段"
+    properties:
+      - stage_id
+      - stage_name

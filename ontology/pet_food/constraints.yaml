@@ -1,0 +1,35 @@
+constraints:
+
+  PetFoodProduct:
+    required_fields:
+      - product_id
+      - product_name
+    enums:
+      target_species:
+        - cat
+        - dog
+        - cat_or_dog
+        - unknown
+      life_stage:
+        - kitten
+        - puppy
+        - adult
+        - senior
+        - all_life_stages
+        - unknown
+    non_negative_fields:
+      - protein_100g
+      - fat_100g
+      - fiber_100g
+      - moisture_100g
+      - ash_100g
+      - phosphorus_100g
+      - calcium_100g
+
+  relationships:
+    CONTAINS:
+      from: PetFoodProduct
+      to: Ingredient
+    MADE_BY:
+      from: PetFoodProduct
+      to: Brand

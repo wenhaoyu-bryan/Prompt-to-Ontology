@@ -1,0 +1,24 @@
+action_types:
+
+  ExplainProductRisk:
+    description: "解释某产品触发的风险规则及原因"
+    params:
+      - product_id
+
+  RecommendAlternativeProduct:
+    description: "推荐同类但不触发相同风险的替代产品"
+    params:
+      - product_id
+      - species
+      - life_stage
+
+  CreateWatchlist:
+    description: "将产品加入监控清单，持续跟踪风险变化"
+    params:
+      - product_id
+      - reason
+
+  GenerateIngredientReport:
+    description: "生成产品成分分析报告"
+    params:
+      - product_id

@@ -1,0 +1,13 @@
+product_id,barcode,product_name,brand,category,target_species,life_stage,country,protein_100g,fat_100g,fiber_100g,moisture_100g,ash_100g,phosphorus_100g,calcium_100g
+PF001,8801234560001,WhiskerPro Adult Chicken Formula,WhiskerPro,dry_food,cat,adult,US,36,15,3,8,7,0.6,0.9
+PF002,8801234560002,WhiskerPro Kitten Growth,WhiskerPro,dry_food,cat,kitten,US,28,18,2,9,6,0.5,0.8
+PF003,8801234560003,Purrfect Health Senior Wet,PurrfectHealth,wet_food,cat,senior,JP,32,10,1,78,3,1.0,1.2
+PF004,8801234560004,TailWag Adult Beef Classic,TailWag,dry_food,dog,adult,US,26,14,4,10,8,0.5,0.7
+PF005,8801234560005,OceanCatch Adult Turkey Stew,PurrfectHealth,wet_food,cat,adult,TH,30,12,1,80,2,0.4,0.6
+PF006,8801234560006,TailWag Puppy Chicken Boost,TailWag,dry_food,dog,puppy,US,32,16,3,9,7,0.6,0.9
+PF007,8801234560007,WhiskerPro Salmon Lickable Treat,WhiskerPro,treat,cat,adult,US,22,22,1,55,2,0.3,0.4
+PF008,8801234560008,GoldenYears Senior Beef Formula,TailWag,dry_food,dog,senior,US,22,10,5,10,9,0.4,0.6
+PF009,8801234560009,Purrfect Health Kitten Chicken Pate,PurrfectHealth,wet_food,cat,kitten,JP,26,14,1,78,3,0.5,0.8
+PF010,8801234560010,TailWag Performance Beef Energy,TailWag,dry_food,dog,adult,US,28,21,3,9,8,0.5,0.7
+PF011,8801234560011,OceanCatch Indoor Cat Salmon,PurrfectHealth,dry_food,cat,adult,TH,34,12,4,9,6,0.5,0.7
+PF012,8801234560012,TailWag Puppy Turkey Feast,TailWag,wet_food,dog,puppy,US,30,15,2,78,3,0.5,0.8

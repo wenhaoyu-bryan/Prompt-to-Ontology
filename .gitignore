@@ -28,6 +28,7 @@ venv/
 # Internal docs
 CLAUDE.md
 docs/
+Phases/
 
 # Test data
 测试数据集/

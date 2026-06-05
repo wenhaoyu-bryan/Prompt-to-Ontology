@@ -1,0 +1,21 @@
+ingredient_id,ingredient_name,ingredient_type,risk_tag,common_allergen
+ING001,chicken,protein,yes,no
+ING002,chicken meal,protein,yes,no
+ING003,salmon,protein,no,no
+ING004,beef,protein,no,yes
+ING005,turkey,protein,no,no
+ING006,rice,carbohydrate,no,no
+ING007,corn,carbohydrate,no,yes
+ING008,wheat,carbohydrate,no,yes
+ING009,pea protein,protein,no,no
+ING010,taurine,amino_acid,no,no
+ING011,fish oil,fat,no,no
+ING012,pumpkin,fiber,no,no
+ING013,sweet potato,carbohydrate,no,no
+ING014,egg,protein,no,yes
+ING015,milk,dairy,no,yes
+ING016,soy,protein,no,yes
+ING017,yeast,other,no,no
+ING018,calcium carbonate,mineral,no,no
+ING019,dicalcium phosphate,mineral,no,no
+ING020,vitamin mix,vitamin,no,no
