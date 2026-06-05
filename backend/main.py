@@ -25,6 +25,7 @@ from ontology import (
 )
 from agent import run_agent, execute_action
 from data_pipeline import DataValidator, import_objects, parse_csv, normalize_field_names
+from ontology_registry import OntologyRegistry
 
 app = FastAPI(title="Ontology OS — 企业本体操作系统", version="3.0.0")
 
@@ -38,6 +39,27 @@ app.add_middleware(
 )
 
 
+def _auto_import_pet_food(driver):
+    """启动时自动导入 Pet Food sample data。"""
+    from pathlib import Path
+    from domain.petfood_transformer import transform
+    from rule_engine import RuleEngine
+    from petfood_neo4j import ensure_constraints, write_graph_payload
+
+    sample_dir = Path(__file__).resolve().parent.parent / "sample-data" / "pet-food"
+    if not sample_dir.exists():
+        print("⚠ sample-data/pet-food 目录不存在，跳过自动导入")
+        return
+
+    ensure_constraints(driver)
+    payload = transform(sample_dir)
+    registry = OntologyRegistry("pet_food")
+    engine = RuleEngine(registry)
+    payload = engine.apply_rules(payload)
+    result = write_graph_payload(payload, driver)
+    print(f"✅ Pet Food 导入完成：{result['nodes_created']} 节点, {result['edges_created']} 边")
+
+
 @app.on_event("startup")
 def startup():
     # 1. 初始化 SQLite 种子数据 (供迁移脚本使用)
@@ -45,21 +67,22 @@ def startup():
     from database import init_ontology_schema_table
     init_ontology_schema_table()
 
-    # 2. 验证 Neo4j 连接（必须可用，不再 fallback）
+    # 2. 验证 Neo4j 连接
     driver = get_driver()
     driver.verify_connectivity()
-    with driver.session() as session:
-        count = session.run("MATCH (n) RETURN count(n) AS c").single()["c"]
-        if count == 0:
-            print("⏳ Neo4j 为空，开始自动迁移...")
-            from migrate_to_neo4j import migrate
-            migrate()
-        else:
-            print(f"✅ Neo4j 已就绪：{count} 个节点")
 
-    # 3. 构建 NetworkX 内存图 (从 Neo4j 读取数据)
-    build_graph()
-    print("✅ 系统初始化完成：语义本体数据库已就绪，知识图谱已构建。")
+    # 3. 自动导入 Pet Food Demo（如果还没有数据）
+    with driver.session() as session:
+        pf_count = session.run("MATCH (n:PetFoodProduct) RETURN count(n) AS c").single()["c"]
+    if pf_count == 0:
+        print("⏳ 自动导入 Pet Food Demo 数据...")
+        _auto_import_pet_food(driver)
+    else:
+        print(f"✅ Pet Food 数据已就绪：{pf_count} 个产品")
+
+    # 4. 构建 NetworkX 内存图（仅 pet_food 数据集）
+    build_graph("pet_food")
+    print("✅ 系统初始化完成：Pet Food Ontology 图谱已构建。")
 
 
 # ---- 请求体模型 ----
@@ -693,6 +716,18 @@ def api_ontology_schema(dataset: str | None = None):
     return schema
 
 
+@app.get("/api/ontology/{domain}/schema")
+def api_ontology_domain_schema(domain: str):
+    """从 YAML 配置加载指定 domain 的完整 ontology schema"""
+    try:
+        registry = OntologyRegistry(domain=domain)
+        return registry.get_schema()
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"Failed to load ontology for domain '{domain}': {e}")
+
+
 @app.get("/api/ontology/violations")
 def api_ontology_violations(dataset: str | None = None):
     """检查数据中的约束违反"""
@@ -762,6 +797,164 @@ def api_delete_constraint(constraint_id: int):
     from database import delete_constraint
     delete_constraint(constraint_id)
     return {"status": "ok"}
+
+
+# =====================================================
+# Pet Food Ontology API (Phase 4-6)
+# =====================================================
+
+
+@app.post("/api/pet-food/import-sample")
+@app.post("/api/pet-food/demo/reset-and-import")
+def api_pet_food_import_sample():
+    """
+    一键导入 Pet Food sample data:
+    清除旧数据 → 读取 CSV → transform → apply rules → 写入 Neo4j
+    """
+    from pathlib import Path
+    from domain.petfood_transformer import transform, summarize
+    from rule_engine import RuleEngine
+    from petfood_neo4j import ensure_constraints, clear_pet_food_data, write_graph_payload
+
+    sample_dir = Path(__file__).resolve().parent.parent / "sample-data" / "pet-food"
+    if not sample_dir.exists():
+        raise HTTPException(404, f"Sample data directory not found: {sample_dir}")
+
+    driver = get_driver()
+
+    try:
+        # 1. 确保约束存在
+        ensure_constraints(driver)
+
+        # 2. 清除旧的 pet_food 数据
+        clear_pet_food_data(driver)
+
+        # 3. Transform CSV → graph payload
+        payload = transform(sample_dir)
+
+        # 4. Apply rules → 生成 TRIGGERS_RISK 边
+        registry = OntologyRegistry("pet_food")
+        engine = RuleEngine(registry)
+        payload = engine.apply_rules(payload)
+
+        # 5. 写入 Neo4j
+        result = write_graph_payload(payload, driver)
+
+        # 6. 刷新内存图谱
+        from ontology import refresh_graph
+        refresh_graph()
+
+        # 7. 统计
+        stats = summarize(payload)
+        trigger_count = len([e for e in payload["edges"] if e["type"] == "TRIGGERS_RISK"])
+
+        return {
+            "status": "success",
+            "nodes_created_or_merged": result["nodes_created"],
+            "edges_created_or_merged": result["edges_created"],
+            "label_counts": result["label_counts"],
+            "relationship_counts": result["relationship_counts"],
+            "triggered_risk_count": trigger_count,
+            "sample_questions": [
+                "这款猫粮为什么有风险？",
+                "哪些产品含 chicken？",
+                "哪些猫粮没有 taurine？",
+                "哪些 senior cat 产品磷含量较高？",
+                "帮我比较两款猫粮的风险差异。",
+            ],
+        }
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"Pet food import failed: {e}")
+
+
+@app.get("/api/pet-food/products/{product_id}/risk-explanation")
+def api_pet_food_risk_explanation(product_id: str):
+    """
+    查询某 PetFoodProduct 的完整风险解释。
+    返回：产品信息、品牌、成分列表、触发的风险规则详情。
+    """
+    driver = get_driver()
+
+    with driver.session() as session:
+        # 1. 查询产品节点
+        product_result = session.run(
+            "MATCH (p:PetFoodProduct {id: $pid}) RETURN p",
+            pid=product_id,
+        )
+        product_record = product_result.single()
+        if not product_record:
+            raise HTTPException(404, f"Product '{product_id}' not found")
+        product = dict(product_record["p"])
+
+        # 2. 查询品牌
+        brand_result = session.run(
+            "MATCH (p:PetFoodProduct {id: $pid})-[:MADE_BY]->(b:Brand) RETURN b",
+            pid=product_id,
+        )
+        brand_record = brand_result.single()
+        brand = dict(brand_record["b"]) if brand_record else {}
+
+        # 3. 查询成分列表
+        ingredients_result = session.run(
+            "MATCH (p:PetFoodProduct {id: $pid})-[c:CONTAINS]->(i:Ingredient) "
+            "RETURN i, c.ingredient_order AS ingredient_order "
+            "ORDER BY ingredient_order",
+            pid=product_id,
+        )
+        ingredients = []
+        for r in ingredients_result:
+            ing = dict(r["i"])
+            ing["ingredient_order"] = r["ingredient_order"]
+            ingredients.append(ing)
+
+        # 4. 查询触发的风险规则
+        risks_result = session.run(
+            "MATCH (p:PetFoodProduct {id: $pid})-[e:TRIGGERS_RISK]->(r:RiskRule) "
+            "RETURN r, e.severity AS severity, e.evidence AS evidence, e.reason AS reason",
+            pid=product_id,
+        )
+        risks = []
+        for r in risks_result:
+            rule = dict(r["r"])
+            risks.append({
+                "rule_id": rule.get("rule_id"),
+                "rule_name": rule.get("rule_name"),
+                "severity": r["severity"],
+                "evidence": r["evidence"],
+                "reason": r["reason"],
+                "explanation": rule.get("explanation"),
+            })
+
+    return {
+        "product": product,
+        "brand": brand,
+        "ingredients": ingredients,
+        "risks": risks,
+    }
+
+
+class PetFoodChatRequest(BaseModel):
+    question: str
+
+
+@app.post("/api/pet-food/agent/chat")
+def api_pet_food_agent_chat(req: PetFoodChatRequest):
+    """
+    Pet Food Agent 聊天接口。
+    接收自然语言问题，基于图谱证据链返回结构化回答。
+    """
+    from petfood_agent import chat
+
+    if not req.question.strip():
+        raise HTTPException(400, "问题不能为空")
+
+    try:
+        result = chat(req.question)
+        return result
+    except Exception as e:
+        raise HTTPException(500, f"Agent error: {e}")
 
 
 if __name__ == "__main__":

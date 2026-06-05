@@ -81,8 +81,8 @@ export default function EntityInspector({
   const incoming = nodeDetail.incoming_links || [];
 
   // 动态标签/颜色：优先用已知中文名，否则直接用 Neo4j 标签
-  const KNOWN_LABELS = { Supplier: '供应商', RawMaterial: '原材料', Component: '零部件', FinalProduct: '最终产品', Factory: '工厂', Plant: '工厂' };
-  const KNOWN_COLORS = { Supplier: 'red', RawMaterial: 'amber', Component: 'blue', FinalProduct: 'green', Factory: 'purple', Plant: 'purple' };
+  const KNOWN_LABELS = { Supplier: '供应商', RawMaterial: '原材料', Component: '零部件', FinalProduct: '最终产品', Factory: '工厂', Plant: '工厂', PetFoodProduct: '宠物食品', Brand: '品牌', Ingredient: '成分', RiskRule: '风险规则', Species: '物种', LifeStage: '生命阶段' };
+  const KNOWN_COLORS = { Supplier: 'red', RawMaterial: 'amber', Component: 'blue', FinalProduct: 'green', Factory: 'purple', Plant: 'purple', PetFoodProduct: 'pink', Brand: 'cyan', Ingredient: 'green', RiskRule: 'amber', Species: 'blue', LifeStage: 'purple' };
   const typeLabel = { [objType]: KNOWN_LABELS[objType] || objType };
   const typeColor = { [objType]: KNOWN_COLORS[objType] || 'neutral' };
 
@@ -99,7 +99,7 @@ export default function EntityInspector({
       <div className="px-4 py-3 border-b border-neutral-800 bg-neutral-950 shrink-0">
         <div className="flex items-center gap-2 mb-1">
           <TypeIcon type={objType} />
-          <h2 className="text-sm font-semibold text-white truncate">{nodeDetail.label || selectedNode.id}</h2>
+          <h2 className="text-sm font-semibold text-white truncate">{nodeDetail.name || nodeDetail.label || selectedNode.id}</h2>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-neutral-600 font-mono">{selectedNode.id}</span>
@@ -160,6 +160,12 @@ function OverviewTab({ objType, detail }) {
   if (objType === 'FinalProduct') return <FinalProductOverview detail={detail} />;
   if (objType === 'Supplier') return <SupplierOverview detail={detail} />;
   if (objType === 'Factory') return <FactoryOverview detail={detail} />;
+  if (objType === 'PetFoodProduct') return <PetFoodProductOverview detail={detail} />;
+  if (objType === 'Brand') return <BrandOverview detail={detail} />;
+  if (objType === 'Ingredient') return <IngredientOverview detail={detail} />;
+  if (objType === 'RiskRule') return <RiskRuleOverview detail={detail} />;
+  if (objType === 'Species') return <SpeciesOverview detail={detail} />;
+  if (objType === 'LifeStage') return <LifeStageOverview detail={detail} />;
   return <p className="text-xs text-neutral-500">未知对象类型</p>;
 }
 
@@ -383,6 +389,614 @@ function FactoryOverview({ detail }) {
   );
 }
 
+// ---- PetFoodProduct Overview (v2) ----
+
+const _ALLERGEN_KEYWORDS = new Set(['chicken', 'chicken meal', 'beef', 'salmon', 'wheat', 'corn', 'soy', 'dairy', 'egg']);
+const _RISK_TAG_KEYWORDS = new Set(['chicken', 'chicken meal', 'taurine', 'phosphorus']);
+
+function PetFoodProductOverview({ detail }) {
+  const props = detail.properties || {};
+  const outgoing = detail.outgoing_links || [];
+
+  const ingredientLinks = outgoing
+    .filter(l => l.linkType === 'CONTAINS')
+    .sort((a, b) => (a.ingredient_order ?? 999) - (b.ingredient_order ?? 999));
+  const riskLinks = outgoing.filter(l => l.linkType === 'TRIGGERS_RISK');
+  const brandLink = outgoing.find(l => l.linkType === 'MADE_BY');
+  const speciesLink = outgoing.find(l => l.linkType === 'TARGETS_SPECIES');
+  const stageLink = outgoing.find(l => l.linkType === 'SUITABLE_FOR');
+
+  const species = props.target_species || 'unknown';
+  const speciesLabel = { cat: '猫', dog: '狗', cat_or_dog: '猫/狗', unknown: '未知' }[species] || species;
+  const stage = props.life_stage || 'unknown';
+  const stageLabel = { kitten: '幼猫', puppy: '幼犬', adult: '成年', senior: '老年', all_life_stages: '全阶段', unknown: '未知' }[stage] || stage;
+  const categoryLabel = { dry_food: '干粮', wet_food: '湿粮', treat: '零食', supplement: '营养补充', unknown: '未知' }[props.category] || props.category;
+
+  // Overall risk level
+  const sevRank = { critical: 3, high: 3, medium: 2, low: 1 };
+  const maxSev = riskLinks.reduce((m, l) => Math.max(m, sevRank[l.severity] || 0), 0);
+  const riskLevel = maxSev >= 3 ? 'High' : maxSev >= 2 ? 'Medium' : 'Low';
+  const riskColor = { High: 'red', Medium: 'amber', Low: 'green' }[riskLevel];
+  const riskLabel = { High: 'High Risk', Medium: 'Medium Risk', Low: 'No Risk' }[riskLevel];
+
+  return (
+    <div className="space-y-4">
+      {/* ── 1. Product Header ── */}
+      <DataCard className="!p-0 overflow-hidden">
+        <div className={`px-4 py-3 bg-${riskColor}-500/5 border-b border-${riskColor}-500/10`}>
+          <div className="flex items-start justify-between gap-2 mb-1.5">
+            <h3 className="text-sm font-bold text-white leading-tight">{props.product_name || detail.name || '—'}</h3>
+            <Badge label={riskLabel} color={riskColor} />
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {brandLink && (
+              <span className="text-[10px] text-cyan-400 font-medium">{brandLink.targetLabel}</span>
+            )}
+            <span className="text-[10px] text-neutral-600">|</span>
+            <span className="text-[10px] text-neutral-400">{speciesLabel}</span>
+            <span className="text-[10px] text-neutral-600">|</span>
+            <span className="text-[10px] text-neutral-400">{stageLabel}</span>
+            <span className="text-[10px] text-neutral-600">|</span>
+            <span className="text-[10px] text-neutral-400">{categoryLabel}</span>
+          </div>
+        </div>
+        <div className="px-4 py-2 flex items-center gap-3 text-[9px] text-neutral-600">
+          {props.country && <span>产地: {props.country}</span>}
+          {props.barcode && <span>条码: {props.barcode}</span>}
+          {props.product_id && <span className="font-mono">{props.product_id}</span>}
+        </div>
+      </DataCard>
+
+      {/* ── 2. Nutrition Panel ── */}
+      <NutritionPanel props={props} riskLinks={riskLinks} />
+
+      {/* ── 3. Ingredient Panel ── */}
+      {ingredientLinks.length > 0 && (
+        <IngredientPanel ingredientLinks={ingredientLinks} />
+      )}
+
+      {/* ── 4. Risk Explanation Panel ── */}
+      <RiskPanel riskLinks={riskLinks} />
+
+      {/* ── 5. Actions Panel ── */}
+      <ProductActionsPanel detail={detail} riskLinks={riskLinks} />
+    </div>
+  );
+}
+
+
+/* ── Nutrition Panel ── */
+
+function NutritionPanel({ props, riskLinks }) {
+  // Determine which fields are referenced by triggered rules
+  const ruleFields = new Set();
+  for (const r of riskLinks) {
+    const ev = (r.evidence || '').toLowerCase();
+    if (ev.includes('fat')) ruleFields.add('fat_100g');
+    if (ev.includes('phosphorus')) ruleFields.add('phosphorus_100g');
+    if (ev.includes('protein')) ruleFields.add('protein_100g');
+  }
+
+  const rows = [
+    { key: 'protein_100g', label: '蛋白质', unit: 'g', color: 'bg-blue-500', ref: 30, highGood: true },
+    { key: 'fat_100g', label: '脂肪', unit: 'g', color: 'bg-amber-500', ref: 20 },
+    { key: 'fiber_100g', label: '纤维', unit: 'g', color: 'bg-green-500', ref: 5 },
+    { key: 'moisture_100g', label: '水分', unit: 'g', color: 'bg-cyan-500', ref: 80 },
+    { key: 'ash_100g', label: '灰分', unit: 'g', color: 'bg-neutral-500', ref: 10 },
+    { key: 'phosphorus_100g', label: '磷', unit: 'g', color: 'bg-purple-500', ref: 0.8 },
+    { key: 'calcium_100g', label: '钙', unit: 'g', color: 'bg-pink-500', ref: 1.5 },
+  ];
+
+  return (
+    <DataCard>
+      <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">营养信息 (g/100g)</p>
+      <div className="space-y-1.5">
+        {rows.map(r => {
+          const val = props[r.key];
+          if (val == null) return null;
+          const flagged = ruleFields.has(r.key);
+          const pct = r.ref > 0 ? Math.min((val / r.ref) * 100, 100) : 0;
+          return (
+            <div key={r.key} className={`flex items-center gap-2 py-1 px-2 rounded-lg ${flagged ? 'bg-red-500/5 border border-red-500/10' : ''}`}>
+              <span className={`text-[10px] w-14 shrink-0 ${flagged ? 'text-red-300 font-semibold' : 'text-neutral-500'}`}>
+                {r.label}
+              </span>
+              <div className="flex-1 h-1.5 rounded-full bg-neutral-800 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${flagged ? 'bg-red-500' : r.color}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <span className={`text-[10px] font-mono w-12 text-right ${flagged ? 'text-red-400 font-bold' : 'text-neutral-300'}`}>
+                {val}{r.unit}
+              </span>
+              {flagged && <AlertTriangle className="w-3 h-3 text-red-500 shrink-0" />}
+            </div>
+          );
+        })}
+      </div>
+    </DataCard>
+  );
+}
+
+
+/* ── Ingredient Panel ── */
+
+function IngredientPanel({ ingredientLinks }) {
+  return (
+    <DataCard>
+      <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+        成分列表 ({ingredientLinks.length})
+      </p>
+      <div className="space-y-1">
+        {ingredientLinks.map((l, i) => {
+          const name = (l.targetLabel || '').toLowerCase();
+          const isAllergen = _ALLERGEN_KEYWORDS.has(name);
+          const isRiskTag = _RISK_TAG_KEYWORDS.has(name);
+          return (
+            <div
+              key={i}
+              className={`flex items-center gap-2 text-[10px] py-1.5 px-2 rounded-lg ${
+                isAllergen ? 'bg-red-500/5 border border-red-500/10' : isRiskTag ? 'bg-amber-500/5 border border-amber-500/10' : ''
+              }`}
+            >
+              <span className="text-neutral-600 w-4 text-right shrink-0">{i + 1}</span>
+              <span className={`truncate flex-1 ${isAllergen ? 'text-red-300 font-semibold' : isRiskTag ? 'text-amber-300' : 'text-neutral-300'}`}>
+                {l.targetLabel}
+              </span>
+              {isAllergen && (
+                <span className="text-[8px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/20 shrink-0">
+                  过敏原
+                </span>
+              )}
+              {isRiskTag && !isAllergen && (
+                <span className="text-[8px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/20 shrink-0">
+                  关注
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </DataCard>
+  );
+}
+
+
+/* ── Risk Explanation Panel ── */
+
+function RiskPanel({ riskLinks }) {
+  if (riskLinks.length === 0) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2.5 bg-green-500/10 border border-green-500/20 rounded-xl">
+        <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
+        <p className="text-xs text-green-300">未触发任何风险规则</p>
+      </div>
+    );
+  }
+
+  return (
+    <DataCard>
+      <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+        风险解释 ({riskLinks.length})
+      </p>
+      <div className="space-y-3">
+        {riskLinks.map((l, i) => {
+          const sev = l.severity || 'medium';
+          const sevColor = { critical: 'red', high: 'red', medium: 'amber', low: 'green' }[sev] || 'amber';
+          return (
+            <div key={i} className={`p-3 rounded-lg border ${SEVERITY_BORDER[sev] || 'border-neutral-700'} bg-neutral-900/40`}>
+              <div className="flex items-center gap-2 mb-2">
+                <Shield className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-[11px] font-bold text-white">{l.targetLabel}</span>
+                <Badge label={sev} color={sevColor} />
+              </div>
+              {l.evidence && (
+                <div className="mb-1.5">
+                  <span className="text-[9px] text-neutral-600 uppercase tracking-wider">Evidence</span>
+                  <p className="text-[11px] text-cyan-300 font-mono bg-cyan-500/5 border border-cyan-500/10 rounded px-2 py-1 mt-0.5">
+                    {l.evidence}
+                  </p>
+                </div>
+              )}
+              {l.reason && (
+                <div>
+                  <span className="text-[9px] text-neutral-600 uppercase tracking-wider">Reason</span>
+                  <p className="text-[11px] text-neutral-300 mt-0.5 leading-relaxed">
+                    {l.reason}
+                  </p>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </DataCard>
+  );
+}
+
+
+/* ── Product Actions Panel ── */
+
+const _PRODUCT_ACTIONS = [
+  { id: 'explain', label: '解释风险', desc: '基于图谱证据链解释该产品为什么触发风险规则', icon: Shield, iconColor: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', needsRisk: true },
+  { id: 'recommend', label: '推荐替代', desc: '根据物种和生命阶段推荐无风险的替代产品', icon: Package, iconColor: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', needsRisk: false },
+  { id: 'watchlist', label: '加入监控', desc: '将该产品加入持续监控清单，跟踪风险变化', icon: AlertTriangle, iconColor: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', needsRisk: true },
+  { id: 'report', label: '成分报告', desc: '生成该产品的完整成分分析报告', icon: FlaskConical, iconColor: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20', needsRisk: false },
+  { id: 'compare', label: '比较产品', desc: '选择另一个产品进行风险和营养对比', icon: ArrowRight, iconColor: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', needsRisk: false },
+];
+
+function ProductActionsPanel({ detail, riskLinks }) {
+  const hasRisks = riskLinks.length > 0;
+
+  return (
+    <DataCard>
+      <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">产品动作</p>
+      <div className="space-y-1.5">
+        {_PRODUCT_ACTIONS.map(a => {
+          const enabled = !a.needsRisk || hasRisks;
+          return (
+            <button
+              key={a.id}
+              disabled={!enabled}
+              className={`w-full text-left px-3 py-2 rounded-lg border transition-all ${
+                enabled
+                  ? `${a.bg} ${a.border} hover:brightness-110 cursor-pointer`
+                  : 'bg-neutral-900/30 border-neutral-800 text-neutral-600 cursor-not-allowed'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-0.5">
+                <a.icon className={`w-3.5 h-3.5 ${enabled ? a.iconColor : 'text-neutral-700'}`} />
+                <span className={`text-[11px] font-semibold ${enabled ? 'text-white' : 'text-neutral-600'}`}>
+                  {a.label}
+                </span>
+                {!enabled && <span className="text-[8px] text-neutral-700 ml-auto">需要风险触发</span>}
+              </div>
+              <p className={`text-[9px] ml-5.5 ${enabled ? 'text-neutral-500' : 'text-neutral-700'}`}>
+                {a.desc}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+    </DataCard>
+  );
+}
+
+// ---- Brand Overview ----
+
+function BrandOverview({ detail }) {
+  const props = detail.properties || {};
+  const incoming = detail.incoming_links || [];
+
+  // Products made by this brand (incoming MADE_BY links)
+  const productLinks = incoming.filter(l => l.linkType === 'MADE_BY');
+  const riskProductCount = productLinks.filter(l => {
+    // We can't directly know from the link, so show count from incoming
+    return false;
+  }).length;
+
+  return (
+    <div className="space-y-4">
+      <DataCard>
+        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">品牌信息</p>
+        <div className="space-y-1.5">
+          <InfoRow label="品牌 ID" value={props.brand_id || '—'} />
+          <InfoRow label="品牌名" value={props.brand_name || '—'} />
+          <InfoRow label="国家" value={props.country || '—'} />
+        </div>
+      </DataCard>
+
+      <div className="grid grid-cols-2 gap-3">
+        <DataCard>
+          <p className="text-[10px] text-neutral-500 mb-0.5">旗下产品</p>
+          <p className="text-xl font-bold text-cyan-400">{productLinks.length}</p>
+          <p className="text-[10px] text-neutral-600">个</p>
+        </DataCard>
+        <DataCard>
+          <p className="text-[10px] text-neutral-500 mb-0.5">关联链路</p>
+          <p className="text-xl font-bold text-white">{incoming.length}</p>
+          <p className="text-[10px] text-neutral-600">条</p>
+        </DataCard>
+      </div>
+
+      {productLinks.length > 0 && (
+        <DataCard>
+          <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+            旗下产品 ({productLinks.length})
+          </p>
+          <div className="space-y-1">
+            {productLinks.slice(0, 10).map((l, i) => (
+              <div key={i} className="flex items-center gap-2 text-[10px] py-1">
+                <Package className="w-3 h-3 text-pink-400 shrink-0" />
+                <span className="text-neutral-300 truncate flex-1">{l.sourceLabel}</span>
+                <span className="text-neutral-600 font-mono">{l.sourceId}</span>
+              </div>
+            ))}
+            {productLinks.length > 10 && (
+              <p className="text-[9px] text-neutral-600 mt-1">还有 {productLinks.length - 10} 个产品...</p>
+            )}
+          </div>
+        </DataCard>
+      )}
+
+      {productLinks.length === 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-neutral-800/50 border border-neutral-700 rounded-lg">
+          <Info className="w-4 h-4 text-neutral-500 shrink-0" />
+          <p className="text-xs text-neutral-500">暂无关联产品</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- Ingredient Overview ----
+
+function IngredientOverview({ detail }) {
+  const props = detail.properties || {};
+  const incoming = detail.incoming_links || [];
+
+  // Products containing this ingredient (incoming CONTAINS links)
+  const productLinks = incoming.filter(l => l.linkType === 'CONTAINS');
+  const isAllergen = props.common_allergen === true || props.common_allergen === 'true';
+
+  return (
+    <div className="space-y-4">
+      {isAllergen && (
+        <div className="flex items-start gap-2 px-3 py-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-medium text-red-300">常见过敏原</p>
+            <p className="text-[10px] text-red-400/80">该成分被标记为常见过敏原，需在产品标签中明确标注</p>
+          </div>
+        </div>
+      )}
+
+      <DataCard>
+        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">成分信息</p>
+        <div className="space-y-1.5">
+          <InfoRow label="成分 ID" value={props.ingredient_id || '—'} />
+          <InfoRow label="成分名" value={props.ingredient_name || '—'} />
+          <InfoRow label="类型" value={props.ingredient_type || '—'} />
+          <InfoRow label="风险标签" value={props.risk_tag || '无'} color={props.risk_tag ? 'text-amber-400' : 'text-neutral-500'} />
+          <InfoRow label="常见过敏原" value={isAllergen ? '是' : '否'} color={isAllergen ? 'text-red-400' : 'text-green-400'} />
+        </div>
+      </DataCard>
+
+      <DataCard>
+        <p className="text-[10px] text-neutral-500 mb-0.5">包含该成分的产品</p>
+        <p className="text-xl font-bold text-green-400">{productLinks.length}</p>
+        <p className="text-[10px] text-neutral-600">个</p>
+      </DataCard>
+
+      {productLinks.length > 0 && (
+        <DataCard>
+          <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+            含此成分的产品 ({productLinks.length})
+          </p>
+          <div className="space-y-1">
+            {productLinks.slice(0, 10).map((l, i) => (
+              <div key={i} className="flex items-center gap-2 text-[10px] py-1">
+                <Package className="w-3 h-3 text-pink-400 shrink-0" />
+                <span className="text-neutral-300 truncate flex-1">{l.sourceLabel}</span>
+                <span className="text-neutral-600 font-mono">{l.sourceId}</span>
+              </div>
+            ))}
+            {productLinks.length > 10 && (
+              <p className="text-[9px] text-neutral-600 mt-1">还有 {productLinks.length - 10} 个产品...</p>
+            )}
+          </div>
+        </DataCard>
+      )}
+    </div>
+  );
+}
+
+// ---- RiskRule Overview ----
+
+function RiskRuleOverview({ detail }) {
+  const props = detail.properties || {};
+  const incoming = detail.incoming_links || [];
+
+  // Products that trigger this rule (incoming TRIGGERS_RISK links)
+  const triggeredLinks = incoming.filter(l => l.linkType === 'TRIGGERS_RISK');
+  const severity = props.severity || 'medium';
+  const sevColor = { critical: 'red', high: 'red', medium: 'amber', low: 'green' }[severity] || 'amber';
+
+  return (
+    <div className="space-y-4">
+      <DataCard>
+        <div className="flex items-center gap-2 mb-2">
+          <Shield className="w-4 h-4 text-amber-400" />
+          <span className="text-xs font-bold text-white">{props.rule_name || '—'}</span>
+          <Badge label={severity} color={sevColor} />
+        </div>
+        <p className="text-[10px] text-neutral-400 leading-relaxed">{props.explanation || '暂无说明'}</p>
+      </DataCard>
+
+      <DataCard>
+        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">规则详情</p>
+        <div className="space-y-1.5">
+          <InfoRow label="规则 ID" value={props.rule_id || '—'} />
+          <InfoRow label="规则名" value={props.rule_name || '—'} />
+          <InfoRow label="严重程度" value={severity} color={`text-${sevColor}-400`} />
+        </div>
+      </DataCard>
+
+      <DataCard>
+        <p className="text-[10px] text-neutral-500 mb-0.5">触发该规则的产品</p>
+        <p className="text-xl font-bold text-red-400">{triggeredLinks.length}</p>
+        <p className="text-[10px] text-neutral-600">个</p>
+      </DataCard>
+
+      {triggeredLinks.length > 0 && (
+        <DataCard>
+          <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+            触发产品 ({triggeredLinks.length})
+          </p>
+          <div className="space-y-2">
+            {triggeredLinks.slice(0, 10).map((l, i) => (
+              <div key={i} className="p-2 rounded-lg border border-neutral-800 bg-neutral-900/40">
+                <div className="flex items-center gap-2 mb-1">
+                  <Package className="w-3 h-3 text-pink-400 shrink-0" />
+                  <span className="text-[10px] font-medium text-neutral-300 truncate">{l.sourceLabel}</span>
+                  <span className="text-[9px] text-neutral-600 font-mono ml-auto">{l.sourceId}</span>
+                </div>
+                {l.evidence && (
+                  <p className="text-[9px] text-neutral-500 ml-5">证据: {l.evidence}</p>
+                )}
+                {l.reason && (
+                  <p className="text-[9px] text-neutral-500 ml-5 mt-0.5">原因: {l.reason}</p>
+                )}
+              </div>
+            ))}
+            {triggeredLinks.length > 10 && (
+              <p className="text-[9px] text-neutral-600 mt-1">还有 {triggeredLinks.length - 10} 个产品...</p>
+            )}
+          </div>
+        </DataCard>
+      )}
+
+      {triggeredLinks.length === 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-green-500/10 border border-green-500/20 rounded-lg">
+          <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
+          <p className="text-xs text-green-300">当前无产品触发此规则</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const SEVERITY_BORDER = {
+  critical: 'border-red-500/30',
+  high: 'border-red-500/20',
+  medium: 'border-amber-500/20',
+  low: 'border-green-500/20',
+};
+
+// ---- Species Overview ----
+
+function SpeciesOverview({ detail }) {
+  const props = detail.properties || {};
+  const incoming = detail.incoming_links || [];
+
+  // Products targeting this species (incoming TARGETS_SPECIES links)
+  const productLinks = incoming.filter(l => l.linkType === 'TARGETS_SPECIES');
+
+  return (
+    <div className="space-y-4">
+      <DataCard>
+        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">物种信息</p>
+        <div className="space-y-1.5">
+          <InfoRow label="物种 ID" value={props.species_id || '—'} />
+          <InfoRow label="物种名" value={props.species_name || '—'} />
+        </div>
+      </DataCard>
+
+      <DataCard>
+        <p className="text-[10px] text-neutral-500 mb-0.5">面向该物种的产品</p>
+        <p className="text-xl font-bold text-blue-400">{productLinks.length}</p>
+        <p className="text-[10px] text-neutral-600">个</p>
+      </DataCard>
+
+      {productLinks.length > 0 && (
+        <DataCard>
+          <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+            产品列表 ({productLinks.length})
+          </p>
+          <div className="space-y-1">
+            {productLinks.slice(0, 10).map((l, i) => (
+              <div key={i} className="flex items-center gap-2 text-[10px] py-1">
+                <Package className="w-3 h-3 text-pink-400 shrink-0" />
+                <span className="text-neutral-300 truncate flex-1">{l.sourceLabel}</span>
+                <span className="text-neutral-600 font-mono">{l.sourceId}</span>
+              </div>
+            ))}
+            {productLinks.length > 10 && (
+              <p className="text-[9px] text-neutral-600 mt-1">还有 {productLinks.length - 10} 个产品...</p>
+            )}
+          </div>
+        </DataCard>
+      )}
+
+      {productLinks.length === 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-neutral-800/50 border border-neutral-700 rounded-lg">
+          <Info className="w-4 h-4 text-neutral-500 shrink-0" />
+          <p className="text-xs text-neutral-500">暂无关联产品</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- LifeStage Overview ----
+
+function LifeStageOverview({ detail }) {
+  const props = detail.properties || {};
+  const incoming = detail.incoming_links || [];
+
+  // Products suitable for this life stage (incoming SUITABLE_FOR links)
+  const productLinks = incoming.filter(l => l.linkType === 'SUITABLE_FOR');
+
+  return (
+    <div className="space-y-4">
+      <DataCard>
+        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">生命阶段信息</p>
+        <div className="space-y-1.5">
+          <InfoRow label="阶段 ID" value={props.stage_id || '—'} />
+          <InfoRow label="阶段名" value={props.stage_name || '—'} />
+        </div>
+      </DataCard>
+
+      <DataCard>
+        <p className="text-[10px] text-neutral-500 mb-0.5">适用于该阶段的产品</p>
+        <p className="text-xl font-bold text-purple-400">{productLinks.length}</p>
+        <p className="text-[10px] text-neutral-600">个</p>
+      </DataCard>
+
+      {productLinks.length > 0 && (
+        <DataCard>
+          <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+            产品列表 ({productLinks.length})
+          </p>
+          <div className="space-y-1">
+            {productLinks.slice(0, 10).map((l, i) => (
+              <div key={i} className="flex items-center gap-2 text-[10px] py-1">
+                <Package className="w-3 h-3 text-pink-400 shrink-0" />
+                <span className="text-neutral-300 truncate flex-1">{l.sourceLabel}</span>
+                <span className="text-neutral-600 font-mono">{l.sourceId}</span>
+              </div>
+            ))}
+            {productLinks.length > 10 && (
+              <p className="text-[9px] text-neutral-600 mt-1">还有 {productLinks.length - 10} 个产品...</p>
+            )}
+          </div>
+        </DataCard>
+      )}
+
+      {productLinks.length === 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-neutral-800/50 border border-neutral-700 rounded-lg">
+          <Info className="w-4 h-4 text-neutral-500 shrink-0" />
+          <p className="text-xs text-neutral-500">暂无关联产品</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NutritionRow({ label, value, color = 'text-neutral-400', threshold }) {
+  const isWarning = threshold != null && value != null && value > threshold;
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-neutral-500">{label}</span>
+      <span className={`font-mono ${isWarning ? 'text-red-400 font-bold' : color}`}>
+        {value != null ? value : '—'}
+        {isWarning && <span className="text-[8px] ml-0.5">!</span>}
+      </span>
+    </div>
+  );
+}
+
 function InfoRow({ icon: Icon, label, value, color = 'text-neutral-500' }) {
   return (
     <div className="flex items-center justify-between py-1.5">
@@ -443,6 +1057,8 @@ function LinkItem({ link, direction, onNavigate }) {
   const typeBadge = {
     supplies: '供应', used_in: '用料', assembled_into: '装配',
     manufactured_at: '生产于',
+    MADE_BY: '品牌', CONTAINS: '包含', TARGETS_SPECIES: '目标物种',
+    SUITABLE_FOR: '适用阶段', TRIGGERS_RISK: '触发风险', SIMILAR_TO: '相似',
   };
 
   return (
@@ -513,6 +1129,7 @@ function ActionsTab({ objType, nodeId, detail, onRunAgent }) {
 }
 
 function getActionsForType(objType, detail) {
+  if (objType === 'PetFoodProduct') return getPetFoodActions(detail);
   if (objType === 'RawMaterial') {
     const stock = detail.stock || 0;
     const threshold = detail.threshold || 0;
@@ -619,6 +1236,46 @@ function getActionsForType(objType, detail) {
   ];
 }
 
+function getPetFoodActions(detail) {
+  const outgoing = detail.outgoing_links || [];
+  const riskCount = outgoing.filter(l => l.linkType === 'TRIGGERS_RISK').length;
+  const hasRisks = riskCount > 0;
+
+  return [
+    {
+      title: '解释产品风险',
+      description: hasRisks
+        ? `该产品触发了 ${riskCount} 条风险规则，点击查看详细解释`
+        : '该产品未触发风险规则，查看健康评估报告',
+      icon: Shield, iconColor: hasRisks ? 'text-red-400' : 'text-green-400',
+      enabled: true, runAgent: true,
+      bg: hasRisks ? 'bg-red-500/10' : 'bg-green-500/10',
+      border: hasRisks ? 'border-red-500/20' : 'border-green-500/20',
+    },
+    {
+      title: '推荐替代产品',
+      description: '基于物种和生命阶段，推荐不触发相同风险的替代产品',
+      icon: Package, iconColor: 'text-blue-400',
+      enabled: true, runAgent: false,
+      bg: 'bg-blue-500/10', border: 'border-blue-500/20',
+    },
+    {
+      title: '加入监控清单',
+      description: '将该产品加入持续监控清单，跟踪风险变化',
+      icon: AlertTriangle, iconColor: 'text-amber-400',
+      enabled: hasRisks, runAgent: false,
+      bg: 'bg-amber-500/10', border: 'border-amber-500/20',
+    },
+    {
+      title: '生成成分报告',
+      description: '生成该产品的完整成分分析报告',
+      icon: FlaskConical, iconColor: 'text-purple-400',
+      enabled: true, runAgent: false,
+      bg: 'bg-purple-500/10', border: 'border-purple-500/20',
+    },
+  ];
+}
+
 // ══════════════════════════════════════════════════════
 // 工具
 // ══════════════════════════════════════════════════════
@@ -696,6 +1353,12 @@ function TypeIcon({ type }) {
     case 'FinalProduct': return <Package className={`${cls} text-green-500`} />;
     case 'Supplier': return <Truck className={`${cls} text-red-500`} />;
     case 'Factory': return <Factory className={`${cls} text-purple-500`} />;
+    case 'PetFoodProduct': return <Package className={`${cls} text-pink-500`} />;
+    case 'Brand': return <Package className={`${cls} text-cyan-500`} />;
+    case 'Ingredient': return <FlaskConical className={`${cls} text-green-500`} />;
+    case 'RiskRule': return <Shield className={`${cls} text-amber-500`} />;
+    case 'Species': return <Users className={`${cls} text-blue-500`} />;
+    case 'LifeStage': return <Calendar className={`${cls} text-purple-500`} />;
     default: return <Activity className={`${cls} text-neutral-500`} />;
   }
 }

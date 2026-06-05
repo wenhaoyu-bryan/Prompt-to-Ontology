@@ -147,3 +147,31 @@ export async function deleteConstraint(id) {
   const { data } = await api.delete(`/ontology/constraints/${id}`);
   return data;
 }
+
+// =====================================================
+// Pet Food Ontology Schema API (Phase 8)
+// =====================================================
+
+export async function fetchPetFoodSchema(domain) {
+  const { data } = await api.get(`/ontology/${domain || 'pet_food'}/schema`);
+  return data;
+}
+
+// =====================================================
+// Pet Food Import API (Phase 12)
+// =====================================================
+
+export async function importPetFoodSample() {
+  const { data } = await api.post('/pet-food/import-sample');
+  return data;
+}
+
+export async function fetchPetFoodRiskExplanation(productId) {
+  const { data } = await api.get(`/pet-food/products/${productId}/risk-explanation`);
+  return data;
+}
+
+export async function petFoodAgentChat(question) {
+  const { data } = await api.post('/pet-food/agent/chat', { question });
+  return data;
+}

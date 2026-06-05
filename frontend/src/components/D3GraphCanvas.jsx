@@ -2,10 +2,9 @@ import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import {
   Loader2, WifiOff, RefreshCw, Search, ZoomIn, ZoomOut, Maximize2, Route,
-  Settings, Trash2, X,
+  Settings, Trash2, X, Filter, Database, CheckCircle,
 } from 'lucide-react';
 import LinkTooltip from './LinkTooltip';
-import OntologySchemaOverview from './OntologySchemaOverview';
 import { fetchShortestPath, clearDataset } from '../api';
 
 // =====================================================
@@ -16,16 +15,20 @@ import { fetchShortestPath, clearDataset } from '../api';
 const DEFAULT_SIZE_MAP = {
   Factory: 22, FinalProduct: 20, Component: 17,
   RawMaterial: 15, Supplier: 15,
+  PetFoodProduct: 18, Brand: 16, Ingredient: 12, RiskRule: 14,
 };
 const DEFAULT_SIZE = 14;
 
 const LINK_WIDTH_MAP = {
   SUPPLIES: 1.5, USED_IN: 2.5, ASSEMBLED_INTO: 3, MANUFACTURED_AT: 1.5,
+  MADE_BY: 1.5, CONTAINS: 1, TRIGGERS_RISK: 2, TARGETS_SPECIES: 1, SUITABLE_FOR: 1,
 };
 
 const LINK_COLOR_MAP = {
   SUPPLIES: '#ef4444', USED_IN: '#3b82f6',
   ASSEMBLED_INTO: '#22c55e', MANUFACTURED_AT: '#a855f7',
+  MADE_BY: '#06b6d4', CONTAINS: '#84cc16', TRIGGERS_RISK: '#ef4444',
+  TARGETS_SPECIES: '#a855f7', SUITABLE_FOR: '#f59e0b',
 };
 
 function nodeSize(node) {
@@ -82,7 +85,9 @@ function drawActionBadge(ctx, node, gs) {
     || (node.objectType === 'Supplier' && node.riskLevel === 'High')
     || (node.objectType === 'FinalProduct' && node.yieldRatio < 0.8)
     || (node.objectType === 'Component' && node.daysRemaining < 3)
-    || (node.objectType === 'RawMaterial' && node.alert);
+    || (node.objectType === 'RawMaterial' && node.alert)
+    || (node.objectType === 'PetFoodProduct' && (node.riskCount || 0) > 0)
+    || (node.objectType === 'RiskRule');
   const locked = !hasAction;
 
   ctx.save();
@@ -205,6 +210,27 @@ export default function D3GraphCanvas({
   const [hoveredLink, setHoveredLink] = useState(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [, setTick] = useState(0);
+  const [nodeFilter, setNodeFilter] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoResult, setDemoResult] = useState(null);
+
+  // ---- Pet Food Demo 导入 ----
+  const handleLoadDemo = useCallback(async () => {
+    setDemoLoading(true);
+    setDemoResult(null);
+    try {
+      const { importPetFoodSample } = await import('../api');
+      const result = await importPetFoodSample();
+      setDemoResult(result);
+      // 刷新图谱
+      onRetry?.();
+    } catch (e) {
+      setDemoResult({ error: e.message || '导入失败' });
+    } finally {
+      setDemoLoading(false);
+    }
+  }, [onRetry]);
 
   // ---- 容器尺寸 ----
   useEffect(() => {
@@ -239,9 +265,76 @@ export default function D3GraphCanvas({
     );
   }, [searchText, graphData.nodes]);
 
+  // ---- Pet Food 过滤 ----
+  const hasPetFood = useMemo(() =>
+    graphData.nodes.some(n => n.objectType === 'PetFoodProduct'),
+    [graphData.nodes]
+  );
+
+  const filteredGraphData = useMemo(() => {
+    if (!nodeFilter) return graphData;
+    const nodes = graphData.nodes;
+    const links = graphData.links;
+
+    if (nodeFilter === 'high_risk') {
+      // 只显示有 TRIGGERS_RISK 关系的产品 + 相关的 RiskRule
+      const riskEdges = links.filter(l => l.linkType === 'TRIGGERS_RISK' || l.relationship === 'TRIGGERS_RISK');
+      const productIds = new Set(riskEdges.map(l => l.source));
+      const ruleIds = new Set(riskEdges.map(l => l.target));
+      const filteredNodes = nodes.filter(n =>
+        productIds.has(n.id) || ruleIds.has(n.id) ||
+        (n.objectType === 'Brand' && nodes.some(p => productIds.has(p.id) && links.some(l => l.source === p.id && l.target === n.id && (l.linkType === 'MADE_BY' || l.relationship === 'MADE_BY'))))
+      );
+      const filteredNodeIds = new Set(filteredNodes.map(n => n.id));
+      const filteredLinks = links.filter(l => filteredNodeIds.has(l.source) && filteredNodeIds.has(l.target));
+      return { nodes: filteredNodes, links: filteredLinks };
+    }
+
+    if (nodeFilter === 'chicken') {
+      // 只显示含 chicken 的产品 + 其成分和风险
+      const chickenIngredientIds = new Set();
+      nodes.forEach(n => {
+        if (n.objectType === 'Ingredient' && (n.label || '').toLowerCase().includes('chicken')) {
+          chickenIngredientIds.add(n.id);
+        }
+      });
+      const productIds = new Set();
+      links.forEach(l => {
+        if ((l.linkType === 'CONTAINS' || l.relationship === 'CONTAINS') && chickenIngredientIds.has(l.target)) {
+          productIds.add(l.source);
+        }
+      });
+      const keepIds = new Set([...productIds, ...chickenIngredientIds]);
+      // Also keep brands and risk rules connected to these products
+      links.forEach(l => {
+        if (productIds.has(l.source)) keepIds.add(l.target);
+      });
+      const filteredNodes = nodes.filter(n => keepIds.has(n.id));
+      const filteredLinks = links.filter(l => keepIds.has(l.source) && keepIds.has(l.target));
+      return { nodes: filteredNodes, links: filteredLinks };
+    }
+
+    if (nodeFilter === 'cat' || nodeFilter === 'dog') {
+      // 只显示 cat/dog 产品 + 相关节点
+      const productIds = new Set(nodes.filter(n =>
+        n.objectType === 'PetFoodProduct' && n.target_species === nodeFilter
+      ).map(n => n.id));
+      const keepIds = new Set(productIds);
+      links.forEach(l => {
+        if (productIds.has(l.source)) keepIds.add(l.target);
+      });
+      const filteredNodes = nodes.filter(n => keepIds.has(n.id));
+      const filteredLinks = links.filter(l => keepIds.has(l.source) && keepIds.has(l.target));
+      return { nodes: filteredNodes, links: filteredLinks };
+    }
+
+    return graphData;
+  }, [graphData, nodeFilter]);
+
   // ---- D3 力模拟初始化 ----
   useEffect(() => {
     if (!graphData.nodes.length) return;
+    const displayData = filteredGraphData;
 
     const svg = d3.select(svgRef.current);
     const nodeCanvas = nodeCanvasRef.current;
@@ -261,8 +354,8 @@ export default function D3GraphCanvas({
     overlayCtx.scale(pxRatio, pxRatio);
 
     // --- 力模拟 ---
-    const sim = d3.forceSimulation(graphData.nodes)
-      .force('link', d3.forceLink(graphData.links).id(d => d.id).distance(100))
+    const sim = d3.forceSimulation(displayData.nodes)
+      .force('link', d3.forceLink(displayData.links).id(d => d.id).distance(100))
       .force('charge', d3.forceManyBody().strength(-300))
       .force('center', d3.forceCenter(dims.width / 2, dims.height / 2))
       .alphaDecay(0.015)
@@ -303,7 +396,7 @@ export default function D3GraphCanvas({
       ctx.translate(transformRef.current.x, transformRef.current.y);
       ctx.scale(gs, gs);
 
-      graphData.nodes.forEach(node => {
+      displayData.nodes.forEach(node => {
         if (!isFinite(node.x) || !isFinite(node.y)) return;
         const objType = node.objectType || node.type || '';
         const label = node.label || node.id;
@@ -377,6 +470,39 @@ export default function D3GraphCanvas({
           ctx.strokeStyle = 'rgba(255,255,255,0.15)';
           ctx.lineWidth = 0.5 / gs;
           ctx.beginPath(); ctx.moveTo(node.x - s * 0.6, node.y); ctx.lineTo(node.x + s * 0.6, node.y); ctx.stroke();
+        } else if (objType === 'PetFoodProduct') {
+          // 圆角方形 — 宠物食品产品
+          drawRoundedRect(ctx, node.x, node.y, s * 1.8, s * 1.3, 5);
+          ctx.fillStyle = color; ctx.fill();
+          ctx.lineWidth = isSelected ? 2.5 / gs : 1.5 / gs;
+          ctx.strokeStyle = isSelected ? '#fff' : '#831843'; ctx.stroke();
+          // 内部小圆点表示有风险
+          const hasRisk = (node.alertCount || 0) > 0;
+          if (hasRisk) {
+            ctx.beginPath(); ctx.arc(node.x, node.y, 3, 0, Math.PI * 2);
+            ctx.fillStyle = '#ef4444'; ctx.fill();
+          }
+        } else if (objType === 'Brand') {
+          // 菱形 — 品牌
+          drawDiamond(ctx, node.x, node.y, s * 0.9);
+          ctx.fillStyle = color; ctx.fill();
+          ctx.lineWidth = isSelected ? 2 / gs : 1.5 / gs;
+          ctx.strokeStyle = isSelected ? '#fff' : '#164e63'; ctx.stroke();
+        } else if (objType === 'Ingredient') {
+          // 小圆点 — 成分
+          ctx.beginPath(); ctx.arc(node.x, node.y, s * 0.7, 0, Math.PI * 2);
+          ctx.fillStyle = color; ctx.fill();
+          ctx.lineWidth = 1 / gs; ctx.strokeStyle = '#1a2e05'; ctx.stroke();
+        } else if (objType === 'RiskRule') {
+          // 三角形 — 风险规则
+          ctx.beginPath();
+          ctx.moveTo(node.x, node.y - s * 0.9);
+          ctx.lineTo(node.x + s * 0.8, node.y + s * 0.6);
+          ctx.lineTo(node.x - s * 0.8, node.y + s * 0.6);
+          ctx.closePath();
+          ctx.fillStyle = color; ctx.fill();
+          ctx.lineWidth = isSelected ? 2 / gs : 1.5 / gs;
+          ctx.strokeStyle = isSelected ? '#fff' : '#451a03'; ctx.stroke();
         } else {
           ctx.beginPath(); ctx.arc(node.x, node.y, s * 0.8, 0, Math.PI * 2);
           ctx.fillStyle = color; ctx.fill();
@@ -405,6 +531,12 @@ export default function D3GraphCanvas({
               metric = node.riskLevel;
             } else if (objType === 'Factory' && node.capacityUtilization != null) {
               metric = `${(node.capacityUtilization * 100).toFixed(0)}%`;
+            } else if (objType === 'PetFoodProduct' && node.target_species) {
+              const species = { cat: '猫', dog: '狗', cat_or_dog: '猫/狗' }[node.target_species] || '';
+              const stage = { kitten: '幼猫', puppy: '幼犬', adult: '成年', senior: '老年' }[node.life_stage] || '';
+              metric = [species, stage].filter(Boolean).join(' ');
+            } else if (objType === 'RiskRule' && node.severity) {
+              metric = node.severity;
             }
             if (metric) {
               ctx.fillStyle = metric.startsWith('H') ? '#ef4444' :
@@ -433,7 +565,7 @@ export default function D3GraphCanvas({
       ctx.translate(transformRef.current.x, transformRef.current.y);
       ctx.scale(gs, gs);
 
-      graphData.nodes.forEach(node => {
+      displayData.nodes.forEach(node => {
         if (!isFinite(node.x) || !isFinite(node.y)) return;
         const isQueried = queriedNodeIds.includes(node.id);
 
@@ -470,7 +602,7 @@ export default function D3GraphCanvas({
       // 连线路径 (箭头停在节点边缘)
       linksGroup.selectAll('line').remove();
       linksGroup.selectAll('line')
-        .data(graphData.links)
+        .data(displayData.links)
         .join('line')
         .attr('x1', d => d.source.x)
         .attr('y1', d => d.source.y)
@@ -527,7 +659,7 @@ export default function D3GraphCanvas({
       labelsGroup.selectAll('text').remove();
       if (transformRef.current.k >= 0.6) {
         labelsGroup.selectAll('text')
-          .data(graphData.links)
+          .data(displayData.links)
           .join('text')
           .attr('x', d => (d.source.x + d.target.x) / 2)
           .attr('y', d => (d.source.y + d.target.y) / 2 - 6)
@@ -565,7 +697,7 @@ export default function D3GraphCanvas({
       const gy = (my - t.y) / gs;
 
       // 检测动作图标点击
-      for (const node of graphData.nodes) {
+      for (const node of displayData.nodes) {
         if (!isFinite(node.x) || !isFinite(node.y)) continue;
         const s = nodeSize(node);
         const bx = node.x + s * 0.7;
@@ -582,7 +714,7 @@ export default function D3GraphCanvas({
       // 检测节点点击
       let closest = null;
       let minDist = Infinity;
-      for (const node of graphData.nodes) {
+      for (const node of displayData.nodes) {
         if (!isFinite(node.x) || !isFinite(node.y)) continue;
         const s = nodeSize(node);
         const dist = Math.hypot(gx - node.x, gy - node.y);
@@ -601,7 +733,7 @@ export default function D3GraphCanvas({
       sim.stop();
       nodeCanvas.removeEventListener('click', canvasClickHandler);
     };
-  }, [graphData, dims, selectedNode, queriedNodeIds, highlightedNodeIds]);
+  }, [graphData, filteredGraphData, nodeFilter, dims, selectedNode, queriedNodeIds, highlightedNodeIds]);
 
   // ---- 初始 zoomToFit ----
   useEffect(() => {
@@ -693,9 +825,6 @@ export default function D3GraphCanvas({
   // =====================================================
   return (
     <div ref={containerRef} className="w-full h-full flex flex-col">
-      {/* --- Schema 概览（可折叠） --- */}
-      <OntologySchemaOverview dataset={currentDataset} />
-
       {/* --- 图谱画布 --- */}
       <div className="flex-1 relative bg-[#0a0a0a] overflow-hidden">
       {/* --- SVG 层: 连线 + 箭头 + 标签 --- */}
@@ -767,6 +896,18 @@ export default function D3GraphCanvas({
           title="最短路径">
           <Route className="w-3.5 h-3.5" />
         </button>
+        {hasPetFood && (
+          <button onClick={() => setShowFilters(!showFilters)}
+            className={`p-1.5 rounded-lg border transition-colors ${nodeFilter ? 'bg-pink-500/20 border-pink-500/30 text-pink-400' : 'bg-neutral-900/85 border-neutral-700 text-neutral-400 hover:text-white'}`}
+            title="Pet Food 筛选">
+            <Filter className="w-3.5 h-3.5" />
+          </button>
+        )}
+        <button onClick={handleLoadDemo} disabled={demoLoading}
+          className={`p-1.5 rounded-lg border transition-colors ${demoLoading ? 'bg-amber-500/20 border-amber-500/30 text-amber-400' : 'bg-neutral-900/85 border-neutral-700 text-neutral-400 hover:text-white'}`}
+          title="Load Pet Food Demo">
+          {demoLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Database className="w-3.5 h-3.5" />}
+        </button>
         <div className="w-px h-5 bg-neutral-700" />
         <button onClick={() => handleZoom(1.3)}
           className="p-1.5 rounded-lg bg-neutral-900/85 border border-neutral-700 text-neutral-400 hover:text-white transition-colors"
@@ -784,6 +925,55 @@ export default function D3GraphCanvas({
           <Maximize2 className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {/* --- Pet Food 筛选面板 --- */}
+      {showFilters && (
+        <div className="absolute top-12 right-3 z-40 w-52 bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl overflow-hidden">
+          <div className="px-3 py-2 border-b border-neutral-800">
+            <span className="text-xs font-semibold text-neutral-300">Pet Food 筛选</span>
+          </div>
+          {[
+            { key: null, label: '显示全部' },
+            { key: 'high_risk', label: '仅高风险产品' },
+            { key: 'chicken', label: '含 Chicken 产品' },
+            { key: 'cat', label: '仅猫粮' },
+            { key: 'dog', label: '仅狗粮' },
+          ].map(({ key, label }) => (
+            <button
+              key={key || 'all'}
+              onClick={() => { setNodeFilter(key); setShowFilters(false); }}
+              className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                nodeFilter === key ? 'bg-pink-500/10 text-pink-400' : 'text-neutral-400 hover:bg-neutral-800'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* --- Demo 导入结果 --- */}
+      {demoResult && !demoLoading && (
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-40 bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl px-4 py-3 max-w-md">
+          {demoResult.error ? (
+            <div className="flex items-center gap-2">
+              <span className="text-red-400 text-xs">导入失败: {demoResult.error}</span>
+              <button onClick={() => setDemoResult(null)} className="text-neutral-500 hover:text-white ml-2"><X className="w-3 h-3" /></button>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-400" />
+                <span className="text-xs font-semibold text-white">Pet Food Demo 导入成功</span>
+                <button onClick={() => setDemoResult(null)} className="text-neutral-500 hover:text-white ml-auto"><X className="w-3 h-3" /></button>
+              </div>
+              <div className="text-[10px] text-neutral-400">
+                {demoResult.nodes_created_or_merged} 节点 · {demoResult.edges_created_or_merged} 边 · {demoResult.triggered_risk_count} 风险触发
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* --- 搜索面板 --- */}
       {showSearch && (

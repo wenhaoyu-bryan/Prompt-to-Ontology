@@ -224,7 +224,7 @@ def fetch_all_nodes_filtered(dataset: str | None = None) -> list[dict]:
 
 
 def fetch_all_links_filtered(dataset: str | None = None) -> list[dict]:
-    """获取所有关系，可按 dataset 过滤"""
+    """获取所有关系，可按 dataset 过滤，返回所有关系属性"""
     with get_driver().session() as session:
         if dataset and dataset != "all":
             if dataset == "legacy":
@@ -232,22 +232,29 @@ def fetch_all_links_filtered(dataset: str | None = None) -> list[dict]:
                     MATCH (a)-[r]->(b)
                     WHERE a.dataset IS NULL AND b.dataset IS NULL
                     RETURN a.id AS source_id, b.id AS target_id,
-                           type(r) AS link_type, r.label AS label
+                           type(r) AS link_type, properties(r) AS props
                 """)
             else:
                 result = session.run("""
                     MATCH (a)-[r]->(b)
                     WHERE r.dataset = $ds OR (a.dataset = $ds AND b.dataset = $ds)
                     RETURN a.id AS source_id, b.id AS target_id,
-                           type(r) AS link_type, r.label AS label, r.dataset AS ds
+                           type(r) AS link_type, properties(r) AS props
                 """, ds=dataset)
         else:
             result = session.run("""
                 MATCH (a)-[r]->(b)
                 RETURN a.id AS source_id, b.id AS target_id,
-                       type(r) AS link_type, r.label AS label
+                       type(r) AS link_type, properties(r) AS props
             """)
-        return [dict(r) for r in result]
+        rows = []
+        for r in result:
+            row = {"source_id": r["source_id"], "target_id": r["target_id"], "link_type": r["link_type"]}
+            props = r["props"]
+            row["label"] = props.pop("label", None)
+            row.update(props)
+            rows.append(row)
+        return rows
 
 
 def list_datasets() -> list[dict]:
@@ -294,6 +301,7 @@ def _dataset_display_name(name: str) -> str:
         "demo": "新能源电池供应链（内置）",
         "legacy": "新能源电池供应链（内置）",
         "default": "默认数据集",
+        "pet_food": "Pet Food Ontology",
     }
     return mapping.get(name, name)
 

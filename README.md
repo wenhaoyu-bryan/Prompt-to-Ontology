@@ -1,238 +1,252 @@
-# Ontology OS — Enterprise Ontology Operating System
+# Pet Food Ontology MVP
 
-> A technical experiment that transforms enterprise data from "tables" into "living knowledge graphs"
-> A product of reverse-engineering Palantir AIP's underlying architecture through Vibe Coding (LLM pair programming)
+> A domain-agnostic ontology engine validated through a pet food nutrition & risk scenario.
+> Built on top of [Prompt-to-Ontology](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology) — React + FastAPI + Neo4j + NetworkX.
 
-[![GitHub Stars](https://img.shields.io/github/stars/wenhaoyu-bryan/Prompt-to-Ontology?style=social)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology)
-[![GitHub Last Commit](https://img.shields.io/github/last-commit/wenhaoyu-bryan/Prompt-to-Ontology)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology)
-
-**English** | **[中文](README.zh-CN.md)**
+**Branch:** `pet-food-ontology-mvp`
 
 ---
 
-## 1. Project Positioning & Statement
+## What Is This?
 
-**This is an MVP, a technical sandbox, a Proof of Concept.**
+This branch transforms the original industrial supply-chain demo into a **mini operational ontology** for pet food products. The goal is not to build a pet food app — it's to prove that the same engine can load any domain's schema from YAML, run rules against a knowledge graph, and answer questions with graph-backed evidence.
 
-The code may not be production-grade. There are no tests, no CI/CD, no authentication layer, and error handling is optimistic. But the architecture is real, the features work, and the cognition has been solidified.
-
-The original intention of this project was simple: as an AI Product Manager, I wanted to truly understand the underlying logic of Palantir AIP and Foundry — not the "rough idea" you get from reading whitepapers, but the "I can build one myself" kind of understanding.
-
-The entire project was completed through **Vibe Coding**: a human defines product intent, architecture boundaries, and design constraints, while a large language model (Claude) handles code generation, debugging, and iteration. No traditional software engineers were involved, no Sprint Planning, no Stand-up. Just one product manager, one model, and two weeks of intense iteration.
-
-**What this project produces is not code, but cognition.** Code is just a means.
-
-If you're a product manager trying to understand how Palantir Foundry, AIP, or similar industrial intelligent agent operating systems transform "tables" into "thinking graphs" — this repository is field notes from someone who just walked that path.
+**The engine is domain-agnostic. Pet food is the validation scenario.**
 
 ---
 
-## 2. Core Architecture Overview
-
-```mermaid
-graph TB
-    subgraph Frontend ["Frontend Layer — React 18 + D3.js + Tailwind CSS 4"]
-        Pipeline["Data Pipeline<br/>PapaParse Multi-row Header Parsing + Multi-file Upload"]
-        GraphCanvas["Knowledge Graph Canvas<br/>D3.js Force-directed Graph (Canvas Nodes + SVG Edges)"]
-        SchemaView["Ontology Schema Overview<br/>Class Cards + Relationship Chains + Constraint Status"]
-        AgentUI["Agent Workshop<br/>ReAct Reasoning Log + HITL Approval"]
-    end
-
-    subgraph Backend ["Backend Layer — FastAPI 0.115"]
-        API["REST API Gateway<br/>14+ Endpoints"]
-        PipelineEngine["Data Pipeline Engine<br/>AI Schema Inference + UNWIND Batch Import"]
-        AgentEngine["ReAct Agent<br/>Tool-Calling + Multi-step Reasoning"]
-        LLMRouter["LLM Router<br/>MiniMax / OpenAI / Anthropic Hot-switching"]
-        SchemaEngine["Ontology Schema Engine<br/>Auto-extraction + Constraint Checking"]
-    end
-
-    subgraph Storage ["Storage Layer"]
-        Neo4j["Neo4j 5<br/>Graph Database (Persistent)"]
-        NetworkX["NetworkX 3.4<br/>In-memory Graph Engine (Real-time Computation)"]
-        SQLite["SQLite<br/>Seed Data + Constraint Rules"]
-    end
-
-    Pipeline -->|"FieldMetadata + Sample Data"| API
-    API -->|"Inference Request"| LLMRouter
-    LLMRouter -->|"MappingSchema JSON"| API
-    API -->|"UNWIND Batch Write"| Neo4j
-    Neo4j -->|"Cypher Query"| NetworkX
-    NetworkX -->|"Nodes + Edges"| API
-    API -->|"Graph Data"| GraphCanvas
-    API -->|"Schema Structure"| SchemaView
-    GraphCanvas -->|"Click Node / Trigger Agent"| API
-    API -->|"Reasoning Request"| AgentEngine
-    AgentEngine -->|"Tool Call"| NetworkX
-    AgentEngine -->|"LLM Reasoning"| LLMRouter
-    LLMRouter -->|"Decision + Reasoning Chain"| AgentEngine
-    AgentEngine -->|"Requires Human Approval"| AgentUI
-    SchemaEngine -->|"Class Definitions + Constraints"| Neo4j
-    SchemaEngine -->|"Rule Storage"| SQLite
-
-    style Frontend fill:#0f172a,stroke:#22d3ee,color:#e2e8f0
-    style Backend fill:#0f172a,stroke:#a78bfa,color:#e2e8f0
-    style Storage fill:#0f172a,stroke:#34d399,color:#e2e8f0
-```
-
-**Data flows from bottom to top**: Raw CSV files enter from the browser, parsed by PapaParse into rich semantic FieldMetadata (Chinese field names, English IDs, data types), sent to LLM for semantic inference, mapped to ontology Schema, batch-written to Neo4j via UNWIND, loaded into NetworkX in-memory graph, and finally rendered as an interactive force-directed graph. The Agent layer sits on top of the graph, queries the graph through structured tool calls, and proposes business operation suggestions that require human approval.
-
-**Key Architecture Decision**: Neo4j is the data source, NetworkX is the compute engine, LLM is the reasoning layer. All three are decoupled — any one can be independently replaced without affecting the others.
-
----
-
-## 3. Cognitive Evolution & Retrospective
-
-### Phase 1: Breaking the "Static Graph" Illusion
-
-The first version was a classic knowledge graph demo: drag data in, render a beautiful force-directed graph, click nodes to see properties. Stunning in Keynote, utterly useless in real business.
-
-**Core Cognition**: **A graph without Actions is just a pretty picture.**
-
-Nodes in a graph are not data points — they are business entities with state, relationships, and **verbs**. A Supplier node doesn't just have a name and risk level; it can be "audited", "upgraded", "replaced". An inventory node is not just a number; when it drops below a threshold, it should trigger a "Create Purchase Order" action.
-
-This led to the **Action System**: each node type has context-sensitive operation buttons calculated from its current state. Inventory low? "Create Purchase Order" button lights up. Defect rate high? "Escalate to QA" button activates. Crucially, no action executes automatically — it must go through human approval. This pattern was borrowed directly from Palantir's HITL (Human-in-the-Loop) philosophy.
-
-The graph transformed from "view this network" to "operate this business".
-
-### Phase 2: Understanding "Ontology as Runtime"
-
-The second breakthrough occurred when I stopped treating the ontology as a **data structure** and started treating it as a **runtime environment**.
-
-In traditional applications, data models are passive — they sit in databases waiting to be queried. In ontology-driven systems, Schema *is* the execution context. When an Agent reasons about a question, it doesn't directly query raw data — it **queries through the ontology**, which provides:
-
-- **Type Semantics**: "This is a Supplier, meaning it has these attributes, these constraints, these relationship types."
-- **Reasoning Context**: "If Supplier A supplies Material B, and Material B is used in Product C, then A's disruption propagates to C."
-- **Action Possibilities**: "Because this node is a SalesOrder with status='pending', available actions are confirm, cancel, or modify."
-
-The ontology is not documentation. It's an operating system. The Agent doesn't "know" business logic — it **discovers** business logic by traversing the Schema. This is the difference between a chatbot that queries databases and an intelligent agent that reasons through knowledge graphs.
-
-### Phase 3: Connecting the Data Pipeline
-
-The third phase — and the one that made this project truly useful — solved the cold-start problem: how to go from a pile of messy CSV files to a usable knowledge graph without a team of data engineers writing ETL pipelines?
-
-The answer is **LLM Structured Inference**. Feed a table's metadata (field names, data types, sample rows) to the model, and have it output a structured `MappingSchema` JSON defining:
-
-- What entity types exist in this table
-- Which column is the primary key, which are attributes
-- What foreign key relationships exist between tables
-- Whether this is a fact table (orders, inventory) or dimension table (products, customers)
-
-The key Prompt Engineering insight: **you must tell the model that fact tables are nodes (Nodes), not edges (Edges)**. An order is not a relationship between a customer and a product — it's an independent entity connected to both via separate edges. Get this wrong and your entire graph topology collapses.
-
-Through multi-table joint inference (analyzing multiple CSVs simultaneously), the system can automatically discover cross-table relationships and generate a complete ontology Schema in a single LLM call. The entire pipeline — from raw CSV to interactive knowledge graph — takes approximately 30 seconds.
-
----
-
-## 4. Tech Stack & Outlook
-
-### Core Tech Stack
-
-| Layer | Technology | Responsibility |
-|-------|------------|----------------|
-| Frontend Framework | React 18 + Vite 6 | Component Architecture, Hot Reload |
-| Styling | Tailwind CSS 4 | Utility-first Dark Industrial Theme |
-| Graph Rendering | D3.js (Canvas + SVG Hybrid) | Force-directed Layout, 5000+ Node Performance |
-| CSV Parsing | PapaParse (Browser-side) | Multi-row Header Extraction, Type Inference |
-| Backend Framework | FastAPI 0.115 | Async REST API, 14+ Endpoints |
-| Graph Database | Neo4j 5 | Persistent Graph Storage, Cypher Queries |
-| In-memory Graph Engine | NetworkX 3.4 | Path Analysis, Impact Propagation, Real-time Graph Computation |
-| Data Validation | Pydantic v2 | Request/Response Models, Type Safety |
-| LLM Integration | MiniMax / OpenAI / Anthropic | ReAct Reasoning, Schema Inference, Tool Calling |
-| Lightweight Database | SQLite | Seed Data, Ontology Constraint Rules |
-
-### Project Directory
+## Architecture
 
 ```
-Prompt to Ontology/
-├── README.md                    # The file you're reading
-├── .gitignore
-├── demo.mp4                     # Product Demo Video
-├── backend/
-│   ├── main.py                  # FastAPI Main Entry (14+ Endpoints)
-│   ├── ontology.py              # Semantic Layer: NetworkX Graph Engine
-│   ├── agent.py                 # Agent: ReAct Reasoning Entry
-│   ├── llm_client.py            # LLM Router: 3-backend Hot-switching
-│   ├── data_pipeline.py         # Data Pipeline: Validation + Batch Import
-│   ├── neo4j_connector.py       # Neo4j Connector
-│   ├── database.py              # SQLite Seed Data
-│   ├── migrate_to_neo4j.py      # Data Migration Script
-│   ├── reset_neo4j.py           # Clear/Reset Script
-│   ├── minimax_client.py        # MiniMax API Client
-│   ├── requirements.txt
-│   └── .env.example             # Environment Variables Template
-├── frontend/
-│   ├── package.json
-│   ├── vite.config.js
-│   ├── index.html
-│   └── src/
-│       ├── App.jsx              # Global State + Navigation + View Routing
-│       ├── api.js               # Axios API Wrapper
-│       ├── index.css            # Dark Industrial Theme Global Styles
-│       └── components/
-│           ├── DataPipeline.jsx         # Multi-table Data Pipeline
-│           ├── GlobalSchemaMapper.jsx   # Global Schema Mapping Editor
-│           ├── D3GraphCanvas.jsx        # D3 Graph Canvas
-│           ├── OntologySchemaOverview.jsx # Ontology Schema Overview
-│           ├── EntityInspector.jsx      # Node 360° Detail Panel
-│           ├── OntologyBrowser.jsx      # Ontology Browser
-│           ├── AgentWorkshop.jsx        # Agent Reasoning Log
-│           ├── AgentStudio.jsx          # Agent Workshop Prototype
-│           ├── ReasoningView.jsx        # Model Reasoning Prototype
-│           ├── AnalysisView.jsx         # Data Analysis Prototype
-│           └── LinkTooltip.jsx          # Link Hover Tooltip
-├── sample-data/                 # Demo CSV Datasets
-├── docs/
-│   ├── PRD.md                   # Product Requirements Document
-│   ├── ARCHITECTURE.md          # Architecture Design Document
-│   └── phases/                  # Development Phase Planning Documents
-└── CLAUDE.md                    # Vibe Coding Development Memory (not uploaded)
+YAML Schema (ontology/pet_food/)
+    │
+    ▼
+Transformer (CSV → Graph Payload)
+    │
+    ▼
+Rule Engine (YAML Rules → TRIGGERS_RISK Edges)
+    │
+    ▼
+Neo4j (6 Node Types, 6 Edge Types)
+    │
+    ▼
+NetworkX Graph API (Impact Analysis, Path Finding)
+    │
+    ▼
+FastAPI Backend (26 REST Endpoints)
+    │
+    ▼
+React Frontend (Objects / Graph / Schema / Agent Tabs)
 ```
 
-### Local Run
+### Backend
+
+| Component | File | Role |
+|---|---|---|
+| Ontology Registry | `backend/ontology_registry.py` | Loads YAML schema definitions |
+| Transformer | `backend/domain/petfood_transformer.py` | CSV → Graph payload (nodes + edges) |
+| Rule Engine | `backend/rule_engine.py` | Evaluates rules, generates TRIGGERS_RISK edges |
+| Neo4j Writer | `backend/petfood_neo4j.py` | MERGE nodes/edges into Neo4j |
+| Graph API | `backend/ontology.py` | NetworkX graph operations |
+| Agent | `backend/petfood_agent.py` | Question routing + evidence-based answers |
+| API Server | `backend/main.py` | FastAPI endpoints |
+
+### Frontend
+
+| Component | File | Role |
+|---|---|---|
+| App Shell | `frontend/src/App.jsx` | 4-tab layout (Objects / Graph / Schema / Agent) |
+| Objects Tab | `frontend/src/components/ObjectsTab.jsx` | Product card list + type selector + detail panel |
+| Graph Tab | `frontend/src/components/GraphTab.jsx` | Local/global graph with depth & type controls |
+| Schema Tab | `frontend/src/components/SchemaTab.jsx` | Object types, link types, rules, actions, health stats |
+| Agent Tab | `frontend/src/components/AgentTab.jsx` | Chat interface with selected product context |
+| Product View | `frontend/src/components/EntityInspector.jsx` | 5-section structured product view |
+| Graph Canvas | `frontend/src/components/D3GraphCanvas.jsx` | D3 force-directed graph on HTML5 Canvas |
+
+---
+
+## Domain Schema
+
+### 6 Object Types
+
+| Type | Description | Key Properties |
+|---|---|---|
+| `PetFoodProduct` | Pet food product | product_name, category, target_species, life_stage, nutrition values |
+| `Brand` | Product brand | brand_name, country |
+| `Ingredient` | Food ingredient | ingredient_name, ingredient_type, risk_tag, common_allergen |
+| `RiskRule` | Nutrition/safety rule | rule_name, severity, condition |
+| `Species` | Target animal species | species_name (Cat, Dog) |
+| `LifeStage` | Life stage category | stage_name (Kitten, Puppy, Adult, Senior) |
+
+### 6 Link Types
+
+| Link | From → To | Description |
+|---|---|---|
+| `MADE_BY` | Product → Brand | Product manufacturer |
+| `CONTAINS` | Product → Ingredient | Ingredient composition (with order) |
+| `TARGETS_SPECIES` | Product → Species | Target animal species |
+| `SUITABLE_FOR` | Product → LifeStage | Appropriate life stage |
+| `TRIGGERS_RISK` | Product → RiskRule | Rule violation (severity, evidence, reason) |
+| `SIMILAR_TO` | Product → Product | Similarity relationship (planned) |
+
+### 5 Risk Rules
+
+| Rule | Severity | Condition |
+|---|---|---|
+| High Fat Risk | high | fat > 20g/100g |
+| Missing Taurine | critical | Cat food without taurine |
+| Chicken Allergy Risk | medium | Contains chicken/chicken meal |
+| Senior Cat High Phosphorus | high | Senior cat + phosphorus > 0.8g |
+| Low Protein Kitten | high | Kitten food + protein < 30g |
+
+---
+
+## Sample Data
+
+12 products across 3 brands (WhiskerPro, PurrfectHealth, TailWag), covering:
+- Cat & dog food
+- Dry food, wet food, treats
+- All life stages (kitten, puppy, adult, senior)
+- 20 ingredients with allergen and risk tagging
+
+Auto-seeded on first backend startup.
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- Docker (for Neo4j)
+- Python 3.10+
+- Node.js 18+
+
+### 1. Start Neo4j
 
 ```bash
-# 1. Start Neo4j (requires Docker or local installation)
-docker run -d --name neo4j \
+docker run -d --name neo4j-ontology \
   -p 7474:7474 -p 7687:7687 \
-  -e NEO4J_AUTH=neo4j/your_password \
+  -e NEO4J_AUTH=neo4j/ \
   neo4j:5
-
-# 2. Backend
-cd backend
-cp .env.example .env             # Fill in your API Key
-pip install -r requirements.txt
-python main.py                   # → localhost:8765
-
-# 3. Frontend (new terminal)
-cd frontend
-npm install
-npm run dev                      # → localhost:5173
 ```
 
-### Demo Video
+### 2. Start Backend
 
-The `demo.mp4` in the project root contains a complete product demo showing the entire flow from CSV import to knowledge graph generation.
-项目根目录的 `demo.mp4` 包含完整的产品演示，展示从 CSV 导入到知识图谱生成的全流程。
-<img width="1512" height="855" alt="Screenshot 2026-05-13 at 4 46 36 PM" src="https://github.com/user-attachments/assets/a59a83ec-ed23-4ffb-aafa-da8d61c5e9f6" />
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8765 --reload
+```
 
+Pet food sample data is auto-imported on first startup.
 
-### Vibe Coding Gains
+### 3. Start Frontend
 
-Building this project was an experiment in a product manager directly touching implementation. Not through traditional "learning to code", but through learning **architectural thinking** — defining boundaries, specifying layer contracts, reasoning about data flows — while letting the LLM handle syntax.
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-The most valuable cognition is not about any specific technology, but: **the hardest part of building an ontology system is not the code, but the mental model.** Understanding that a graph database is not an ontology, an ontology is not a schema, and a schema is not a data model — these are concentric circles of abstraction levels, and getting them right is a product problem, not an engineering problem.
-
-This project gave me the vocabulary and intuition to participate in enterprise AI system architecture discussions — not as someone who read documentation, but as someone who built a prototype and felt where the seams should be.
-
----
-
-*Built with Vibe Coding — one product manager, one model, and an obsession: product managers should understand how the underlying layer works.*
-
----
-
-## GitHub
-
-**Repository**: [Prompt-to-Ontology](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology)
+Open `http://localhost:5173`
 
 ---
 
-**Last Updated**: 2026-05-18
+## Frontend Tabs
+
+### Objects (Default)
+
+Browse products by type. Click a product card to see the structured 5-section view:
+- **Header** — name, brand, species, life stage, risk level badge
+- **Nutrition** — 7 nutrient bars with risk-highlighted fields
+- **Ingredients** — ordered list with allergen flags
+- **Risk Explanation** — severity, evidence, reason per triggered rule
+- **Actions** — explain risk, recommend alternative, watchlist, report, compare
+
+### Graph
+
+View local subgraph around a selected object, or switch to global view.
+Controls: depth (1/2/3-hop), link type toggles.
+
+### Schema
+
+Full ontology schema overview: object types, link types, rules, actions, and health summary.
+
+### Agent
+
+Chat interface for natural-language questions about pet food products.
+Example queries:
+- "这款产品为什么有风险？"
+- "哪些产品含 chicken？"
+- "哪些猫粮没有 taurine？"
+- "帮我比较两个产品的风险差异"
+
+---
+
+## API Endpoints (Pet Food)
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/pet-food/import-sample` | Import sample data |
+| POST | `/api/pet-food/demo/reset-and-import` | Reset + re-import |
+| GET | `/api/pet-food/products/{id}/risk-explanation` | Full risk explanation |
+| POST | `/api/pet-food/agent/chat` | Agent Q&A |
+| GET | `/api/ontology/pet_food/schema` | YAML schema definition |
+
+---
+
+## Project Structure
+
+```
+Prompt-to-Ontology/
+├── backend/
+│   ├── main.py                    # FastAPI server
+│   ├── ontology.py                # NetworkX graph operations
+│   ├── neo4j_connector.py         # Neo4j query layer
+│   ├── petfood_neo4j.py           # Pet food Neo4j writer
+│   ├── petfood_agent.py           # Agent Q&A engine
+│   ├── rule_engine.py             # YAML-driven rule evaluator
+│   ├── ontology_registry.py       # YAML schema loader
+│   └── domain/
+│       └── petfood_transformer.py # CSV → graph payload
+├── frontend/
+│   └── src/
+│       ├── App.jsx                # 4-tab workspace
+│       ├── api.js                 # API client
+│       └── components/
+│           ├── ObjectsTab.jsx     # Product list + detail
+│           ├── GraphTab.jsx       # Local/global graph
+│           ├── SchemaTab.jsx      # Schema overview
+│           ├── AgentTab.jsx       # Chat interface
+│           ├── EntityInspector.jsx # Object 360° view
+│           └── D3GraphCanvas.jsx  # D3 graph canvas
+├── ontology/
+│   └── pet_food/
+│       ├── object_types.yaml
+│       ├── link_types.yaml
+│       ├── rules.yaml
+│       ├── action_types.yaml
+│       └── constraints.yaml
+└── sample-data/
+    └── pet-food/
+        ├── pet_food_products.csv
+        ├── pet_food_ingredients.csv
+        ├── product_ingredients.csv
+        └── risk_rules.csv
+```
+
+---
+
+## What This Proves
+
+1. **YAML-driven schema loading** — No Python code changes needed to define a new domain
+2. **Rule engine with 4 condition types** — nutrition_threshold, ingredient_absence, ingredient_match, compound
+3. **Graph-backed evidence** — Every agent answer traces to Neo4j query results, not LLM hallucination
+4. **Structured product view** — Risk explanation with severity, evidence, and reason from graph edges
+5. **Domain-agnostic engine** — Same codebase can load industrial supply chain OR pet food ontology
+
+---
+
+## License
+
+MIT

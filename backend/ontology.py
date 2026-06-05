@@ -100,7 +100,7 @@ def build_graph(dataset: str | None = None) -> nx.DiGraph:
 
             for node in label_nodes:
                 node_id = node.get("id", "")
-                node_label = node.get("name", node.get("label", node_id))
+                node_label = node.get("name") or node.get("brand_name") or node.get("ingredient_name") or node.get("rule_name") or node.get("product_name") or node.get("species_name") or node.get("stage_name") or node.get("label", node_id)
                 alert = _compute_alert(node)
                 G.add_node(
                     node_id,
@@ -114,12 +114,14 @@ def build_graph(dataset: str | None = None) -> nx.DiGraph:
                 )
 
         for link in all_links:
-            G.add_edge(
-                link["source_id"],
-                link["target_id"],
-                label=link.get("label", ""),
-                link_type=link.get("link_type", ""),
-            )
+            edge_attrs = {
+                "label": link.get("label", ""),
+                "link_type": link.get("link_type", ""),
+            }
+            for k, v in link.items():
+                if k not in ("source_id", "target_id", "link_type", "label") and v is not None:
+                    edge_attrs[k] = v
+            G.add_edge(link["source_id"], link["target_id"], **edge_attrs)
     else:
         # 全量构建（原有逻辑）
         labels = _discover_labels()
@@ -135,7 +137,7 @@ def build_graph(dataset: str | None = None) -> nx.DiGraph:
 
             for node in nodes:
                 node_id = node.get("id", "")
-                node_label = node.get("name", node.get("label", node_id))
+                node_label = node.get("name") or node.get("brand_name") or node.get("ingredient_name") or node.get("rule_name") or node.get("product_name") or node.get("species_name") or node.get("stage_name") or node.get("label", node_id)
                 alert = _compute_alert(node)
                 G.add_node(
                     node_id,
@@ -149,12 +151,14 @@ def build_graph(dataset: str | None = None) -> nx.DiGraph:
                 )
 
         for link in fetch_all_links():
-            G.add_edge(
-                link["source_id"],
-                link["target_id"],
-                label=link.get("label", ""),
-                link_type=link.get("link_type", ""),
-            )
+            edge_attrs = {
+                "label": link.get("label", ""),
+                "link_type": link.get("link_type", ""),
+            }
+            for k, v in link.items():
+                if k not in ("source_id", "target_id", "link_type", "label") and v is not None:
+                    edge_attrs[k] = v
+            G.add_edge(link["source_id"], link["target_id"], **edge_attrs)
 
     _ontology_graph = G
     return G
@@ -280,7 +284,7 @@ def _format_node_detail(node_id: str, attrs: dict, G: nx.DiGraph) -> dict:
 
     detail = {
         "id": node_id,
-        "name": attrs.get("name", attrs.get("label", node_id)),
+        "name": attrs.get("name") or attrs.get("brand_name") or attrs.get("ingredient_name") or attrs.get("rule_name") or attrs.get("product_name") or attrs.get("species_name") or attrs.get("stage_name") or attrs.get("label", node_id),
         "object_type": attrs.get("object_type", "Unknown"),
         "dataset": attrs.get("dataset", ""),
         "properties": properties,
@@ -291,22 +295,31 @@ def _format_node_detail(node_id: str, attrs: dict, G: nx.DiGraph) -> dict:
     if node_id in G:
         for _, dst, edge_attrs in G.out_edges(node_id, data=True):
             target_node = G.nodes[dst]
-            outgoing.append({
+            link = {
                 "targetId": dst,
                 "targetLabel": target_node.get("label", dst),
                 "targetType": target_node.get("object_type", ""),
                 "linkType": edge_attrs.get("link_type", ""),
                 "label": edge_attrs.get("label", ""),
-            })
+            }
+            # 透传所有其他边属性（severity, evidence, reason 等）
+            for k, v in edge_attrs.items():
+                if k not in ('link_type', 'label') and v is not None:
+                    link[k] = v
+            outgoing.append(link)
         for src, _, edge_attrs in G.in_edges(node_id, data=True):
             source_node = G.nodes[src]
-            incoming.append({
+            link = {
                 "sourceId": src,
                 "sourceLabel": source_node.get("label", src),
                 "sourceType": source_node.get("object_type", ""),
                 "linkType": edge_attrs.get("link_type", ""),
                 "label": edge_attrs.get("label", ""),
-            })
+            }
+            for k, v in edge_attrs.items():
+                if k not in ('link_type', 'label') and v is not None:
+                    link[k] = v
+            incoming.append(link)
 
     detail["outgoing_links"] = outgoing
     detail["incoming_links"] = incoming
