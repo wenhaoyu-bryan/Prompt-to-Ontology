@@ -2,9 +2,9 @@ rules:
 
   high_fat_risk:
     rule_id: RR001
-    name: "高脂肪风险"
+    name: "High fat risk"
     severity: high
-    explanation: "脂肪含量超过 20g/100g，可能导致肥胖或胰腺炎"
+    explanation: "Fat content exceeds 20g/100g — may cause obesity or pancreatitis"
     condition:
       type: nutrition_threshold
       field: fat_100g
@@ -13,9 +13,9 @@ rules:
 
   cat_food_missing_taurine:
     rule_id: RR002
-    name: "猫粮缺少牛磺酸"
+    name: "Cat food missing taurine"
     severity: critical
-    explanation: "猫粮必须含有牛磺酸，缺乏会导致心脏病和视力问题"
+    explanation: "Cat food must contain taurine — deficiency causes heart disease and vision problems"
     condition:
       type: ingredient_absence
       target_species: cat
@@ -23,9 +23,9 @@ rules:
 
   chicken_allergy_risk:
     rule_id: RR003
-    name: "鸡肉过敏风险"
+    name: "Chicken allergy risk"
     severity: medium
-    explanation: "含有鸡肉或鸡肉粉，对鸡肉过敏的宠物存在风险"
+    explanation: "Contains chicken or chicken meal — risk for pets with chicken allergy"
     condition:
       type: ingredient_match
       match_ingredients:
@@ -34,9 +34,9 @@ rules:
 
   senior_cat_high_phosphorus:
     rule_id: RR004
-    name: "老年猫高磷风险"
+    name: "Senior cat high phosphorus"
     severity: high
-    explanation: "老年猫粮磷含量超过 0.8g/100g，可能加重肾脏负担"
+    explanation: "Senior cat food phosphorus exceeds 0.8g/100g — may increase kidney burden"
     condition:
       type: compound
       target_species: cat
@@ -48,9 +48,9 @@ rules:
 
   low_protein_kitten_risk:
     rule_id: RR005
-    name: "幼猫蛋白质不足"
+    name: "Kitten low protein"
     severity: high
-    explanation: "幼猫粮蛋白质低于 30g/100g，无法满足幼猫快速生长需求"
+    explanation: "Kitten food protein below 30g/100g — insufficient for rapid growth"
     condition:
       type: compound
       target_species: cat

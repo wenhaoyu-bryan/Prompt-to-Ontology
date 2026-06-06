@@ -1,7 +1,7 @@
 object_types:
 
   PetFoodProduct:
-    description: "宠物食品产品"
+    description: "Pet food product"
     properties:
       - product_id
       - barcode
@@ -19,14 +19,14 @@ object_types:
       - calcium_100g
 
   Brand:
-    description: "宠物食品品牌"
+    description: "Pet food brand"
     properties:
       - brand_id
       - brand_name
       - country
 
   Ingredient:
-    description: "食品成分/原料"
+    description: "Food ingredient"
     properties:
       - ingredient_id
       - ingredient_name
@@ -35,7 +35,7 @@ object_types:
       - common_allergen
 
   RiskRule:
-    description: "营养/成分风险规则"
+    description: "Nutrition/ingredient risk rule"
     properties:
       - rule_id
       - rule_name
@@ -43,13 +43,13 @@ object_types:
       - explanation
 
   Species:
-    description: "目标物种"
+    description: "Target species"
     properties:
       - species_id
       - species_name
 
   LifeStage:
-    description: "生命阶段"
+    description: "Life stage"
     properties:
       - stage_id
       - stage_name

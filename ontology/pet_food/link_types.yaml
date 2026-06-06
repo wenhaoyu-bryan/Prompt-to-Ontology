@@ -1,31 +1,31 @@
 link_types:
 
   MADE_BY:
-    description: "产品由某品牌生产"
+    description: "Product is made by a brand"
     from: PetFoodProduct
     to: Brand
 
   CONTAINS:
-    description: "产品包含某成分"
+    description: "Product contains an ingredient"
     from: PetFoodProduct
     to: Ingredient
 
   TARGETS_SPECIES:
-    description: "产品面向某目标物种"
+    description: "Product targets a species"
     from: PetFoodProduct
     to: Species
 
   SUITABLE_FOR:
-    description: "产品适合某生命阶段"
+    description: "Product is suitable for a life stage"
     from: PetFoodProduct
     to: LifeStage
 
   TRIGGERS_RISK:
-    description: "产品触发某风险规则"
+    description: "Product triggers a risk rule"
     from: PetFoodProduct
     to: RiskRule
 
   SIMILAR_TO:
-    description: "产品之间的相似关系"
+    description: "Similarity between products"
     from: PetFoodProduct
     to: PetFoodProduct
