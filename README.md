@@ -1,4 +1,4 @@
-# Ontology OS — Pet Food Ontology Demo
+# Prompt to Ontology · Pet Food Demo
 
 A ready-data operational ontology runtime inspired by Palantir-style ontology modeling.
 
