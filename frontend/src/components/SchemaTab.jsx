@@ -4,21 +4,23 @@ import {
   ChevronDown, ChevronRight, FileText, Layers, Activity,
   Server, CheckCircle, ExternalLink, Info,
 } from 'lucide-react';
+import { getDomainConfig, DEFAULT_DOMAIN } from '../domainConfig';
 
-export default function SchemaTab({ graphData }) {
+export default function SchemaTab({ graphData, currentDomain = DEFAULT_DOMAIN }) {
   const [schema, setSchema] = useState(null);
   const [loading, setLoading] = useState(true);
+  const domainCfg = getDomainConfig(currentDomain);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch('/api/ontology/pet_food/schema')
+    fetch(domainCfg.schemaEndpoint)
       .then(r => r.ok ? r.json() : null)
       .then(s => { if (!cancelled) setSchema(s); })
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [domainCfg.schemaEndpoint]);
 
   if (loading) {
     return (
@@ -71,7 +73,7 @@ export default function SchemaTab({ graphData }) {
         </div>
 
         {/* Data Source Status */}
-        <DataSourcePanel graphData={graphData} riskEdgeCount={riskEdgeCount} />
+        <DataSourcePanel graphData={graphData} riskEdgeCount={riskEdgeCount} domainCfg={domainCfg} />
 
         {/* Health Summary */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -165,10 +167,10 @@ export default function SchemaTab({ graphData }) {
 }
 
 
-function DataSourcePanel({ graphData, riskEdgeCount }) {
+function DataSourcePanel({ graphData, riskEdgeCount, domainCfg }) {
   const rows = [
-    { label: 'Current Domain', value: 'pet_food', color: 'text-cyan-400' },
-    { label: 'Data Source', value: 'sample-data/pet-food/*.csv', color: 'text-neutral-300' },
+    { label: 'Current Domain', value: domainCfg.key, color: 'text-cyan-400' },
+    { label: 'Data Source', value: domainCfg.dataSource, color: 'text-neutral-300' },
     { label: 'Import Mode', value: 'auto-seeded sample data', color: 'text-neutral-300' },
     { label: 'Object Instances', value: graphData.nodes.length, color: 'text-green-400' },
     { label: 'Relationships', value: graphData.links.length, color: 'text-green-400' },

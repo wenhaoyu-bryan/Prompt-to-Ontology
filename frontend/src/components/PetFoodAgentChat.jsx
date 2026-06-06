@@ -11,7 +11,7 @@ const EXAMPLE_QUESTIONS = [
   '哪些产品适合避开鸡肉过敏？',
 ];
 
-export default function PetFoodAgentChat() {
+export default function PetFoodAgentChat({ context } = {}) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,8 +33,8 @@ export default function PetFoodAgentChat() {
     setLoading(true);
 
     try {
-      const res = await petFoodAgentChat(q);
-      setMessages(prev => [...prev, { role: 'agent', logs: res.logs || [], answer: res.answer || '' }]);
+      const res = await petFoodAgentChat(q, context);
+      setMessages(prev => [...prev, { role: 'agent', logs: res.logs || [], answer: res.answer || '', tools_used: res.tools_used || [], llm_used: res.llm_used || false }]);
     } catch (err) {
       setError(err?.response?.data?.detail || err.message || '请求失败');
       setMessages(prev => [...prev, { role: 'error', content: err?.response?.data?.detail || err.message || '请求失败' }]);
@@ -91,7 +91,7 @@ export default function PetFoodAgentChat() {
           ) : msg.role === 'error' ? (
             <ErrorMessage key={i} content={msg.content} />
           ) : (
-            <AgentMessage key={i} logs={msg.logs} answer={msg.answer} />
+            <AgentMessage key={i} logs={msg.logs} answer={msg.answer} toolsUsed={msg.tools_used} llmUsed={msg.llm_used} />
           )
         ))}
 
@@ -176,7 +176,7 @@ function UserMessage({ content }) {
 }
 
 
-function AgentMessage({ logs, answer }) {
+function AgentMessage({ logs, answer, toolsUsed, llmUsed }) {
   const [showLogs, setShowLogs] = useState(false);
 
   return (
@@ -185,6 +185,23 @@ function AgentMessage({ logs, answer }) {
         <Bot className="w-3.5 h-3.5 text-white" />
       </div>
       <div className="flex-1 space-y-2 max-w-2xl">
+        {/* Tools used badge */}
+        {toolsUsed && toolsUsed.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[9px] text-neutral-600">使用工具:</span>
+            {toolsUsed.map((t, i) => (
+              <span key={i} className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">
+                {t}
+              </span>
+            ))}
+            {llmUsed && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                LLM
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Reasoning logs toggle */}
         {logs && logs.length > 0 && (
           <button

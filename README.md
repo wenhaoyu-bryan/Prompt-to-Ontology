@@ -20,14 +20,17 @@ This branch transforms the original industrial supply-chain demo into a **mini o
 The current system operates as a **Ready Data Ontology Runtime** — it assumes data is already prepared in a standard graph payload format. Data sourcing and transformation (e.g. Open Pet Food Facts scraping, CSV cleaning) are out of scope for the MVP runtime.
 
 ```
+Domain Config Registry (domain_config.py / domainConfig.js)
+    │  Domain-agnostic config: schema paths, types, endpoints
+    ▼
 Ready Data Contract (docs/ready-data-contract.md)
     │  Standard {nodes, edges} JSON payload
     ▼
 Domain Adapter / Transformer
     │  CSV/external data → Graph Payload
     ▼
-Rule Engine (YAML Rules → TRIGGERS_RISK Edges)
-    │  4 condition types, severity + evidence + reason
+Rule Engine (YAML Rules → 4-State Evaluation)
+    │  triggered / passed / not_evaluable / not_applicable
     ▼
 Constraint Validator
     │  Node/edge schema + enum + direction checks
@@ -36,25 +39,31 @@ Neo4j Ontology Graph (6 Node Types, 6 Edge Types)
     │
     ▼
 NetworkX Graph API + FastAPI Backend
-    │  26 REST endpoints
+    │  30+ REST endpoints
+    ▼
+LLM Agent (tool-calling + deterministic fallback)
+    │  9 tools, evidence-grounded answers
     ▼
 React Workspaces (Objects / Graph / Schema / Agent)
 ```
 
-> **Note:** The transformer (CSV → Graph Payload) is a domain-specific adapter layer, not part of the core runtime. New domains plug in by providing a payload that conforms to the [Ready Data Contract](docs/ready-data-contract.md).
+> **Note:** The transformer (CSV → Graph Payload) is a domain-specific adapter layer, not part of the core runtime. New domains plug in by providing a payload that conforms to the [Ready Data Contract](docs/ready-data-contract.md) and registering in `domain_config.py`.
 
 ### Backend
 
 | Component | File | Role |
 |---|---|---|
+| Domain Config | `backend/domain_config.py` | Domain registry — paths, types, endpoints |
 | Ready Data Contract | `docs/ready-data-contract.md` | Standard input specification for any domain |
 | Ontology Registry | `backend/ontology_registry.py` | Loads YAML schema definitions |
 | Transformer | `backend/domain/petfood_transformer.py` | CSV → Graph payload (domain adapter) |
-| Rule Engine | `backend/rule_engine.py` | Evaluates rules, generates TRIGGERS_RISK edges |
+| Rule Engine | `backend/rule_engine.py` | 4-state rule evaluation (triggered/passed/not_evaluable/not_applicable) |
 | Constraint Validator | `backend/constraint_validator.py` | Validates nodes/edges against schema before import |
 | Neo4j Writer | `backend/petfood_neo4j.py` | MERGE nodes/edges into Neo4j |
 | Graph API | `backend/ontology.py` | NetworkX graph operations |
-| Agent | `backend/petfood_agent.py` | Question routing + evidence-based answers |
+| Agent v2 | `backend/petfood_agent_v2.py` | LLM tool-calling agent with 9 tools + deterministic fallback |
+| Agent (legacy) | `backend/petfood_agent.py` | Keyword routing + evidence-based answers (fallback) |
+| Petfood Adapters | `backend/domain/petfood/` | Sample CSV adapter + Open Food Facts adapter skeleton |
 | API Server | `backend/main.py` | FastAPI endpoints |
 
 ### Frontend
@@ -95,7 +104,9 @@ React Workspaces (Objects / Graph / Schema / Agent)
 | `TRIGGERS_RISK` | Product → RiskRule | Rule violation (severity, evidence, reason) |
 | `SIMILAR_TO` | Product → Product | Similarity relationship (planned) |
 
-### 5 Risk Rules
+### 5 Risk Rules (4-State Evaluation)
+
+Each rule evaluates to one of: **triggered** (condition met), **passed** (data complete, not triggered), **not_evaluable** (missing data), **not_applicable** (wrong species/life_stage).
 
 | Rule | Severity | Condition |
 |---|---|---|
@@ -167,6 +178,7 @@ Browse products by type. Click a product card to see the structured 5-section vi
 - **Nutrition** — 7 nutrient bars with risk-highlighted fields
 - **Ingredients** — ordered list with allergen flags
 - **Risk Explanation** — severity, evidence, reason per triggered rule
+- **Rule Evaluation** — 4-state summary (triggered / passed / not_evaluable / not_applicable)
 - **Actions** — explain risk, recommend alternative, watchlist, report, compare
 
 ### Graph
@@ -176,16 +188,20 @@ Controls: depth (1/2/3-hop), link type toggles.
 
 ### Schema
 
-Full ontology schema overview: object types, link types, rules, actions, and health summary.
+Full ontology schema overview: object types, link types, rules, actions, health stats, and data source status panel.
 
 ### Agent
 
-Chat interface for natural-language questions about pet food products.
+LLM tool-calling chat interface with deterministic fallback. Shows which tools were used.
+Passes selected product context automatically. Data insufficiency is surfaced in answers.
+
 Example queries:
 - "这款产品为什么有风险？"
 - "哪些产品含 chicken？"
 - "哪些猫粮没有 taurine？"
+- "哪些产品数据不足无法完整评估？"
 - "帮我比较两个产品的风险差异"
+- "有没有不含 chicken 的替代产品？"
 
 ---
 
@@ -193,10 +209,13 @@ Example queries:
 
 | Method | Path | Description |
 |---|---|---|
+| GET | `/api/domains` | List all registered domains |
+| GET | `/api/domains/default` | Default domain config |
 | POST | `/api/pet-food/import-sample` | Import sample data |
 | POST | `/api/pet-food/demo/reset-and-import` | Reset + re-import |
 | GET | `/api/pet-food/products/{id}/risk-explanation` | Full risk explanation |
-| POST | `/api/pet-food/agent/chat` | Agent Q&A |
+| GET | `/api/pet-food/products/{id}/rule-evaluations` | 4-state rule evaluation report |
+| POST | `/api/pet-food/agent/chat` | Agent Q&A (LLM tool-calling + fallback) |
 | GET | `/api/ontology/pet_food/schema` | YAML schema definition |
 
 ---
@@ -207,19 +226,28 @@ Example queries:
 Prompt-to-Ontology/
 ├── backend/
 │   ├── main.py                    # FastAPI server
+│   ├── domain_config.py           # Domain registry
 │   ├── ontology.py                # NetworkX graph operations
 │   ├── neo4j_connector.py         # Neo4j query layer
 │   ├── petfood_neo4j.py           # Pet food Neo4j writer
-│   ├── petfood_agent.py           # Agent Q&A engine
-│   ├── rule_engine.py             # YAML-driven rule evaluator
+│   ├── petfood_agent_v2.py        # LLM tool-calling agent (9 tools)
+│   ├── petfood_agent.py           # Deterministic agent fallback
+│   ├── rule_engine.py             # 4-state rule evaluator
 │   ├── constraint_validator.py    # Pre-import schema validation
 │   ├── ontology_registry.py       # YAML schema loader
 │   └── domain/
-│       └── petfood_transformer.py # CSV → graph payload
+│       ├── petfood_transformer.py # CSV → graph payload (legacy)
+│       └── petfood/               # Adapter package
+│           ├── adapter_base.py    # Abstract adapter interface
+│           ├── sample_csv_adapter.py  # Sample CSV adapter
+│           ├── open_food_facts_adapter.py  # OFF adapter skeleton
+│           ├── normalizer.py      # Field normalization
+│           └── inference.py       # Species/life_stage/category inference
 ├── frontend/
 │   └── src/
 │       ├── App.jsx                # 4-tab workspace
 │       ├── api.js                 # API client
+│       ├── domainConfig.js        # Domain config (frontend)
 │       └── components/
 │           ├── ObjectsTab.jsx     # Product list + detail
 │           ├── GraphTab.jsx       # Local/global graph
@@ -250,9 +278,17 @@ Prompt-to-Ontology/
 
 `backend/main.py` still contains legacy endpoints from the original industrial supply-chain demo and an experimental schema-inference pipeline. These are **not** part of the Pet Food Ontology MVP runtime path:
 
-- **Schema inference endpoints** (`/api/schema/*`) — LLM-based schema extraction from uploaded files
-- **Industrial demo imports** (`/api/import/*`) — CSV import for Factory/Supplier/Component/RawMaterial graphs
-- **Legacy graph APIs** (`/api/graph/*`) — NetworkX operations on the original industrial dataset
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/data/import/preview` | Preview CSV/JSON import with validation |
+| `POST /api/data/import/{object_type}` | Import data to Neo4j by object type |
+| `GET /api/data/export/{object_type}` | Export Neo4j data as JSON |
+| `POST /api/data/import/nodes` | Generic node CSV import |
+| `POST /api/data/import/edges` | Generic edge CSV import |
+| `POST /api/pipeline/infer-schema` | LLM-based single-table schema inference |
+| `POST /api/pipeline/infer-schema-multi` | LLM-based multi-table schema inference |
+| `POST /api/pipeline/batch-import` | Multi-table UNWIND batch import |
+| `GET /api/ontology/schema` | Auto-extract ontology from Neo4j data |
 
 The Pet Food Ontology MVP uses a different, cleaner pipeline:
 
@@ -267,11 +303,14 @@ New domains should follow the [Ready Data Contract](docs/ready-data-contract.md)
 ## What This Proves
 
 1. **Ready Data Contract** — Any domain can plug in by conforming to a standard `{nodes, edges}` payload format
-2. **YAML-driven schema loading** — No Python code changes needed to define a new domain
-3. **Constraint validation before import** — Node types, enums, edge directions, and TRIGGERS_RISK fields are all checked
-4. **Rule engine with 4 condition types** — nutrition_threshold, ingredient_absence, ingredient_match, compound
-5. **Graph-backed evidence** — Every agent answer traces to Neo4j query results, not LLM hallucination
-6. **Domain-agnostic engine** — Same codebase runs industrial supply chain OR pet food ontology
+2. **YAML-driven schema loading** — New domains can reuse the runtime once they provide YAML schema, a ready graph payload, and an optional domain adapter
+3. **4-state rule evaluation** — Rules return triggered / passed / not_evaluable / not_applicable, distinguishing "safe" from "data insufficient"
+4. **Constraint validation before import** — Node types, enums, edge directions, and TRIGGERS_RISK fields are all checked
+5. **LLM tool-calling agent** — 9 graph query tools with LLM planner + deterministic fallback; never fabricates data
+6. **Domain config registry** — Backend and frontend driven by `domain_config.py` / `domainConfig.js`, not hardcoded strings
+7. **Data adapter pattern** — `backend/domain/petfood/` package with abstract base, normalizer, inference, and Open Food Facts skeleton
+8. **Data insufficiency awareness** — Agent and Object View both surface missing-data warnings; no silent false negatives
+9. **First validated domain** — Pet Food as the first fully implemented domain; industrial demo remains as legacy context
 
 ---
 

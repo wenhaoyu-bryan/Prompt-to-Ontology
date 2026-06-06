@@ -5,6 +5,10 @@ export default function AgentTab({ selectedNode, nodeDetail }) {
   const isProduct = selectedNode && (selectedNode.objectType === 'PetFoodProduct' || selectedNode.type === 'PetFoodProduct');
   const productName = nodeDetail?.name || selectedNode?.label || '';
 
+  const agentContext = isProduct && selectedNode
+    ? { current_product_id: selectedNode.id, current_domain: 'pet_food' }
+    : { current_domain: 'pet_food' };
+
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* Context bar — shown when a product is selected */}
@@ -24,7 +28,7 @@ export default function AgentTab({ selectedNode, nodeDetail }) {
       )}
 
       {/* Agent chat */}
-      <PetFoodAgentChat />
+      <PetFoodAgentChat context={agentContext} />
     </div>
   );
 }

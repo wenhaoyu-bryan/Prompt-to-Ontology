@@ -171,7 +171,7 @@ export async function fetchPetFoodRiskExplanation(productId) {
   return data;
 }
 
-export async function petFoodAgentChat(question) {
-  const { data } = await api.post('/pet-food/agent/chat', { question });
+export async function petFoodAgentChat(question, context) {
+  const { data } = await api.post('/pet-food/agent/chat', { question, context: context || null });
   return data;
 }

@@ -5,6 +5,7 @@ import GraphTab from './components/GraphTab';
 import SchemaTab from './components/SchemaTab';
 import AgentTab from './components/AgentTab';
 import { fetchGraph, fetchNodeDetail, fetchHighlightPath, runAgentChat, executeAction, fetchDatasets } from './api';
+import { getDomainConfig, DEFAULT_DOMAIN } from './domainConfig';
 
 // ══════════════════════════════════════════════════════
 // Tab config
@@ -33,6 +34,8 @@ export default function App() {
   const [highlightedNodeIds, setHighlightedNodeIds] = useState([]);
   const [currentDataset, setCurrentDataset] = useState('pet_food');
   const [datasets, setDatasets] = useState([]);
+  const [currentDomain, setCurrentDomain] = useState(DEFAULT_DOMAIN);
+  const domainCfg = getDomainConfig(currentDomain);
 
   // ── Data loading ──
   const loadGraph = useCallback(async (dataset) => {
@@ -131,7 +134,7 @@ export default function App() {
           </div>
           <h1 className="text-sm font-bold text-white tracking-wide">
             Ontology OS
-            <span className="ml-2 text-[10px] text-neutral-500 font-normal">Pet Food Ontology</span>
+            <span className="ml-2 text-[10px] text-neutral-500 font-normal">{domainCfg.title}</span>
           </h1>
         </div>
         <div className="flex items-center gap-2">
@@ -231,7 +234,7 @@ export default function App() {
           />
         )}
         {mainTab === 'schema' && (
-          <SchemaTab graphData={graphData} />
+          <SchemaTab graphData={graphData} currentDomain={currentDomain} />
         )}
         {mainTab === 'agent' && (
           <AgentTab selectedNode={selectedNode} nodeDetail={nodeDetail} />

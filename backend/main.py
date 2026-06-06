@@ -26,6 +26,7 @@ from ontology import (
 from agent import run_agent, execute_action
 from data_pipeline import DataValidator, import_objects, parse_csv, normalize_field_names
 from ontology_registry import OntologyRegistry
+from domain_config import list_domains, get_domain_config, get_default_domain
 
 app = FastAPI(title="Ontology OS — 企业本体操作系统", version="3.0.0")
 
@@ -85,18 +86,27 @@ def startup():
     driver = get_driver()
     driver.verify_connectivity()
 
-    # 3. 自动导入 Pet Food Demo（如果还没有数据）
-    with driver.session() as session:
-        pf_count = session.run("MATCH (n:PetFoodProduct) RETURN count(n) AS c").single()["c"]
-    if pf_count == 0:
-        print("⏳ 自动导入 Pet Food Demo 数据...")
-        _auto_import_pet_food(driver)
-    else:
-        print(f"✅ Pet Food 数据已就绪：{pf_count} 个产品")
+    # 3. 从 domain config 读取默认 domain 配置
+    domain = get_default_domain()
+    config = get_domain_config(domain)
+    primary_type = config["primary_object_type"]
+    dataset = config["dataset"]
 
-    # 4. 构建 NetworkX 内存图（仅 pet_food 数据集）
-    build_graph("pet_food")
-    print("✅ 系统初始化完成：Pet Food Ontology 图谱已构建。")
+    # 4. 自动导入默认 domain sample data（如果还没有数据）
+    with driver.session() as session:
+        count = session.run(
+            f"MATCH (n:`{primary_type}`) RETURN count(n) AS c"
+        ).single()["c"]
+    if count == 0:
+        print(f"⏳ 自动导入 {config['label']} Demo 数据...")
+        if domain == "pet_food":
+            _auto_import_pet_food(driver)
+    else:
+        print(f"✅ {config['label']} 数据已就绪：{count} 个实例")
+
+    # 5. 构建 NetworkX 内存图
+    build_graph(dataset)
+    print(f"✅ 系统初始化完成：{config['label']} 图谱已构建。")
 
 
 # ---- 请求体模型 ----
@@ -124,6 +134,20 @@ class MultiNodeRequest(BaseModel):
 @app.get("/api/health")
 def api_health():
     return {"status": "ok", "system": "Ontology OS v3.0 — 企业本体操作系统"}
+
+
+@app.get("/api/domains")
+def api_list_domains():
+    """List all registered domains."""
+    return list_domains()
+
+
+@app.get("/api/domains/default")
+def api_default_domain():
+    """Return the default domain config."""
+    key = get_default_domain()
+    cfg = get_domain_config(key)
+    return {"key": cfg["key"], "label": cfg["label"]}
 
 
 @app.get("/api/datasets")
@@ -962,8 +986,48 @@ def api_pet_food_risk_explanation(product_id: str):
     }
 
 
+@app.get("/api/pet-food/products/{product_id}/rule-evaluations")
+def api_pet_food_rule_evaluations(product_id: str):
+    """
+    查询某产品的完整规则评估状态（triggered / passed / not_evaluable / not_applicable）。
+    """
+    from rule_engine import RuleEngine
+    from domain.petfood_transformer import transform
+
+    driver = get_driver()
+
+    with driver.session() as session:
+        product_result = session.run(
+            "MATCH (p:PetFoodProduct {id: $pid}) RETURN p",
+            pid=product_id,
+        )
+        product_record = product_result.single()
+        if not product_record:
+            raise HTTPException(404, f"Product '{product_id}' not found")
+        product = dict(product_record["p"])
+
+        ingredients_result = session.run(
+            "MATCH (p:PetFoodProduct {id: $pid})-[c:CONTAINS]->(i:Ingredient) "
+            "RETURN i.ingredient_name AS name",
+            pid=product_id,
+        )
+        ingredient_names = [
+            (r["name"] or "").lower().strip() for r in ingredients_result
+        ]
+
+    registry = OntologyRegistry("pet_food")
+    engine = RuleEngine(registry)
+    evaluations = engine.evaluate_product_full(product, ingredient_names)
+
+    return {
+        "product_id": product_id,
+        "evaluations": evaluations,
+    }
+
+
 class PetFoodChatRequest(BaseModel):
     question: str
+    context: dict | None = None
 
 
 @app.post("/api/pet-food/agent/chat")
@@ -971,17 +1035,26 @@ def api_pet_food_agent_chat(req: PetFoodChatRequest):
     """
     Pet Food Agent 聊天接口。
     接收自然语言问题，基于图谱证据链返回结构化回答。
+    支持 LLM tool-calling（v2）+ deterministic fallback。
     """
-    from petfood_agent import chat
+    from petfood_agent_v2 import chat as chat_v2
+    from petfood_agent import chat as chat_v1
 
     if not req.question.strip():
         raise HTTPException(400, "问题不能为空")
 
     try:
-        result = chat(req.question)
+        result = chat_v2(req.question, context=req.context)
         return result
-    except Exception as e:
-        raise HTTPException(500, f"Agent error: {e}")
+    except Exception:
+        # Fallback to v1
+        try:
+            result = chat_v1(req.question)
+            result["tools_used"] = []
+            result["llm_used"] = False
+            return result
+        except Exception as e:
+            raise HTTPException(500, f"Agent error: {e}")
 
 
 if __name__ == "__main__":

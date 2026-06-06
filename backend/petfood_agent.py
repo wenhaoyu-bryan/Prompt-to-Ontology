@@ -87,7 +87,21 @@ def get_product_risk_explanation(product_id: str = None, product_name: str = Non
                 "explanation": rule.get("explanation"),
             })
 
-    return {"product": product, "brand": brand, "ingredients": ingredients, "risks": risks}
+    # Rule evaluations (Phase 20: data insufficiency awareness)
+    from rule_engine import RuleEngine
+    from ontology_registry import OntologyRegistry
+    registry = OntologyRegistry("pet_food")
+    engine = RuleEngine(registry)
+    ingredient_names = [i.get("ingredient_name", "").lower().strip() for i in ingredients]
+    evaluations = engine.evaluate_product_full(product, ingredient_names)
+
+    not_evaluable = [e for e in evaluations if e["status"] == "not_evaluable"]
+    not_applicable = [e for e in evaluations if e["status"] == "not_applicable"]
+
+    return {
+        "product": product, "brand": brand, "ingredients": ingredients,
+        "risks": risks, "not_evaluable": not_evaluable, "not_applicable": not_applicable,
+    }
 
 
 def find_products_by_ingredient(ingredient_name: str) -> list[dict]:
@@ -328,7 +342,21 @@ def _format_evidence_answer(tool: str, result, question: str) -> dict:
                     "timestamp": _ts(),
                 })
                 step += 1
-        else:
+
+        # Phase 20: data insufficiency
+        not_evaluable = result.get("not_evaluable", [])
+        if not_evaluable:
+            ne_msgs = []
+            for ne in not_evaluable:
+                ne_msgs.append(f"  - {ne['rule_id']} ({ne['rule_key']}): {ne['evidence']}")
+            logs.append({
+                "step": step, "type": "observation", "icon": "🔶", "color": "amber",
+                "message": f"数据不足，无法评估以下规则:\n" + "\n".join(ne_msgs),
+                "timestamp": _ts(),
+            })
+            step += 1
+
+        if not risks and not not_evaluable:
             logs.append({
                 "step": step, "type": "observation", "icon": "✅", "color": "green",
                 "message": "该产品未触发任何风险规则。",
@@ -464,6 +492,18 @@ def _build_markdown_answer(tool: str, result, question: str) -> str:
                 lines.append(f"- 说明: {r.get('explanation', '')}\n")
         else:
             lines.append(f"产品 **{p.get('product_name')}** 未触发任何风险规则。\n")
+
+        # Phase 20: data insufficiency
+        not_evaluable = result.get("not_evaluable", [])
+        if not_evaluable:
+            lines.append("\n## 数据不足\n")
+            lines.append("以下规则因数据缺失无法完整评估：\n")
+            for ne in not_evaluable:
+                lines.append(f"- **{ne['rule_id']}** ({ne['rule_key']}): {ne['evidence']}")
+                if ne.get("missing_fields"):
+                    lines.append(f"  - 缺少字段: {', '.join(ne['missing_fields'])}")
+            lines.append("")
+            lines.append("未触发这些规则不代表产品安全，仅代表当前数据不足以做出判断。")
 
     elif tool == "by_ingredient" and isinstance(result, list):
         lines.append(f"找到 {len(result)} 个含该成分的产品。\n")

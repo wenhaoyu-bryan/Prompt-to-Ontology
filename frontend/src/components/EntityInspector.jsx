@@ -458,6 +458,9 @@ function PetFoodProductOverview({ detail }) {
       {/* ── 4. Risk Explanation Panel ── */}
       <RiskPanel riskLinks={riskLinks} />
 
+      {/* ── 4.5 Rule Evaluation Summary ── */}
+      <RuleEvaluationSection productId={props.product_id || detail.id} />
+
       {/* ── 5. Actions Panel ── */}
       <ProductActionsPanel detail={detail} riskLinks={riskLinks} />
     </div>
@@ -617,6 +620,82 @@ function RiskPanel({ riskLinks }) {
 
 
 /* ── Product Actions Panel ── */
+
+/* ── Rule Evaluation Section (Phase 20) ── */
+
+function RuleEvaluationSection({ productId }) {
+  const [evaluations, setEvaluations] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!productId) return;
+    setLoading(true);
+    fetch(`/api/pet-food/products/${productId}/rule-evaluations`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setEvaluations(d.evaluations); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [productId]);
+
+  if (loading || !evaluations) return null;
+
+  const passed = evaluations.filter(e => e.status === 'passed');
+  const notEvaluable = evaluations.filter(e => e.status === 'not_evaluable');
+  const notApplicable = evaluations.filter(e => e.status === 'not_applicable');
+  const triggered = evaluations.filter(e => e.status === 'triggered');
+
+  // Only show if there are not_evaluable items, or always show as summary
+  return (
+    <DataCard>
+      <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+        规则评估状态
+      </p>
+      <div className="grid grid-cols-4 gap-2 mb-3">
+        <div className="text-center">
+          <p className="text-lg font-bold text-red-400">{triggered.length}</p>
+          <p className="text-[9px] text-neutral-600">已触发</p>
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-bold text-green-400">{passed.length}</p>
+          <p className="text-[9px] text-neutral-600">已通过</p>
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-bold text-amber-400">{notEvaluable.length}</p>
+          <p className="text-[9px] text-neutral-600">数据不足</p>
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-bold text-neutral-500">{notApplicable.length}</p>
+          <p className="text-[9px] text-neutral-600">不适用</p>
+        </div>
+      </div>
+
+      {notEvaluable.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-[9px] text-amber-400 font-medium">数据不足，无法评估：</p>
+          {notEvaluable.map((e, i) => (
+            <div key={i} className="flex items-start gap-2 px-2 py-1.5 bg-amber-500/5 border border-amber-500/10 rounded-lg">
+              <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="text-[10px] font-medium text-amber-300">{e.rule_id}</span>
+                <p className="text-[9px] text-amber-400/80">{e.evidence}</p>
+                {e.missing_fields?.length > 0 && (
+                  <p className="text-[9px] text-neutral-500">缺少字段: {e.missing_fields.join(', ')}</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {notEvaluable.length === 0 && (
+        <div className="flex items-center gap-2 px-2 py-1.5 bg-green-500/5 border border-green-500/10 rounded-lg">
+          <CheckCircle className="w-3 h-3 text-green-400 shrink-0" />
+          <p className="text-[10px] text-green-300">所有规则均可完整评估</p>
+        </div>
+      )}
+    </DataCard>
+  );
+}
 
 const _PRODUCT_ACTIONS = [
   { id: 'explain', label: '解释风险', desc: '基于图谱证据链解释该产品为什么触发风险规则', icon: Shield, iconColor: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', needsRisk: true },
