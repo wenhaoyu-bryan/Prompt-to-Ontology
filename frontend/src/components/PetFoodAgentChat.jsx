@@ -357,13 +357,13 @@ function parseAnswerSections(md) {
   for (const p of parts) {
     const t = p.title.toLowerCase();
     const c = p.content || '';
-    if (t.includes('conclusion') || t.includes('结论')) {
+    if (t.includes('conclusion')) {
       result.conclusion = c;
-    } else if (t.includes('evidence') || t.includes('证据') || t.includes('graph')) {
+    } else if (t.includes('evidence') || t.includes('graph')) {
       result.evidence = c;
-    } else if (t.includes('rule') || t.includes('规则') || t.includes('trigger') || t.includes('evaluation')) {
+    } else if (t.includes('rule') || t.includes('trigger') || t.includes('evaluation')) {
       result.rules = c;
-    } else if (t.includes('explanation') || t.includes('解释') || t.includes('analysis') || t.includes('limitation')) {
+    } else if (t.includes('data limitation') || t.includes('limitation')) {
       result.explanation = c;
     } else {
       restParts.push(`## ${p.title}\n${c}`);
