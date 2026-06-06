@@ -38,16 +38,17 @@ Every answer must include:
 - tool usage log
 - non-medical disclaimer
 
-回答使用中文。格式：
+Always respond in English. Format:
 
-## 结论
-## 图谱证据
-## 规则判断
-## 数据不足（如有）
-## 使用工具
-## 注意事项
+## Conclusion
+## Graph Evidence
+## Rule Evaluation
+## Data Limitations (if any)
+## Tools Used
+## Note
 
-本回答仅基于当前图谱数据和规则，不构成兽医诊断。
+The note must include:
+This answer is based only on the current ontology data and rules. It is not veterinary diagnosis.
 """
 
 # =====================================================
@@ -59,11 +60,11 @@ PET_FOOD_TOOLS = [
         "type": "function",
         "function": {
             "name": "get_product_risk_explanation",
-            "description": "查询产品的完整风险解释，包括品牌、成分、触发的风险规则和数据不足信息。",
+            "description": "Get full risk explanation for a product, including brand, ingredients, triggered risk rules, and data limitations.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "product_id_or_name": {"type": "string", "description": "产品 ID (如 PF001) 或产品名称关键词"}
+                    "product_id_or_name": {"type": "string", "description": "Product ID (e.g. PF001) or product name keyword"}
                 },
                 "required": ["product_id_or_name"],
             },
@@ -73,11 +74,11 @@ PET_FOOD_TOOLS = [
         "type": "function",
         "function": {
             "name": "get_product_rule_evaluations",
-            "description": "查询产品的完整规则评估状态（triggered/passed/not_evaluable/not_applicable）。",
+            "description": "Get full rule evaluation status for a product (triggered/passed/not_evaluable/not_applicable).",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "product_id_or_name": {"type": "string", "description": "产品 ID 或名称关键词"}
+                    "product_id_or_name": {"type": "string", "description": "Product ID or name keyword"}
                 },
                 "required": ["product_id_or_name"],
             },
@@ -87,11 +88,11 @@ PET_FOOD_TOOLS = [
         "type": "function",
         "function": {
             "name": "find_products_by_ingredient",
-            "description": "查找包含某成分的所有产品。",
+            "description": "Find all products containing a specific ingredient.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "ingredient_name": {"type": "string", "description": "成分名称 (如 chicken, taurine)"}
+                    "ingredient_name": {"type": "string", "description": "Ingredient name (e.g. chicken, taurine)"}
                 },
                 "required": ["ingredient_name"],
             },
@@ -101,12 +102,12 @@ PET_FOOD_TOOLS = [
         "type": "function",
         "function": {
             "name": "find_products_without_ingredient",
-            "description": "查找不含某成分的所有产品。用于过敏规避。",
+            "description": "Find all products that do not contain a specific ingredient. Useful for allergy avoidance.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "ingredient_name": {"type": "string", "description": "要规避的成分名称"},
-                    "species": {"type": "string", "description": "可选: 筛选物种 (cat/dog)"}
+                    "ingredient_name": {"type": "string", "description": "Ingredient to avoid"},
+                    "species": {"type": "string", "description": "Optional: filter by species (cat/dog)"}
                 },
                 "required": ["ingredient_name"],
             },
@@ -116,11 +117,11 @@ PET_FOOD_TOOLS = [
         "type": "function",
         "function": {
             "name": "find_products_by_species",
-            "description": "查找面向某物种的所有产品。",
+            "description": "Find all products targeted at a specific species.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "species": {"type": "string", "description": "物种: cat 或 dog"}
+                    "species": {"type": "string", "description": "Species: cat or dog"}
                 },
                 "required": ["species"],
             },
@@ -130,7 +131,7 @@ PET_FOOD_TOOLS = [
         "type": "function",
         "function": {
             "name": "find_high_risk_products",
-            "description": "查找所有触发了风险规则的产品。",
+            "description": "Find all products that triggered a risk rule.",
             "parameters": {"type": "object", "properties": {}},
         },
     },
@@ -138,7 +139,7 @@ PET_FOOD_TOOLS = [
         "type": "function",
         "function": {
             "name": "find_products_with_not_evaluable_rules",
-            "description": "查找存在数据不足规则的产品。这些产品可能有未被检测到的风险。",
+            "description": "Find products with not-evaluable rules due to missing data. These products may have undetected risks.",
             "parameters": {"type": "object", "properties": {}},
         },
     },
@@ -146,12 +147,12 @@ PET_FOOD_TOOLS = [
         "type": "function",
         "function": {
             "name": "compare_products",
-            "description": "比较两个产品的营养和风险差异。",
+            "description": "Compare nutrition and risk differences between two products.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "product_a": {"type": "string", "description": "产品 A 的 ID"},
-                    "product_b": {"type": "string", "description": "产品 B 的 ID"}
+                    "product_a": {"type": "string", "description": "Product A ID"},
+                    "product_b": {"type": "string", "description": "Product B ID"}
                 },
                 "required": ["product_a", "product_b"],
             },
@@ -161,15 +162,23 @@ PET_FOOD_TOOLS = [
         "type": "function",
         "function": {
             "name": "recommend_alternatives",
-            "description": "推荐不含某成分的替代产品。",
+            "description": "Recommend alternative products that avoid a specific ingredient.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "product_id": {"type": "string", "description": "当前产品 ID"},
-                    "avoid_ingredient": {"type": "string", "description": "要规避的成分"}
+                    "product_id": {"type": "string", "description": "Current product ID"},
+                    "avoid_ingredient": {"type": "string", "description": "Ingredient to avoid"}
                 },
                 "required": ["product_id"],
             },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "find_cat_foods_missing_taurine",
+            "description": "Find cat food products that triggered the missing taurine risk rule (RR002).",
+            "parameters": {"type": "object", "properties": {}},
         },
     },
 ]
@@ -206,10 +215,10 @@ def _resolve_product_id(identifier: str) -> str | None:
 
 
 def tool_get_product_risk_explanation(product_id_or_name: str) -> dict:
-    """查询产品的完整风险解释。"""
+    """Get full risk explanation for a product."""
     pid = _resolve_product_id(product_id_or_name)
     if not pid:
-        return _wrap_error("get_product_risk_explanation", "not_found", f"产品未找到: {product_id_or_name}")
+        return _wrap_error("get_product_risk_explanation", "not_found", f"Product not found: {product_id_or_name}")
 
     driver = get_driver()
     with driver.session() as session:
@@ -238,7 +247,7 @@ def tool_get_product_risk_explanation(product_id_or_name: str) -> dict:
 
     limitations = []
     if not_evaluable:
-        limitations.append(f"{len(not_evaluable)} 条规则因数据不足无法评估")
+        limitations.append(f"{len(not_evaluable)} rule(s) could not be evaluated due to insufficient data")
 
     return _wrap(
         "get_product_risk_explanation",
@@ -249,10 +258,10 @@ def tool_get_product_risk_explanation(product_id_or_name: str) -> dict:
 
 
 def tool_get_product_rule_evaluations(product_id_or_name: str) -> dict:
-    """查询产品的完整规则评估状态。"""
+    """Get full rule evaluation status for a product."""
     pid = _resolve_product_id(product_id_or_name)
     if not pid:
-        return _wrap_error("get_product_rule_evaluations", "not_found", f"产品未找到: {product_id_or_name}")
+        return _wrap_error("get_product_rule_evaluations", "not_found", f"Product not found: {product_id_or_name}")
 
     driver = get_driver()
     with driver.session() as session:
@@ -274,7 +283,7 @@ def tool_get_product_rule_evaluations(product_id_or_name: str) -> dict:
 
 
 def tool_find_products_by_ingredient(ingredient_name: str) -> dict:
-    """查找包含某成分的所有产品。"""
+    """Find all products containing a specific ingredient."""
     driver = get_driver()
     with driver.session() as session:
         result = session.run(
@@ -286,13 +295,13 @@ def tool_find_products_by_ingredient(ingredient_name: str) -> dict:
         products = [r.data() for r in result]
 
     if not products:
-        return _wrap("find_products_by_ingredient", data=[], limitations=[f"未找到含 {ingredient_name} 的产品"])
+        return _wrap("find_products_by_ingredient", data=[], limitations=[f"No products found containing {ingredient_name}"])
 
     return _wrap("find_products_by_ingredient", data=products, evidence=[f"{len(products)} products contain {ingredient_name}"])
 
 
 def tool_find_products_without_ingredient(ingredient_name: str, species: str = None) -> dict:
-    """查找不含某成分的所有产品。"""
+    """Find all products that do not contain a specific ingredient."""
     driver = get_driver()
     with driver.session() as session:
         q = (
@@ -313,7 +322,7 @@ def tool_find_products_without_ingredient(ingredient_name: str, species: str = N
 
 
 def tool_find_products_by_species(species: str) -> dict:
-    """查找面向某物种的所有产品。"""
+    """Find all products targeted at a specific species."""
     driver = get_driver()
     with driver.session() as session:
         result = session.run(
@@ -328,7 +337,7 @@ def tool_find_products_by_species(species: str) -> dict:
 
 
 def tool_find_high_risk_products() -> dict:
-    """查找所有触发了风险规则的产品。"""
+    """Find all products that triggered a risk rule."""
     driver = get_driver()
     with driver.session() as session:
         result = session.run(
@@ -343,7 +352,7 @@ def tool_find_high_risk_products() -> dict:
 
 
 def tool_find_products_with_not_evaluable_rules() -> dict:
-    """查找存在数据不足规则的产品。"""
+    """Find products with not-evaluable rules due to missing data."""
     registry = OntologyRegistry("pet_food")
     engine = RuleEngine(registry)
 
@@ -352,11 +361,23 @@ def tool_find_products_with_not_evaluable_rules() -> dict:
         products_r = session.run("MATCH (p:PetFoodProduct) RETURN p")
         products = [dict(r["p"]) for r in products_r]
 
-    report = engine.evaluate_payload({"nodes": [{"id": p["id"], "label": "PetFoodProduct", "properties": p} for p in products], "edges": []})
+        # Query each product's ingredient names from CONTAINS edges
+        ingredient_map = {}
+        ings_r = session.run(
+            "MATCH (p:PetFoodProduct)-[:CONTAINS]->(i:Ingredient) "
+            "RETURN p.id AS pid, i.ingredient_name AS name"
+        )
+        for r in ings_r:
+            pid = r["pid"]
+            name = (r["name"] or "").lower().strip()
+            ingredient_map.setdefault(pid, []).append(name)
 
     results = []
-    for pid, evals in report["products"].items():
-        ne = evals["not_evaluable"]
+    for p in products:
+        pid = p["id"]
+        ingredient_names = ingredient_map.get(pid, [])
+        evaluations = engine.evaluate_product_full(p, ingredient_names)
+        ne = [e for e in evaluations if e["status"] == "not_evaluable"]
         if ne:
             results.append({
                 "product_id": pid,
@@ -368,34 +389,34 @@ def tool_find_products_with_not_evaluable_rules() -> dict:
         "find_products_with_not_evaluable_rules",
         data=results,
         evidence=[f"{len(results)} products have not-evaluable rules"],
-        limitations=["这些产品的某些风险无法评估，不代表安全"],
+        limitations=["Some risks for these products could not be evaluated — this does not mean they are safe."],
     )
 
 
 def tool_compare_products(product_a: str, product_b: str) -> dict:
-    """比较两个产品的风险差异。"""
+    """Compare risk differences between two products."""
     pa = tool_get_product_risk_explanation(product_a)
     pb = tool_get_product_risk_explanation(product_b)
 
     if pa["status"] != "success":
-        return _wrap_error("compare_products", pa["status"], f"产品 A: {pa.get('message', 'error')}")
+        return _wrap_error("compare_products", pa["status"], f"Product A: {pa.get('message', 'error')}")
     if pb["status"] != "success":
-        return _wrap_error("compare_products", pb["status"], f"产品 B: {pb.get('message', 'error')}")
+        return _wrap_error("compare_products", pb["status"], f"Product B: {pb.get('message', 'error')}")
 
     return _wrap("compare_products", data={"product_a": pa["data"], "product_b": pb["data"]})
 
 
 def tool_recommend_alternatives(product_id: str, avoid_ingredient: str = None) -> dict:
-    """推荐不含某成分的替代产品。"""
+    """Recommend alternative products that avoid a specific ingredient."""
     pid = _resolve_product_id(product_id)
     if not pid:
-        return _wrap_error("recommend_alternatives", "not_found", f"产品未找到: {product_id}")
+        return _wrap_error("recommend_alternatives", "not_found", f"Product not found: {product_id}")
 
     driver = get_driver()
     with driver.session() as session:
         p = session.run("MATCH (p:PetFoodProduct {id: $pid}) RETURN p", pid=pid).single()
         if not p:
-            return _wrap_error("recommend_alternatives", "not_found", f"产品未找到: {product_id}")
+            return _wrap_error("recommend_alternatives", "not_found", f"Product not found: {product_id}")
         p = dict(p["p"])
 
     species = p.get("target_species")
@@ -427,7 +448,28 @@ TOOL_MAP = {
     "find_products_with_not_evaluable_rules": lambda args: tool_find_products_with_not_evaluable_rules(),
     "compare_products": lambda args: tool_compare_products(**args),
     "recommend_alternatives": lambda args: tool_recommend_alternatives(**args),
+    "find_cat_foods_missing_taurine": lambda args: tool_find_cat_foods_missing_taurine(),
 }
+
+
+def tool_find_cat_foods_missing_taurine() -> dict:
+    """Find cat food products that triggered the missing taurine risk rule (RR002)."""
+    driver = get_driver()
+    with driver.session() as session:
+        result = session.run(
+            'MATCH (p:PetFoodProduct)-[e:TRIGGERS_RISK]->(r:RiskRule {rule_id: "RR002"}) '
+            "RETURN p.id AS id, p.product_name AS name, e.evidence AS evidence, e.reason AS reason"
+        )
+        products = [r.data() for r in result]
+
+    if not products:
+        return _wrap("find_cat_foods_missing_taurine", data=[], limitations=["No products triggered the missing taurine rule."])
+
+    return _wrap(
+        "find_cat_foods_missing_taurine",
+        data=products,
+        evidence=[f"{len(products)} cat foods missing taurine (RR002)"],
+    )
 
 
 def _execute_tool(name: str, args: dict) -> dict:
@@ -457,15 +499,15 @@ def _llm_plan(question: str, context: dict = None) -> list[dict] | None:
     """Ask LLM to select tools. Returns list of {tool, args} or None if LLM unavailable."""
     ctx_hint = ""
     if context and context.get("current_product_id"):
-        ctx_hint = f"\n当前选中产品: {context['current_product_id']}。如果用户说'这个产品'，优先使用此 ID。"
+        ctx_hint = f"\nCurrently selected product: {context['current_product_id']}. If the user says 'this product', prefer this ID."
 
     messages = [
         {"role": "system", "content": AGENT_SYSTEM_PROMPT},
         {"role": "user", "content": (
-            f"用户问题: {question}{ctx_hint}\n\n"
-            "请从可用工具中选择合适的工具来回答这个问题。输出 JSON 数组格式:\n"
+            f"User question: {question}{ctx_hint}\n\n"
+            "Select the appropriate tools to answer this question. Output a JSON array:\n"
             '[{"tool": "tool_name", "args": {...}}]\n'
-            "只输出 JSON，不要其他文字。可以调用多个工具。"
+            "Output only JSON, no other text. You may call multiple tools."
         )},
     ]
 
@@ -510,10 +552,10 @@ def _llm_compose_answer(question: str, tool_results: list[dict], context: dict =
     messages = [
         {"role": "system", "content": AGENT_SYSTEM_PROMPT},
         {"role": "user", "content": (
-            f"用户问题: {question}\n\n"
-            f"工具查询结果:\n{results_text}\n\n"
-            "请基于以上工具结果回答用户问题。严格遵守格式要求。不要编造数据。"
-            "如果数据不足，必须明确说明。"
+            f"User question: {question}\n\n"
+            f"Tool results:\n{results_text}\n\n"
+            "Answer the user's question based strictly on the tool results above. Follow the required format. "
+            "Do not fabricate data. If data is insufficient, state this explicitly."
         )},
     ]
 
@@ -539,7 +581,7 @@ def _keyword_route(question: str, context: dict = None) -> list[dict]:
         if len(ids) >= 2:
             calls.append({"tool": "compare_products", "args": {"product_a": ids[0], "product_b": ids[1]}})
     elif "taurine" in q or "牛磺酸" in q:
-        calls.append({"tool": "find_cat_foods_missing_taurine_legacy", "args": {}})
+        calls.append({"tool": "find_cat_foods_missing_taurine", "args": {}})
     elif "数据不足" in q or "not evaluable" in q or "无法评估" in q:
         calls.append({"tool": "find_products_with_not_evaluable_rules", "args": {}})
     elif ("phosphorus" in q or "磷" in q) and ("senior" in q or "老年" in q):
@@ -588,7 +630,7 @@ def _keyword_route(question: str, context: dict = None) -> list[dict]:
 
 def chat(question: str, context: dict = None) -> dict:
     """
-    Pet Food Agent v2 主入口。
+    Pet Food Agent v2 entry point.
 
     Flow:
     1. LLM planner selects tools (fallback: keyword router)
@@ -602,7 +644,7 @@ def chat(question: str, context: dict = None) -> dict:
 
     # 1. Plan tool calls
     logs.append({"step": step, "type": "thought", "icon": "🧠", "color": "orange",
-                 "message": f"分析问题: {question}", "timestamp": ts()})
+                 "message": f"Analyzing question: {question}", "timestamp": ts()})
     step += 1
 
     llm_used = False
@@ -610,11 +652,11 @@ def chat(question: str, context: dict = None) -> dict:
     if calls:
         llm_used = True
         logs.append({"step": step, "type": "thought", "icon": "🧠", "color": "cyan",
-                     "message": f"LLM 选择工具: {[c['tool'] for c in calls]}", "timestamp": ts()})
+                     "message": f"LLM selected tools: {[c['tool'] for c in calls]}", "timestamp": ts()})
     else:
         calls = _keyword_route(question, context)
         logs.append({"step": step, "type": "thought", "icon": "🧠", "color": "amber",
-                     "message": f"LLM 未配置，使用规则路由: {[c['tool'] for c in calls]}", "timestamp": ts()})
+                     "message": f"LLM planning unavailable, using deterministic router: {[c['tool'] for c in calls]}", "timestamp": ts()})
     step += 1
 
     # 2. Execute tools
@@ -623,14 +665,7 @@ def chat(question: str, context: dict = None) -> dict:
         tool_name = call["tool"]
         args = call.get("args", {})
 
-        # Handle legacy tool name from keyword routing
-        if tool_name == "find_cat_foods_missing_taurine_legacy":
-            # Use the v1 function directly
-            from petfood_agent import find_cat_foods_missing_taurine
-            legacy_result = find_cat_foods_missing_taurine()
-            result = _wrap("find_cat_foods_missing_taurine", data=legacy_result)
-        else:
-            result = _execute_tool(tool_name, args)
+        result = _execute_tool(tool_name, args)
 
         tool_results.append(result)
         used_tools.append(tool_name)
@@ -643,7 +678,7 @@ def chat(question: str, context: dict = None) -> dict:
             data_summary = f" (dict)"
 
         logs.append({"step": step, "type": "observation", "icon": status_emoji, "color": "green" if result["status"] == "success" else "amber",
-                     "message": f"工具 {tool_name}{data_summary}\n{result.get('message', '') or ''}", "timestamp": ts()})
+                     "message": f"Tool {tool_name}{data_summary}\n{result.get('message', '') or ''}", "timestamp": ts()})
         step += 1
 
     # 3. Compose answer
@@ -652,22 +687,22 @@ def chat(question: str, context: dict = None) -> dict:
         answer = _llm_compose_answer(question, tool_results, context)
         if answer:
             logs.append({"step": step, "type": "thought", "icon": "🧠", "color": "cyan",
-                         "message": "LLM 生成回答", "timestamp": ts()})
+                         "message": "LLM generated answer", "timestamp": ts()})
             step += 1
 
     if not answer:
         answer = _template_answer(question, tool_results)
         logs.append({"step": step, "type": "thought", "icon": "📝", "color": "amber",
-                     "message": "使用模板生成回答", "timestamp": ts()})
+                     "message": "Using template to generate answer", "timestamp": ts()})
         step += 1
 
     # 4. Disclaimer
     logs.append({"step": step, "type": "thought", "icon": "📌", "color": "blue",
-                 "message": "本回答仅基于当前图谱数据和规则，不构成兽医诊断。", "timestamp": ts()})
+                 "message": "This answer is based only on the current ontology data and rules. It is not veterinary diagnosis.", "timestamp": ts()})
 
     # Ensure disclaimer is in the answer
-    if "不构成兽医诊断" not in answer:
-        answer += "\n\n---\n*本回答仅基于当前图谱数据和规则，不构成兽医诊断。*"
+    if "not veterinary diagnosis" not in answer.lower():
+        answer += "\n\n---\n*This answer is based only on the current ontology data and rules. It is not veterinary diagnosis.*"
 
     return {
         "logs": logs,
@@ -679,7 +714,7 @@ def chat(question: str, context: dict = None) -> dict:
 
 def _template_answer(question: str, tool_results: list[dict]) -> str:
     """Template-based answer generation (deterministic fallback)."""
-    lines = ["## 结论\n"]
+    lines = ["## Conclusion\n"]
 
     for result in tool_results:
         tool = result.get("tool_name", "")
@@ -692,28 +727,28 @@ def _template_answer(question: str, tool_results: list[dict]) -> str:
             not_evaluable = data.get("not_evaluable", [])
 
             if risks:
-                lines.append(f"产品 **{p.get('product_name')}** 触发了 {len(risks)} 条风险规则。\n")
-                lines.append("## 图谱证据\n")
-                lines.append(f"- 品牌: {brand.get('brand_name', '未知')} | 物种: {p.get('target_species')} | 阶段: {p.get('life_stage')}")
-                lines.append(f"- 蛋白质: {p.get('protein_100g')}g | 脂肪: {p.get('fat_100g')}g | 磷: {p.get('phosphorus_100g')}g")
-                lines.append("\n## 规则判断\n")
+                lines.append(f"Product **{p.get('product_name')}** triggered {len(risks)} risk rule(s).\n")
+                lines.append("## Graph Evidence\n")
+                lines.append(f"- Brand: {brand.get('brand_name', 'Unknown')} | Species: {p.get('target_species')} | Life stage: {p.get('life_stage')}")
+                lines.append(f"- Protein: {p.get('protein_100g')}g | Fat: {p.get('fat_100g')}g | Phosphorus: {p.get('phosphorus_100g')}g")
+                lines.append("\n## Rule Evaluation\n")
                 for r in risks:
                     lines.append(f"- **{r.get('rule_name', r.get('name'))}** ({r.get('sev', r.get('severity'))}): {r.get('ev', r.get('evidence', ''))}")
             else:
-                lines.append(f"产品 **{p.get('product_name')}** 未触发任何风险规则。\n")
+                lines.append(f"Product **{p.get('product_name')}** did not trigger any risk rules.\n")
 
             if not_evaluable:
-                lines.append("\n## 数据不足\n")
+                lines.append("\n## Data Limitations\n")
                 for ne in not_evaluable:
                     lines.append(f"- **{ne['rule_id']}**: {ne['evidence']}")
-                lines.append("\n未触发这些规则不代表产品安全，仅代表当前数据不足以做出判断。")
+                lines.append("\nThese rules were not triggered due to insufficient data — this does not mean the product is safe.")
 
         elif isinstance(data, list):
             if not data:
-                lines.append("未找到匹配的产品。\n")
+                lines.append("No matching products found.\n")
             else:
-                lines.append(f"找到 **{len(data)}** 个结果：\n")
-                lines.append("## 图谱证据\n")
+                lines.append(f"Found **{len(data)}** result(s):\n")
+                lines.append("## Graph Evidence\n")
                 for item in data[:10]:
                     name = item.get("name", item.get("product_name", item.get("id", "")))
                     extra = ""
@@ -725,25 +760,25 @@ def _template_answer(question: str, tool_results: list[dict]) -> str:
 
         elif isinstance(data, dict) and "product_a" in data:
             pa, pb = data["product_a"], data["product_b"]
-            lines.append(f"对比 {pa['product'].get('product_name')} 和 {pb['product'].get('product_name')}\n")
-            lines.append("## 图谱证据\n")
-            lines.append(f"| 指标 | {pa['product'].get('product_name')} | {pb['product'].get('product_name')} |")
-            lines.append("|------|------|------|")
-            lines.append(f"| 风险数 | {len(pa.get('risks', []))} | {len(pb.get('risks', []))} |")
-            lines.append(f"| 数据不足 | {len(pa.get('not_evaluable', []))} | {len(pb.get('not_evaluable', []))} |")
+            lines.append(f"Comparing {pa['product'].get('product_name')} and {pb['product'].get('product_name')}\n")
+            lines.append("## Graph Evidence\n")
+            lines.append(f"| Metric | {pa['product'].get('product_name')} | {pb['product'].get('product_name')} |")
+            lines.append("|--------|------|------|")
+            lines.append(f"| Risk rules | {len(pa.get('risks', []))} | {len(pb.get('risks', []))} |")
+            lines.append(f"| Not evaluable | {len(pa.get('not_evaluable', []))} | {len(pb.get('not_evaluable', []))} |")
 
         elif result.get("status") != "success":
-            lines.append(f"查询失败: {result.get('message', 'unknown error')}\n")
+            lines.append(f"Query failed: {result.get('message', 'unknown error')}\n")
 
     if not tool_results:
-        lines.append("未能处理该问题，请尝试更具体的提问。\n")
+        lines.append("Could not process this question. Please try a more specific query.\n")
 
     # Tools used
-    lines.append("\n## 使用工具\n")
+    lines.append("\n## Tools Used\n")
     for result in tool_results:
         lines.append(f"- {result.get('tool_name', 'unknown')}")
 
-    lines.append("\n## 注意事项\n")
-    lines.append("本回答仅基于当前图谱数据和规则，不构成兽医诊断。")
+    lines.append("\n## Note\n")
+    lines.append("This answer is based only on the current ontology data and rules. It is not veterinary diagnosis.")
 
     return "\n".join(lines)

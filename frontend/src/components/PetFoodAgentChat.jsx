@@ -3,12 +3,12 @@ import { Bot, Send, Trash2, Shield, AlertTriangle, ChevronDown, ChevronUp, User,
 import { petFoodAgentChat } from '../api';
 
 const EXAMPLE_QUESTIONS = [
-  '这款猫粮为什么有风险？',
-  '哪些产品含 chicken？',
-  '哪些猫粮没有 taurine？',
-  '哪些 senior cat 产品磷含量较高？',
-  '帮我比较 PF001 和 PF003 的风险差异。',
-  '哪些产品适合避开鸡肉过敏？',
+  'Why is this product risky?',
+  'Which products contain chicken?',
+  'Which cat foods are missing taurine?',
+  'Which senior cat products have high phosphorus?',
+  'Compare PF001 and PF003.',
+  'Which products avoid chicken?',
 ];
 
 export default function PetFoodAgentChat({ context } = {}) {
@@ -36,8 +36,8 @@ export default function PetFoodAgentChat({ context } = {}) {
       const res = await petFoodAgentChat(q, context);
       setMessages(prev => [...prev, { role: 'agent', logs: res.logs || [], answer: res.answer || '', tools_used: res.tools_used || [], llm_used: res.llm_used || false }]);
     } catch (err) {
-      setError(err?.response?.data?.detail || err.message || '请求失败');
-      setMessages(prev => [...prev, { role: 'error', content: err?.response?.data?.detail || err.message || '请求失败' }]);
+      setError(err?.response?.data?.detail || err.message || 'Request failed');
+      setMessages(prev => [...prev, { role: 'error', content: err?.response?.data?.detail || err.message || 'Request failed' }]);
     } finally {
       setLoading(false);
       inputRef.current?.focus();
@@ -75,7 +75,7 @@ export default function PetFoodAgentChat({ context } = {}) {
               onClick={handleClear}
               className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] text-neutral-500 hover:text-neutral-300 bg-neutral-900 border border-neutral-800 rounded-lg hover:border-neutral-700 transition-colors"
             >
-              <Trash2 className="w-3 h-3" /> 清空对话
+              <Trash2 className="w-3 h-3" /> Clear chat
             </button>
           )}
         </div>
@@ -108,7 +108,7 @@ export default function PetFoodAgentChat({ context } = {}) {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="输入问题，例如：哪些产品含 chicken？"
+            placeholder="Ask a question, e.g. Which products contain chicken?"
             className="flex-1 bg-neutral-900 border border-neutral-700 rounded-lg px-4 py-2.5 text-xs text-neutral-200 placeholder-neutral-600 outline-none focus:border-cyan-500/50 transition-colors"
             disabled={loading}
           />
@@ -118,7 +118,7 @@ export default function PetFoodAgentChat({ context } = {}) {
             className="px-4 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-600/30 disabled:text-violet-400/50 rounded-lg text-xs text-white font-medium transition-colors flex items-center gap-1.5"
           >
             <Send className="w-3.5 h-3.5" />
-            发送
+            Send
           </button>
         </div>
       </div>
@@ -138,11 +138,11 @@ function EmptyState({ onExampleClick }) {
       <div>
         <p className="text-sm font-semibold text-white mb-1">Pet Food Agent</p>
         <p className="text-[11px] text-neutral-500 max-w-sm">
-          基于本体图谱的宠物食品安全分析 Agent。使用图数据库证据链回答问题，不做兽医诊断。
+          Ontology-based pet food safety analysis agent. Answers questions using graph database evidence chains. Not veterinary diagnosis.
         </p>
       </div>
       <div className="w-full max-w-lg">
-        <p className="text-[10px] text-neutral-600 uppercase tracking-wider mb-2">示例问题</p>
+        <p className="text-[10px] text-neutral-600 uppercase tracking-wider mb-2">Example questions</p>
         <div className="flex flex-wrap gap-2 justify-center">
           {EXAMPLE_QUESTIONS.map((q, i) => (
             <button
@@ -188,7 +188,7 @@ function AgentMessage({ logs, answer, toolsUsed, llmUsed }) {
         {/* Tools used badge */}
         {toolsUsed && toolsUsed.length > 0 && (
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[9px] text-neutral-600">使用工具:</span>
+            <span className="text-[9px] text-neutral-600">Tools used:</span>
             {toolsUsed.map((t, i) => (
               <span key={i} className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">
                 {t}
@@ -209,7 +209,7 @@ function AgentMessage({ logs, answer, toolsUsed, llmUsed }) {
             className="flex items-center gap-1.5 text-[10px] text-neutral-600 hover:text-neutral-400 transition-colors"
           >
             {showLogs ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            推理过程 ({logs.length} 步)
+            Reasoning trace ({logs.length} steps)
           </button>
         )}
 
@@ -231,11 +231,11 @@ function AgentMessage({ logs, answer, toolsUsed, llmUsed }) {
 
 function LogEntry({ log }) {
   const typeConfig = {
-    thought: { bg: 'bg-violet-500/5', border: 'border-violet-500/20', text: 'text-violet-400', label: '思考' },
-    tool_call: { bg: 'bg-blue-500/5', border: 'border-blue-500/20', text: 'text-blue-400', label: '工具' },
-    observation: { bg: 'bg-green-500/5', border: 'border-green-500/20', text: 'text-green-400', label: '观察' },
-    decision: { bg: 'bg-amber-500/5', border: 'border-amber-500/20', text: 'text-amber-400', label: '决策' },
-    error: { bg: 'bg-red-500/5', border: 'border-red-500/20', text: 'text-red-400', label: '错误' },
+    thought: { bg: 'bg-violet-500/5', border: 'border-violet-500/20', text: 'text-violet-400', label: 'Think' },
+    tool_call: { bg: 'bg-blue-500/5', border: 'border-blue-500/20', text: 'text-blue-400', label: 'Tool' },
+    observation: { bg: 'bg-green-500/5', border: 'border-green-500/20', text: 'text-green-400', label: 'Observe' },
+    decision: { bg: 'bg-amber-500/5', border: 'border-amber-500/20', text: 'text-amber-400', label: 'Decide' },
+    error: { bg: 'bg-red-500/5', border: 'border-red-500/20', text: 'text-red-400', label: 'Error' },
   };
   const cfg = typeConfig[log.type] || typeConfig.thought;
 
@@ -261,7 +261,7 @@ function StructuredAnswer({ answer }) {
       {sections.conclusion && (
         <div className="px-4 py-3 border-b border-neutral-800">
           <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-            <Search className="w-2.5 h-2.5" /> 结论
+            <Search className="w-2.5 h-2.5" /> Conclusion
           </p>
           <div className="text-xs text-neutral-200 leading-relaxed whitespace-pre-wrap">
             {sections.conclusion}
@@ -273,7 +273,7 @@ function StructuredAnswer({ answer }) {
       {sections.evidence && (
         <div className="px-4 py-3 border-b border-neutral-800">
           <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-            <Zap className="w-2.5 h-2.5" /> 图谱证据
+            <Zap className="w-2.5 h-2.5" /> Graph Evidence
           </p>
           <div className="text-[11px] text-neutral-300 leading-relaxed whitespace-pre-wrap font-mono bg-neutral-950/50 rounded-lg p-2.5">
             {sections.evidence}
@@ -285,7 +285,7 @@ function StructuredAnswer({ answer }) {
       {sections.rules && (
         <div className="px-4 py-3 border-b border-neutral-800">
           <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-            <Shield className="w-2.5 h-2.5" /> 触发规则
+            <Shield className="w-2.5 h-2.5" /> Rule Evaluation
           </p>
           <div className="text-[11px] text-amber-300 leading-relaxed whitespace-pre-wrap">
             {sections.rules}
@@ -296,7 +296,7 @@ function StructuredAnswer({ answer }) {
       {/* Explanation */}
       {sections.explanation && (
         <div className="px-4 py-3 border-b border-neutral-800">
-          <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">解释</p>
+          <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Explanation</p>
           <div className="text-xs text-neutral-300 leading-relaxed whitespace-pre-wrap">
             {sections.explanation}
           </div>
@@ -315,7 +315,7 @@ function StructuredAnswer({ answer }) {
       {/* Disclaimer */}
       <div className="px-4 py-2.5 bg-amber-500/5 flex items-start gap-2">
         <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-        <p className="text-[10px] text-amber-400/80">本回答仅基于当前样例数据和规则，不构成兽医诊断。</p>
+        <p className="text-[10px] text-amber-400/80">This answer is based only on the current sample data and rules. It is not veterinary diagnosis.</p>
       </div>
     </div>
   );
@@ -361,9 +361,9 @@ function parseAnswerSections(md) {
       result.conclusion = c;
     } else if (t.includes('evidence') || t.includes('证据') || t.includes('graph')) {
       result.evidence = c;
-    } else if (t.includes('rule') || t.includes('规则') || t.includes('trigger')) {
+    } else if (t.includes('rule') || t.includes('规则') || t.includes('trigger') || t.includes('evaluation')) {
       result.rules = c;
-    } else if (t.includes('explanation') || t.includes('解释') || t.includes('分析')) {
+    } else if (t.includes('explanation') || t.includes('解释') || t.includes('analysis') || t.includes('limitation')) {
       result.explanation = c;
     } else {
       restParts.push(`## ${p.title}\n${c}`);
@@ -385,7 +385,7 @@ function ErrorMessage({ content }) {
         <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
       </div>
       <div className="bg-red-500/5 border border-red-500/20 rounded-xl px-4 py-3 max-w-lg">
-        <p className="text-[10px] text-red-400 font-semibold mb-1">错误</p>
+        <p className="text-[10px] text-red-400 font-semibold mb-1">Error</p>
         <p className="text-xs text-red-300">{content}</p>
       </div>
     </div>
@@ -402,7 +402,7 @@ function LoadingIndicator() {
       <div className="bg-neutral-900/60 border border-neutral-800 rounded-xl px-4 py-3">
         <div className="flex items-center gap-2">
           <div className="w-3.5 h-3.5 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
-          <span className="text-xs text-neutral-500">查询图谱证据链...</span>
+          <span className="text-xs text-neutral-500">Querying graph evidence chain...</span>
         </div>
       </div>
     </div>
