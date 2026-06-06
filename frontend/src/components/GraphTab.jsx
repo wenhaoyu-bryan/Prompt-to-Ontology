@@ -4,11 +4,11 @@ import D3GraphCanvas from './D3GraphCanvas';
 import EntityInspector from './EntityInspector';
 
 const LINK_TYPES = [
-  { key: 'MADE_BY', label: '品牌', color: 'text-cyan-400' },
-  { key: 'CONTAINS', label: '成分', color: 'text-green-400' },
-  { key: 'TRIGGERS_RISK', label: '风险', color: 'text-red-400' },
-  { key: 'TARGETS_SPECIES', label: '物种', color: 'text-purple-400' },
-  { key: 'SUITABLE_FOR', label: '阶段', color: 'text-amber-400' },
+  { key: 'MADE_BY', label: 'Brand', color: 'text-cyan-400' },
+  { key: 'CONTAINS', label: 'Ingredient', color: 'text-green-400' },
+  { key: 'TRIGGERS_RISK', label: 'Risk', color: 'text-red-400' },
+  { key: 'TARGETS_SPECIES', label: 'Species', color: 'text-purple-400' },
+  { key: 'SUITABLE_FOR', label: 'Life Stage', color: 'text-amber-400' },
 ];
 
 export default function GraphTab({
@@ -86,12 +86,12 @@ export default function GraphTab({
         <div className="px-3 py-3 border-b border-neutral-800">
           <div className="flex items-center gap-2 mb-3">
             <GitBranch className="w-4 h-4 text-blue-500" />
-            <span className="text-xs font-semibold text-white">图谱控制</span>
+            <span className="text-xs font-semibold text-white">Graph Controls</span>
           </div>
 
           {/* View Mode */}
           <div className="space-y-2">
-            <label className="text-[10px] text-neutral-500 uppercase tracking-wider">视图模式</label>
+            <label className="text-[10px] text-neutral-500 uppercase tracking-wider">View Mode</label>
             <div className="flex rounded-lg border border-neutral-700 overflow-hidden">
               <button
                 onClick={() => setViewMode('local')}
@@ -119,7 +119,7 @@ export default function GraphTab({
           {/* Depth selector (only for local) */}
           {viewMode === 'local' && (
             <div className="mt-3 space-y-2">
-              <label className="text-[10px] text-neutral-500 uppercase tracking-wider">深度</label>
+              <label className="text-[10px] text-neutral-500 uppercase tracking-wider">Depth</label>
               <div className="flex rounded-lg border border-neutral-700 overflow-hidden">
                 {[1, 2, 3].map(d => (
                   <button
@@ -145,7 +145,7 @@ export default function GraphTab({
         <div className="px-3 py-3 border-b border-neutral-800">
           <div className="flex items-center gap-1.5 mb-2">
             <Filter className="w-3 h-3 text-neutral-500" />
-            <span className="text-[10px] text-neutral-500 uppercase tracking-wider">关系类型</span>
+            <span className="text-[10px] text-neutral-500 uppercase tracking-wider">Relationship Types</span>
           </div>
           <div className="space-y-1">
             {LINK_TYPES.map(lt => (
@@ -171,7 +171,7 @@ export default function GraphTab({
         {/* Selected node info */}
         {selectedNode && (
           <div className="px-3 py-3 border-b border-neutral-800">
-            <label className="text-[10px] text-neutral-500 uppercase tracking-wider mb-1.5 block">当前节点</label>
+            <label className="text-[10px] text-neutral-500 uppercase tracking-wider mb-1.5 block">Current Node</label>
             <div className="bg-neutral-900/60 border border-neutral-800 rounded-lg px-2.5 py-2">
               <p className="text-xs text-white font-medium truncate">{selectedNode.label || selectedNode.id}</p>
               <p className="text-[10px] text-neutral-600 font-mono">{selectedNode.id}</p>
@@ -183,8 +183,8 @@ export default function GraphTab({
         {/* Stats */}
         <div className="px-3 py-3 mt-auto">
           <div className="text-[10px] text-neutral-600 space-y-1">
-            <p>节点: {localGraphData.nodes.length} / {graphData.nodes.length}</p>
-            <p>关系: {localGraphData.links.length} / {graphData.links.length}</p>
+            <p>Nodes: {localGraphData.nodes.length} / {graphData.nodes.length}</p>
+            <p>Edges: {localGraphData.links.length} / {graphData.links.length}</p>
           </div>
         </div>
       </aside>
@@ -195,17 +195,17 @@ export default function GraphTab({
           <div className="flex flex-col items-center justify-center h-full text-neutral-600 gap-3 px-8">
             <GitBranch className="w-10 h-10 opacity-20" />
             <p className="text-sm text-center leading-relaxed">
-              请选择一个对象查看局部关系图
+              Select an object to view its local graph
             </p>
             <p className="text-xs text-neutral-700 text-center">
-              在 Objects 标签页选择一个对象，或切换到 Global Graph
+              Select an object in the Objects tab, or switch to Global Graph
             </p>
             <button
               onClick={() => setViewMode('global')}
               className="mt-2 px-4 py-2 text-xs text-purple-400 bg-purple-500/10 border border-purple-500/20 rounded-lg hover:brightness-110 transition-all"
             >
               <Globe className="w-3.5 h-3.5 inline mr-1.5" />
-              切换到 Global Graph
+              Switch to Global Graph
             </button>
           </div>
         ) : (

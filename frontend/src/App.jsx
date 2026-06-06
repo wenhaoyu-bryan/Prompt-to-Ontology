@@ -45,8 +45,8 @@ export default function App() {
       const data = await fetchGraph(dataset);
       setGraphData(data);
     } catch (e) {
-      console.error('图谱加载失败', e);
-      setGraphError(e.message || '无法连接到后端服务');
+      console.error('Graph load failed', e);
+      setGraphError(e.message || 'Cannot connect to backend');
     } finally {
       setGraphLoading(false);
     }
@@ -85,7 +85,7 @@ export default function App() {
         }
       } catch {}
     } catch (e) {
-      console.error('节点详情加载失败', e);
+      console.error('Node detail load failed', e);
       setNodeDetail(null);
     }
   }, []);
@@ -139,20 +139,20 @@ export default function App() {
         </div>
         <div className="flex items-center gap-2">
           {graphError ? (
-            <span className="text-[10px] text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">未连接</span>
+            <span className="text-[10px] text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">Disconnected</span>
           ) : graphLoading ? (
-            <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">加载中</span>
+            <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">Loading</span>
           ) : (
             <>
               <span className="text-[10px] text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
-                {stats.total} 节点
+                {stats.total} nodes
               </span>
               <span className="text-[10px] text-neutral-500 bg-neutral-800 px-2 py-0.5 rounded-full border border-neutral-700">
-                {stats.links} 关系
+                {stats.links} edges
               </span>
               {stats.alerts > 0 && (
                 <span className="text-[10px] text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">
-                  {stats.alerts} 告警
+                  {stats.alerts} alerts
                 </span>
               )}
             </>
@@ -166,7 +166,7 @@ export default function App() {
               className="text-[10px] bg-neutral-900 border border-neutral-700 text-neutral-400 rounded px-1.5 py-0.5 cursor-pointer hover:border-neutral-600 focus:outline-none focus:border-cyan-500/50"
             >
               <option value="pet_food">Pet Food</option>
-              <option value="all">全部</option>
+              <option value="all">All</option>
               {datasets.filter(d => d.name !== 'pet_food').map(d => (
                 <option key={d.name} value={d.name}>{d.label}</option>
               ))}

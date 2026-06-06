@@ -10,20 +10,20 @@ import EntityInspector from './EntityInspector';
 // ══════════════════════════════════════════════════════
 
 const TYPE_META = {
-  PetFoodProduct: { icon: Package, color: 'text-pink-500', bg: 'bg-pink-500/10', border: 'border-pink-500/20', label: '宠物食品' },
-  Brand:          { icon: Package, color: 'text-cyan-500', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', label: '品牌' },
-  Ingredient:     { icon: FlaskConical, color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/20', label: '成分' },
-  RiskRule:       { icon: Shield, color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/20', label: '风险规则' },
-  Species:        { icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20', label: '物种' },
-  LifeStage:      { icon: Calendar, color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'border-purple-500/20', label: '生命阶段' },
-  Supplier:       { icon: Truck, color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/20', label: '供应商' },
-  RawMaterial:    { icon: FlaskConical, color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/20', label: '原材料' },
-  Component:      { icon: Cpu, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20', label: '零部件' },
-  FinalProduct:   { icon: Package, color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/20', label: '最终产品' },
-  Factory:        { icon: Factory, color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'border-purple-500/20', label: '工厂' },
+  PetFoodProduct: { icon: Package, color: 'text-pink-500', bg: 'bg-pink-500/10', border: 'border-pink-500/20', label: 'Pet Food' },
+  Brand:          { icon: Package, color: 'text-cyan-500', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', label: 'Brand' },
+  Ingredient:     { icon: FlaskConical, color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/20', label: 'Ingredient' },
+  RiskRule:       { icon: Shield, color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/20', label: 'Risk Rule' },
+  Species:        { icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20', label: 'Species' },
+  LifeStage:      { icon: Calendar, color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'border-purple-500/20', label: 'Life Stage' },
+  Supplier:       { icon: Truck, color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/20', label: 'Supplier' },
+  RawMaterial:    { icon: FlaskConical, color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/20', label: 'Raw Material' },
+  Component:      { icon: Cpu, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20', label: 'Component' },
+  FinalProduct:   { icon: Package, color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/20', label: 'Final Product' },
+  Factory:        { icon: Factory, color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'border-purple-500/20', label: 'Factory' },
 };
 
-const DEFAULT_META = { icon: Activity, color: 'text-neutral-400', bg: 'bg-neutral-800', border: 'border-neutral-700', label: '未知' };
+const DEFAULT_META = { icon: Activity, color: 'text-neutral-400', bg: 'bg-neutral-800', border: 'border-neutral-700', label: 'Unknown' };
 
 // ══════════════════════════════════════════════════════
 // Main component
@@ -92,7 +92,7 @@ export default function ObjectsTab({
         <div className="px-3 py-3 border-b border-neutral-800">
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-blue-500" />
-            <span className="text-xs font-semibold text-white">对象类型</span>
+            <span className="text-xs font-semibold text-white">Object Types</span>
           </div>
         </div>
         <div className="py-1">
@@ -125,7 +125,7 @@ export default function ObjectsTab({
           <div className="flex items-center gap-2 mb-1">
             <activeMeta.icon className={`w-4 h-4 ${activeMeta.color}`} />
             <h2 className="text-sm font-semibold text-white">{activeMeta.label}</h2>
-            <span className="text-[10px] text-neutral-500">{filteredNodes.length} 个对象</span>
+            <span className="text-[10px] text-neutral-500">{filteredNodes.length} objects</span>
           </div>
           <div className="relative">
             <Search className="w-3.5 h-3.5 text-neutral-600 absolute left-2.5 top-1/2 -translate-y-1/2" />
@@ -133,7 +133,7 @@ export default function ObjectsTab({
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder={`搜索${activeMeta.label}...`}
+              placeholder={`Search ${activeMeta.label}...`}
               className="w-full bg-neutral-900 border border-neutral-700 rounded-lg text-xs text-white pl-8 pr-3 py-2 outline-none focus:border-blue-500/50 placeholder-neutral-600"
             />
           </div>
@@ -144,7 +144,7 @@ export default function ObjectsTab({
           {filteredNodes.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-neutral-600 gap-2">
               <Search className="w-6 h-6 opacity-30" />
-              <p className="text-xs">无匹配对象</p>
+              <p className="text-xs">No matching objects</p>
             </div>
           ) : activeType === 'PetFoodProduct' ? (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
@@ -208,10 +208,10 @@ function ProductCard({ node, outgoing, isSelected, onSelect, onViewGraph, onExpl
   const riskLabel = { High: 'High Risk', Medium: 'Medium Risk', Low: 'No Risk' }[riskLevel];
 
   const species = node.target_species;
-  const speciesLabel = { cat: '猫', dog: '狗', cat_or_dog: '猫/狗' }[species] || species || '—';
+  const speciesLabel = { cat: 'Cat', dog: 'Dog', cat_or_dog: 'Cat/Dog' }[species] || species || '—';
   const stage = node.life_stage;
-  const stageLabel = { kitten: '幼猫', puppy: '幼犬', adult: '成年', senior: '老年', all_life_stages: '全阶段' }[stage] || stage || '—';
-  const categoryLabel = { dry_food: '干粮', wet_food: '湿粮', treat: '零食', supplement: '营养补充' }[node.category] || node.category || '—';
+  const stageLabel = { kitten: 'Kitten', puppy: 'Puppy', adult: 'Adult', senior: 'Senior', all_life_stages: 'All Stages' }[stage] || stage || '—';
+  const categoryLabel = { dry_food: 'Dry Food', wet_food: 'Wet Food', treat: 'Treat', supplement: 'Supplement' }[node.category] || node.category || '—';
 
   return (
     <div
@@ -246,7 +246,7 @@ function ProductCard({ node, outgoing, isSelected, onSelect, onViewGraph, onExpl
         {riskLinks.length > 0 && (
           <div className="mt-2 flex items-center gap-1.5">
             <Shield className="w-3 h-3 text-red-400" />
-            <span className="text-[10px] text-red-400">触发 {riskLinks.length} 条风险规则</span>
+            <span className="text-[10px] text-red-400">{riskLinks.length} risk rule(s) triggered</span>
           </div>
         )}
       </div>
@@ -257,20 +257,20 @@ function ProductCard({ node, outgoing, isSelected, onSelect, onViewGraph, onExpl
           onClick={e => { e.stopPropagation(); onSelect(); }}
           className="flex items-center gap-1 px-2 py-1 text-[10px] text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-md transition-colors"
         >
-          <Eye className="w-3 h-3" /> 详情
+          <Eye className="w-3 h-3" /> Detail
         </button>
         <button
           onClick={e => { e.stopPropagation(); onViewGraph(); }}
           className="flex items-center gap-1 px-2 py-1 text-[10px] text-neutral-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-md transition-colors"
         >
-          <GitBranch className="w-3 h-3" /> 图谱
+          <GitBranch className="w-3 h-3" /> Graph
         </button>
         {riskLinks.length > 0 && (
           <button
             onClick={e => { e.stopPropagation(); onExplainRisk(); }}
             className="flex items-center gap-1 px-2 py-1 text-[10px] text-neutral-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-md transition-colors"
           >
-            <Zap className="w-3 h-3" /> 解释风险
+            <Zap className="w-3 h-3" /> Explain Risk
           </button>
         )}
       </div>

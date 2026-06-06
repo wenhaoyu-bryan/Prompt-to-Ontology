@@ -27,7 +27,7 @@ export default function SchemaTab({ graphData, currentDomain = DEFAULT_DOMAIN })
       <div className="flex-1 flex items-center justify-center">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
-          <span className="text-xs text-neutral-500">加载 Schema...</span>
+          <span className="text-xs text-neutral-500">Loading Schema...</span>
         </div>
       </div>
     );
@@ -37,7 +37,7 @@ export default function SchemaTab({ graphData, currentDomain = DEFAULT_DOMAIN })
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-neutral-600 gap-3">
         <Network className="w-8 h-8 opacity-20" />
-        <p className="text-xs">Pet Food Schema 未加载</p>
+        <p className="text-xs">Pet Food Schema not loaded</p>
       </div>
     );
   }
@@ -67,7 +67,7 @@ export default function SchemaTab({ graphData, currentDomain = DEFAULT_DOMAIN })
           <div>
             <h2 className="text-base font-bold text-white">Pet Food Schema</h2>
             <p className="text-xs text-neutral-500">
-              {objectTypes.length} 类型 · {totalProps} 属性 · {linkTypes.length} 关系类型 · {rules.length} 规则 · {actionTypes.length} 动作
+              {objectTypes.length} types · {totalProps} properties · {linkTypes.length} link types · {rules.length} rules · {actionTypes.length} actions
             </p>
           </div>
         </div>
@@ -79,35 +79,35 @@ export default function SchemaTab({ graphData, currentDomain = DEFAULT_DOMAIN })
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="bg-cyan-500/10 border border-neutral-800 rounded-xl px-3 py-2.5 flex items-center gap-2.5">
             <Layers className="w-4 h-4 text-cyan-400" />
-            <div><p className="text-[10px] text-neutral-500">对象类型</p><p className="text-lg font-bold text-cyan-400">{objectTypes.length}</p></div>
+            <div><p className="text-[10px] text-neutral-500">Object Types</p><p className="text-lg font-bold text-cyan-400">{objectTypes.length}</p></div>
           </div>
           <div className="bg-green-500/10 border border-neutral-800 rounded-xl px-3 py-2.5 flex items-center gap-2.5">
             <Database className="w-4 h-4 text-green-400" />
-            <div><p className="text-[10px] text-neutral-500">对象实例</p><p className="text-lg font-bold text-green-400">{graphData.nodes.length}</p></div>
+            <div><p className="text-[10px] text-neutral-500">Instances</p><p className="text-lg font-bold text-green-400">{graphData.nodes.length}</p></div>
           </div>
           <div className="bg-purple-500/10 border border-neutral-800 rounded-xl px-3 py-2.5 flex items-center gap-2.5">
             <Link2 className="w-4 h-4 text-purple-400" />
-            <div><p className="text-[10px] text-neutral-500">关系类型</p><p className="text-lg font-bold text-purple-400">{linkTypes.length}</p></div>
+            <div><p className="text-[10px] text-neutral-500">Link Types</p><p className="text-lg font-bold text-purple-400">{linkTypes.length}</p></div>
           </div>
           <div className="bg-amber-500/10 border border-neutral-800 rounded-xl px-3 py-2.5 flex items-center gap-2.5">
             <Activity className="w-4 h-4 text-amber-400" />
-            <div><p className="text-[10px] text-neutral-500">关系实例</p><p className="text-lg font-bold text-amber-400">{graphData.links.length}</p></div>
+            <div><p className="text-[10px] text-neutral-500">Relationships</p><p className="text-lg font-bold text-amber-400">{graphData.links.length}</p></div>
           </div>
           <div className="bg-red-500/10 border border-neutral-800 rounded-xl px-3 py-2.5 flex items-center gap-2.5">
             <Shield className="w-4 h-4 text-red-400" />
-            <div><p className="text-[10px] text-neutral-500">风险规则</p><p className="text-lg font-bold text-red-400">{rules.length}</p></div>
+            <div><p className="text-[10px] text-neutral-500">Risk Rules</p><p className="text-lg font-bold text-red-400">{rules.length}</p></div>
           </div>
           <div className="bg-orange-500/10 border border-neutral-800 rounded-xl px-3 py-2.5 flex items-center gap-2.5">
             <AlertTriangle className="w-4 h-4 text-orange-400" />
-            <div><p className="text-[10px] text-neutral-500">风险边</p><p className="text-lg font-bold text-orange-400">{riskEdgeCount}</p></div>
+            <div><p className="text-[10px] text-neutral-500">Risk Edges</p><p className="text-lg font-bold text-orange-400">{riskEdgeCount}</p></div>
           </div>
           <div className="bg-green-500/10 border border-neutral-800 rounded-xl px-3 py-2.5 flex items-center gap-2.5">
             <Zap className="w-4 h-4 text-green-400" />
-            <div><p className="text-[10px] text-neutral-500">动作定义</p><p className="text-lg font-bold text-green-400">{actionTypes.length}</p></div>
+            <div><p className="text-[10px] text-neutral-500">Actions</p><p className="text-lg font-bold text-green-400">{actionTypes.length}</p></div>
           </div>
           <div className="bg-blue-500/10 border border-neutral-800 rounded-xl px-3 py-2.5 flex items-center gap-2.5">
             <FileText className="w-4 h-4 text-blue-400" />
-            <div><p className="text-[10px] text-neutral-500">属性总数</p><p className="text-lg font-bold text-blue-400">{totalProps}</p></div>
+            <div><p className="text-[10px] text-neutral-500">Total Props</p><p className="text-lg font-bold text-blue-400">{totalProps}</p></div>
           </div>
         </div>
 
@@ -257,12 +257,12 @@ function ObjectTypeCard({ typeName, typeDef, colorIndex = 0, instanceCount }) {
       <div className="flex items-center gap-2 mb-1">
         <div className={`w-2.5 h-2.5 rounded-full ${dotColor}`} />
         <span className="text-xs font-bold text-white">{typeName}</span>
-        <span className="text-[10px] text-neutral-600 ml-auto">{instanceCount} 实例</span>
+        <span className="text-[10px] text-neutral-600 ml-auto">{instanceCount} instances</span>
       </div>
       {typeDef.description && (
         <p className="text-[9px] text-neutral-500 mb-1">{typeDef.description}</p>
       )}
-      <div className="text-[10px] text-neutral-500">{props.length} 属性</div>
+      <div className="text-[10px] text-neutral-500">{props.length} properties</div>
 
       {expanded && props.length > 0 && (
         <div className="mt-2 pt-2 border-t border-neutral-800 space-y-0.5 max-h-32 overflow-y-auto">

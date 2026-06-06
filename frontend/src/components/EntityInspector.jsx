@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 
 // ══════════════════════════════════════════════════════
-// 小型工具组件
+// Utility components
 // ══════════════════════════════════════════════════════
 
 function ProgressBar({ value, max, color = 'bg-blue-500', label }) {
@@ -16,7 +16,7 @@ function ProgressBar({ value, max, color = 'bg-blue-500', label }) {
     <div className="space-y-1">
       <div className="flex justify-between text-[10px] text-neutral-500">
         <span>{label || `${pct.toFixed(1)}%`}</span>
-        {danger && <span className="text-red-400 font-medium">低水位</span>}
+        {danger && <span className="text-red-400 font-medium">Low</span>}
       </div>
       <div className="w-full h-2 rounded-full bg-neutral-800 overflow-hidden">
         <div className={`h-full rounded-full transition-all duration-700 ${danger ? 'bg-red-500' : color}`}
@@ -51,7 +51,7 @@ function Badge({ label, color = 'neutral' }) {
 }
 
 // ══════════════════════════════════════════════════════
-// 主组件
+// Main component
 // ══════════════════════════════════════════════════════
 
 export default function EntityInspector({
@@ -67,9 +67,9 @@ export default function EntityInspector({
           <Cpu className="w-6 h-6 opacity-25" />
         </div>
         <p className="text-xs text-center leading-relaxed">
-          点击图谱中的节点
+          Click a node in the graph
           <br />
-          查看对象 360° 本体详情
+          to view 360° ontology details
         </p>
         <p className="text-[10px] text-neutral-700">Overview · Links · Actions</p>
       </div>
@@ -80,22 +80,22 @@ export default function EntityInspector({
   const outgoing = nodeDetail.outgoing_links || [];
   const incoming = nodeDetail.incoming_links || [];
 
-  // 动态标签/颜色：优先用已知中文名，否则直接用 Neo4j 标签
-  const KNOWN_LABELS = { Supplier: '供应商', RawMaterial: '原材料', Component: '零部件', FinalProduct: '最终产品', Factory: '工厂', Plant: '工厂', PetFoodProduct: '宠物食品', Brand: '品牌', Ingredient: '成分', RiskRule: '风险规则', Species: '物种', LifeStage: '生命阶段' };
+  // Dynamic labels/colors
+  const KNOWN_LABELS = { Supplier: 'Supplier', RawMaterial: 'Raw Material', Component: 'Component', FinalProduct: 'Final Product', Factory: 'Factory', Plant: 'Factory', PetFoodProduct: 'Pet Food', Brand: 'Brand', Ingredient: 'Ingredient', RiskRule: 'Risk Rule', Species: 'Species', LifeStage: 'Life Stage' };
   const KNOWN_COLORS = { Supplier: 'red', RawMaterial: 'amber', Component: 'blue', FinalProduct: 'green', Factory: 'purple', Plant: 'purple', PetFoodProduct: 'pink', Brand: 'cyan', Ingredient: 'green', RiskRule: 'amber', Species: 'blue', LifeStage: 'purple' };
   const typeLabel = { [objType]: KNOWN_LABELS[objType] || objType };
   const typeColor = { [objType]: KNOWN_COLORS[objType] || 'neutral' };
 
   const tabs = [
-    { id: 'overview', label: '概览', icon: Info },
-    { id: 'links', label: `链路 (${incoming.length + outgoing.length})`, icon: Link2 },
-    { id: 'blast', label: '影响分析', icon: AlertTriangle },
-    { id: 'actions', label: '动作', icon: Zap },
+    { id: 'overview', label: 'Overview', icon: Info },
+    { id: 'links', label: `Links (${incoming.length + outgoing.length})`, icon: Link2 },
+    { id: 'blast', label: 'Impact', icon: AlertTriangle },
+    { id: 'actions', label: 'Actions', icon: Zap },
   ];
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* ---- 头部 ---- */}
+      {/* ---- Header ---- */}
       <div className="px-4 py-3 border-b border-neutral-800 bg-neutral-950 shrink-0">
         <div className="flex items-center gap-2 mb-1">
           <TypeIcon type={objType} />
@@ -103,12 +103,12 @@ export default function EntityInspector({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-neutral-600 font-mono">{selectedNode.id}</span>
-          <Badge label={typeLabel[objType] || '未知'} color={typeColor[objType] || 'neutral'} />
-          {nodeDetail.alert && <Badge label="告警" color="red" />}
+          <Badge label={typeLabel[objType] || 'Unknown'} color={typeColor[objType] || 'neutral'} />
+          {nodeDetail.alert && <Badge label="Alert" color="red" />}
         </div>
       </div>
 
-      {/* ---- 标签栏 ---- */}
+      {/* ---- Tab bar ---- */}
       <div className="flex border-b border-neutral-800 shrink-0">
         {tabs.map(t => (
           <button
@@ -126,7 +126,7 @@ export default function EntityInspector({
         ))}
       </div>
 
-      {/* ---- 内容 ---- */}
+      {/* ---- Content ---- */}
       <div className="flex-1 overflow-y-auto px-4 py-3">
         {activeTab === 'overview' && (
           <OverviewTab objType={objType} detail={nodeDetail} />
@@ -151,7 +151,7 @@ export default function EntityInspector({
 }
 
 // ══════════════════════════════════════════════════════
-// 概览标签页
+// Overview tab
 // ══════════════════════════════════════════════════════
 
 function OverviewTab({ objType, detail }) {
@@ -166,7 +166,7 @@ function OverviewTab({ objType, detail }) {
   if (objType === 'RiskRule') return <RiskRuleOverview detail={detail} />;
   if (objType === 'Species') return <SpeciesOverview detail={detail} />;
   if (objType === 'LifeStage') return <LifeStageOverview detail={detail} />;
-  return <p className="text-xs text-neutral-500">未知对象类型</p>;
+  return <p className="text-xs text-neutral-500">Unknown object type</p>;
 }
 
 function RawMaterialOverview({ detail }) {
@@ -174,40 +174,40 @@ function RawMaterialOverview({ detail }) {
   const threshold = detail.threshold || 0;
   const isAlert = stock < threshold;
   const quality = detail.quality_score || detail.qualityScore || 0;
-  const unit = detail.unit || '吨';
+  const unit = detail.unit || 't';
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <DataCard>
-          <p className="text-[10px] text-neutral-500 mb-0.5">当前库存</p>
+          <p className="text-[10px] text-neutral-500 mb-0.5">Current Stock</p>
           <p className={`text-xl font-bold ${isAlert ? 'text-red-400' : 'text-white'}`}>{stock}</p>
           <p className="text-[10px] text-neutral-600">{unit}</p>
         </DataCard>
         <DataCard>
-          <p className="text-[10px] text-neutral-500 mb-0.5">安全阈值</p>
+          <p className="text-[10px] text-neutral-500 mb-0.5">Safety Threshold</p>
           <p className="text-xl font-bold text-white">{threshold}</p>
           <p className="text-[10px] text-neutral-600">{unit}</p>
         </DataCard>
       </div>
 
       <DataCard>
-        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">库存水位</p>
+        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">Stock Level</p>
         <ProgressBar value={stock} max={threshold * 1.5} color="bg-amber-500"
           label={`${stock} / ${threshold} ${unit}`} />
       </DataCard>
 
       <DataCard>
-        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">质量指标</p>
-        <ProgressBar value={quality * 100} max={100} color="bg-blue-500" label={`质检得分 ${(quality * 100).toFixed(0)}%`} />
+        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">Quality</p>
+        <ProgressBar value={quality * 100} max={100} color="bg-blue-500" label={`Quality Score ${(quality * 100).toFixed(0)}%`} />
       </DataCard>
 
       {isAlert && (
         <div className="flex items-start gap-2 px-3 py-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
           <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
           <div>
-            <p className="text-xs font-medium text-red-300">库存告警</p>
-            <p className="text-[10px] text-red-400/80">缺口 {(threshold - stock).toFixed(1)} {unit}，建议立即发起采购</p>
+            <p className="text-xs font-medium text-red-300">Stock Alert</p>
+            <p className="text-[10px] text-red-400/80">Deficit {(threshold - stock).toFixed(1)} {unit} — reorder immediately</p>
           </div>
         </div>
       )}
@@ -226,26 +226,26 @@ function ComponentOverview({ detail }) {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <DataCard>
-          <p className="text-[10px] text-neutral-500 mb-0.5">库存数量</p>
+          <p className="text-[10px] text-neutral-500 mb-0.5">Stock</p>
           <p className="text-xl font-bold text-white">{stock}</p>
-          <p className="text-[10px] text-neutral-600">{detail.unit || '件'}</p>
+          <p className="text-[10px] text-neutral-600">{detail.unit || 'pcs'}</p>
         </DataCard>
         <DataCard>
-          <p className="text-[10px] text-neutral-500 mb-0.5">日消耗量</p>
+          <p className="text-[10px] text-neutral-500 mb-0.5">Daily Usage</p>
           <p className="text-xl font-bold text-white">{daily}</p>
-          <p className="text-[10px] text-neutral-600">件/天</p>
+          <p className="text-[10px] text-neutral-600">pcs/day</p>
         </DataCard>
       </div>
 
       <DataCard>
-        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">可支撑天数</p>
+        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">Days Remaining</p>
         <ProgressBar value={days} max={10} color={days < 3 ? 'bg-red-500' : 'bg-blue-500'}
-          label={`${days.toFixed(1)} 天`} />
+          label={`${days.toFixed(1)} days`} />
       </DataCard>
 
       <DataCard>
         <div className="flex justify-between items-center">
-          <span className="text-[10px] text-neutral-500">不良率</span>
+          <span className="text-[10px] text-neutral-500">Defect Rate</span>
           <span className={`text-xs font-bold ${defect > 0.03 ? 'text-red-400' : 'text-green-400'}`}>
             {(defect * 100).toFixed(1)}%
           </span>
@@ -256,8 +256,8 @@ function ComponentOverview({ detail }) {
         <div className="flex items-start gap-2 px-3 py-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
           <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
           <div>
-            <p className="text-xs font-medium text-red-300">库存告急</p>
-            <p className="text-[10px] text-red-400/80">仅剩 {days.toFixed(1)} 天用量</p>
+            <p className="text-xs font-medium text-red-300">Critical Stock</p>
+            <p className="text-[10px] text-red-400/80">Only {days.toFixed(1)} days of supply remaining</p>
           </div>
         </div>
       )}
@@ -275,19 +275,19 @@ function FinalProductOverview({ detail }) {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <DataCard>
-          <p className="text-[10px] text-neutral-500 mb-0.5">目标产能</p>
+          <p className="text-[10px] text-neutral-500 mb-0.5">Target Yield</p>
           <p className="text-xl font-bold text-white">{target}</p>
-          <p className="text-[10px] text-neutral-600">{detail.unit || '台'}/月</p>
+          <p className="text-[10px] text-neutral-600">{detail.unit || 'units'}/mo</p>
         </DataCard>
         <DataCard>
-          <p className="text-[10px] text-neutral-500 mb-0.5">实际产能</p>
+          <p className="text-[10px] text-neutral-500 mb-0.5">Actual Yield</p>
           <p className={`text-xl font-bold ${isAlert ? 'text-red-400' : 'text-white'}`}>{current}</p>
-          <p className="text-[10px] text-neutral-600">{detail.unit || '台'}/月</p>
+          <p className="text-[10px] text-neutral-600">{detail.unit || 'units'}/mo</p>
         </DataCard>
       </div>
 
       <DataCard>
-        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">产能达标率</p>
+        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">Yield Achievement</p>
         <ProgressBar value={ratio * 100} max={100} color={isAlert ? 'bg-red-500' : 'bg-green-500'}
           label={`${(ratio * 100).toFixed(1)}%`} />
       </DataCard>
@@ -295,8 +295,8 @@ function FinalProductOverview({ detail }) {
       {isAlert && (
         <DataCard>
           <div className="flex justify-between items-center">
-            <span className="text-[10px] text-neutral-500">产能缺口</span>
-            <span className="text-xs font-bold text-red-400">{target - current} {detail.unit || '台'}/月</span>
+            <span className="text-[10px] text-neutral-500">Yield Gap</span>
+            <span className="text-xs font-bold text-red-400">{target - current} {detail.unit || 'units'}/mo</span>
           </div>
         </DataCard>
       )}
@@ -304,7 +304,7 @@ function FinalProductOverview({ detail }) {
       {!isAlert && (
         <div className="flex items-center gap-2 px-3 py-2 bg-green-500/10 border border-green-500/20 rounded-lg">
           <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
-          <p className="text-xs text-green-300">产能达标，状态健康</p>
+          <p className="text-xs text-green-300">Target achieved — healthy</p>
         </div>
       )}
     </div>
@@ -318,9 +318,9 @@ function SupplierOverview({ detail }) {
   const cert = detail.certification || '';
 
   const riskConfig = {
-    High: { color: 'red', label: '高风险', desc: '该供应商存在严重断供风险' },
-    Medium: { color: 'amber', label: '中风险', desc: '需定期跟踪交付表现' },
-    Low: { color: 'green', label: '低风险', desc: '供应稳定，可信任' },
+    High: { color: 'red', label: 'High Risk', desc: 'Severe supply disruption risk' },
+    Medium: { color: 'amber', label: 'Medium Risk', desc: 'Regular delivery tracking required' },
+    Low: { color: 'green', label: 'Low Risk', desc: 'Stable and reliable supply' },
   };
   const rc = riskConfig[risk] || riskConfig.Medium;
 
@@ -339,14 +339,14 @@ function SupplierOverview({ detail }) {
       </DataCard>
 
       <DataCard>
-        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">交货准时率</p>
+        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">On-time Delivery</p>
         <ProgressBar value={onTime * 100} max={100} color={onTime > 0.8 ? 'bg-green-500' : onTime > 0.6 ? 'bg-amber-500' : 'bg-red-500'}
           label={`${(onTime * 100).toFixed(0)}%`} />
       </DataCard>
 
       <div className="space-y-2">
-        <InfoRow icon={MapPin} label="所在地" value={location} />
-        <InfoRow icon={Shield} label="资质" value={cert} color="text-green-400" />
+        <InfoRow icon={MapPin} label="Location" value={location} />
+        <InfoRow icon={Shield} label="Certification" value={cert} color="text-green-400" />
       </div>
     </div>
   );
@@ -359,9 +359,9 @@ function FactoryOverview({ detail }) {
   const location = detail.location || '';
 
   const statusConfig = {
-    Running: { color: 'green', label: '运行中' },
-    Maintenance: { color: 'amber', label: '维护中' },
-    Shutdown: { color: 'red', label: '已停工' },
+    Running: { color: 'green', label: 'Running' },
+    Maintenance: { color: 'amber', label: 'Maintenance' },
+    Shutdown: { color: 'red', label: 'Shutdown' },
   };
   const sc = statusConfig[status] || statusConfig.Running;
 
@@ -372,18 +372,18 @@ function FactoryOverview({ detail }) {
           <div className={`w-2.5 h-2.5 rounded-full bg-${sc.color}-500`} />
           <p className="text-xs font-bold text-white">{sc.label}</p>
         </div>
-        <p className="text-[10px] text-neutral-500">生产状态</p>
+        <p className="text-[10px] text-neutral-500">Production Status</p>
       </DataCard>
 
       <DataCard>
-        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">产能利用率</p>
+        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">Capacity Utilization</p>
         <ProgressBar value={util * 100} max={100} color="bg-purple-500"
           label={`${(util * 100).toFixed(1)}%`} />
       </DataCard>
 
       <div className="space-y-2">
-        <InfoRow icon={Users} label="在岗人数" value={`${hc} 人`} />
-        <InfoRow icon={MapPin} label="所在地" value={location} />
+        <InfoRow icon={Users} label="Headcount" value={`${hc}`} />
+        <InfoRow icon={MapPin} label="Location" value={location} />
       </div>
     </div>
   );
@@ -407,10 +407,10 @@ function PetFoodProductOverview({ detail }) {
   const stageLink = outgoing.find(l => l.linkType === 'SUITABLE_FOR');
 
   const species = props.target_species || 'unknown';
-  const speciesLabel = { cat: '猫', dog: '狗', cat_or_dog: '猫/狗', unknown: '未知' }[species] || species;
+  const speciesLabel = { cat: 'Cat', dog: 'Dog', cat_or_dog: 'Cat/Dog', unknown: 'Unknown' }[species] || species;
   const stage = props.life_stage || 'unknown';
-  const stageLabel = { kitten: '幼猫', puppy: '幼犬', adult: '成年', senior: '老年', all_life_stages: '全阶段', unknown: '未知' }[stage] || stage;
-  const categoryLabel = { dry_food: '干粮', wet_food: '湿粮', treat: '零食', supplement: '营养补充', unknown: '未知' }[props.category] || props.category;
+  const stageLabel = { kitten: 'Kitten', puppy: 'Puppy', adult: 'Adult', senior: 'Senior', all_life_stages: 'All Stages', unknown: 'Unknown' }[stage] || stage;
+  const categoryLabel = { dry_food: 'Dry Food', wet_food: 'Wet Food', treat: 'Treat', supplement: 'Supplement', unknown: 'Unknown' }[props.category] || props.category;
 
   // Overall risk level
   const sevRank = { critical: 3, high: 3, medium: 2, low: 1 };
@@ -441,8 +441,8 @@ function PetFoodProductOverview({ detail }) {
           </div>
         </div>
         <div className="px-4 py-2 flex items-center gap-3 text-[9px] text-neutral-600">
-          {props.country && <span>产地: {props.country}</span>}
-          {props.barcode && <span>条码: {props.barcode}</span>}
+          {props.country && <span>Origin: {props.country}</span>}
+          {props.barcode && <span>Barcode: {props.barcode}</span>}
           {props.product_id && <span className="font-mono">{props.product_id}</span>}
         </div>
       </DataCard>
@@ -481,18 +481,18 @@ function NutritionPanel({ props, riskLinks }) {
   }
 
   const rows = [
-    { key: 'protein_100g', label: '蛋白质', unit: 'g', color: 'bg-blue-500', ref: 30, highGood: true },
-    { key: 'fat_100g', label: '脂肪', unit: 'g', color: 'bg-amber-500', ref: 20 },
-    { key: 'fiber_100g', label: '纤维', unit: 'g', color: 'bg-green-500', ref: 5 },
-    { key: 'moisture_100g', label: '水分', unit: 'g', color: 'bg-cyan-500', ref: 80 },
-    { key: 'ash_100g', label: '灰分', unit: 'g', color: 'bg-neutral-500', ref: 10 },
-    { key: 'phosphorus_100g', label: '磷', unit: 'g', color: 'bg-purple-500', ref: 0.8 },
-    { key: 'calcium_100g', label: '钙', unit: 'g', color: 'bg-pink-500', ref: 1.5 },
+    { key: 'protein_100g', label: 'Protein', unit: 'g', color: 'bg-blue-500', ref: 30, highGood: true },
+    { key: 'fat_100g', label: 'Fat', unit: 'g', color: 'bg-amber-500', ref: 20 },
+    { key: 'fiber_100g', label: 'Fiber', unit: 'g', color: 'bg-green-500', ref: 5 },
+    { key: 'moisture_100g', label: 'Moisture', unit: 'g', color: 'bg-cyan-500', ref: 80 },
+    { key: 'ash_100g', label: 'Ash', unit: 'g', color: 'bg-neutral-500', ref: 10 },
+    { key: 'phosphorus_100g', label: 'Phosphorus', unit: 'g', color: 'bg-purple-500', ref: 0.8 },
+    { key: 'calcium_100g', label: 'Calcium', unit: 'g', color: 'bg-pink-500', ref: 1.5 },
   ];
 
   return (
     <DataCard>
-      <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">营养信息 (g/100g)</p>
+      <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">Nutrition (g/100g)</p>
       <div className="space-y-1.5">
         {rows.map(r => {
           const val = props[r.key];
@@ -529,7 +529,7 @@ function IngredientPanel({ ingredientLinks }) {
   return (
     <DataCard>
       <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-        成分列表 ({ingredientLinks.length})
+        Ingredients ({ingredientLinks.length})
       </p>
       <div className="space-y-1">
         {ingredientLinks.map((l, i) => {
@@ -549,12 +549,12 @@ function IngredientPanel({ ingredientLinks }) {
               </span>
               {isAllergen && (
                 <span className="text-[8px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/20 shrink-0">
-                  过敏原
+                  Allergen
                 </span>
               )}
               {isRiskTag && !isAllergen && (
                 <span className="text-[8px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/20 shrink-0">
-                  关注
+                  Watch
                 </span>
               )}
             </div>
@@ -573,7 +573,7 @@ function RiskPanel({ riskLinks }) {
     return (
       <div className="flex items-center gap-2 px-3 py-2.5 bg-green-500/10 border border-green-500/20 rounded-xl">
         <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
-        <p className="text-xs text-green-300">未触发任何风险规则</p>
+        <p className="text-xs text-green-300">No risk rules triggered</p>
       </div>
     );
   }
@@ -581,7 +581,7 @@ function RiskPanel({ riskLinks }) {
   return (
     <DataCard>
       <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-        风险解释 ({riskLinks.length})
+        Risk Explanation ({riskLinks.length})
       </p>
       <div className="space-y-3">
         {riskLinks.map((l, i) => {
@@ -648,30 +648,30 @@ function RuleEvaluationSection({ productId }) {
   return (
     <DataCard>
       <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-        规则评估状态
+        Rule Evaluation
       </p>
       <div className="grid grid-cols-4 gap-2 mb-3">
         <div className="text-center">
           <p className="text-lg font-bold text-red-400">{triggered.length}</p>
-          <p className="text-[9px] text-neutral-600">已触发</p>
+          <p className="text-[9px] text-neutral-600">Triggered</p>
         </div>
         <div className="text-center">
           <p className="text-lg font-bold text-green-400">{passed.length}</p>
-          <p className="text-[9px] text-neutral-600">已通过</p>
+          <p className="text-[9px] text-neutral-600">Passed</p>
         </div>
         <div className="text-center">
           <p className="text-lg font-bold text-amber-400">{notEvaluable.length}</p>
-          <p className="text-[9px] text-neutral-600">数据不足</p>
+          <p className="text-[9px] text-neutral-600">Not Evaluable</p>
         </div>
         <div className="text-center">
           <p className="text-lg font-bold text-neutral-500">{notApplicable.length}</p>
-          <p className="text-[9px] text-neutral-600">不适用</p>
+          <p className="text-[9px] text-neutral-600">N/A</p>
         </div>
       </div>
 
       {notEvaluable.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[9px] text-amber-400 font-medium">数据不足，无法评估：</p>
+          <p className="text-[9px] text-amber-400 font-medium">Insufficient data to evaluate:：</p>
           {notEvaluable.map((e, i) => (
             <div key={i} className="flex items-start gap-2 px-2 py-1.5 bg-amber-500/5 border border-amber-500/10 rounded-lg">
               <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
@@ -679,7 +679,7 @@ function RuleEvaluationSection({ productId }) {
                 <span className="text-[10px] font-medium text-amber-300">{e.rule_id}</span>
                 <p className="text-[9px] text-amber-400/80">{e.evidence}</p>
                 {e.missing_fields?.length > 0 && (
-                  <p className="text-[9px] text-neutral-500">缺少字段: {e.missing_fields.join(', ')}</p>
+                  <p className="text-[9px] text-neutral-500">Missing fields: {e.missing_fields.join(', ')}</p>
                 )}
               </div>
             </div>
@@ -690,7 +690,7 @@ function RuleEvaluationSection({ productId }) {
       {notEvaluable.length === 0 && (
         <div className="flex items-center gap-2 px-2 py-1.5 bg-green-500/5 border border-green-500/10 rounded-lg">
           <CheckCircle className="w-3 h-3 text-green-400 shrink-0" />
-          <p className="text-[10px] text-green-300">所有规则均可完整评估</p>
+          <p className="text-[10px] text-green-300">All rules fully evaluated</p>
         </div>
       )}
     </DataCard>
@@ -698,11 +698,11 @@ function RuleEvaluationSection({ productId }) {
 }
 
 const _PRODUCT_ACTIONS = [
-  { id: 'explain', label: '解释风险', desc: '基于图谱证据链解释该产品为什么触发风险规则', icon: Shield, iconColor: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', needsRisk: true },
-  { id: 'recommend', label: '推荐替代', desc: '根据物种和生命阶段推荐无风险的替代产品', icon: Package, iconColor: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', needsRisk: false },
-  { id: 'watchlist', label: '加入监控', desc: '将该产品加入持续监控清单，跟踪风险变化', icon: AlertTriangle, iconColor: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', needsRisk: true },
-  { id: 'report', label: '成分报告', desc: '生成该产品的完整成分分析报告', icon: FlaskConical, iconColor: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20', needsRisk: false },
-  { id: 'compare', label: '比较产品', desc: '选择另一个产品进行风险和营养对比', icon: ArrowRight, iconColor: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', needsRisk: false },
+  { id: 'explain', label: 'Explain Risk', desc: 'Explain why this product triggers risk rules using graph evidence', icon: Shield, iconColor: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', needsRisk: true },
+  { id: 'recommend', label: 'Recommend Alt.', desc: 'Recommend risk-free alternatives by species and life stage', icon: Package, iconColor: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', needsRisk: false },
+  { id: 'watchlist', label: 'Watchlist', desc: 'Add to monitoring list to track risk changes', icon: AlertTriangle, iconColor: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', needsRisk: true },
+  { id: 'report', label: 'Ingredient Report', desc: 'Generate full ingredient analysis report', icon: FlaskConical, iconColor: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20', needsRisk: false },
+  { id: 'compare', label: 'Compare', desc: 'Compare risk and nutrition with another product', icon: ArrowRight, iconColor: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', needsRisk: false },
 ];
 
 function ProductActionsPanel({ detail, riskLinks }) {
@@ -710,7 +710,7 @@ function ProductActionsPanel({ detail, riskLinks }) {
 
   return (
     <DataCard>
-      <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">产品动作</p>
+      <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">Product Actions</p>
       <div className="space-y-1.5">
         {_PRODUCT_ACTIONS.map(a => {
           const enabled = !a.needsRisk || hasRisks;
@@ -729,7 +729,7 @@ function ProductActionsPanel({ detail, riskLinks }) {
                 <span className={`text-[11px] font-semibold ${enabled ? 'text-white' : 'text-neutral-600'}`}>
                   {a.label}
                 </span>
-                {!enabled && <span className="text-[8px] text-neutral-700 ml-auto">需要风险触发</span>}
+                {!enabled && <span className="text-[8px] text-neutral-700 ml-auto">Requires risk trigger</span>}
               </div>
               <p className={`text-[9px] ml-5.5 ${enabled ? 'text-neutral-500' : 'text-neutral-700'}`}>
                 {a.desc}
@@ -758,31 +758,31 @@ function BrandOverview({ detail }) {
   return (
     <div className="space-y-4">
       <DataCard>
-        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">品牌信息</p>
+        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">Brand Info</p>
         <div className="space-y-1.5">
-          <InfoRow label="品牌 ID" value={props.brand_id || '—'} />
-          <InfoRow label="品牌名" value={props.brand_name || '—'} />
-          <InfoRow label="国家" value={props.country || '—'} />
+          <InfoRow label="Brand ID" value={props.brand_id || '—'} />
+          <InfoRow label="Brand Name" value={props.brand_name || '—'} />
+          <InfoRow label="Country" value={props.country || '—'} />
         </div>
       </DataCard>
 
       <div className="grid grid-cols-2 gap-3">
         <DataCard>
-          <p className="text-[10px] text-neutral-500 mb-0.5">旗下产品</p>
+          <p className="text-[10px] text-neutral-500 mb-0.5">Products</p>
           <p className="text-xl font-bold text-cyan-400">{productLinks.length}</p>
-          <p className="text-[10px] text-neutral-600">个</p>
+          <p className="text-[10px] text-neutral-600">items</p>
         </DataCard>
         <DataCard>
-          <p className="text-[10px] text-neutral-500 mb-0.5">关联链路</p>
+          <p className="text-[10px] text-neutral-500 mb-0.5">Links</p>
           <p className="text-xl font-bold text-white">{incoming.length}</p>
-          <p className="text-[10px] text-neutral-600">条</p>
+          <p className="text-[10px] text-neutral-600">links</p>
         </DataCard>
       </div>
 
       {productLinks.length > 0 && (
         <DataCard>
           <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-            旗下产品 ({productLinks.length})
+            Products ({productLinks.length})
           </p>
           <div className="space-y-1">
             {productLinks.slice(0, 10).map((l, i) => (
@@ -793,7 +793,7 @@ function BrandOverview({ detail }) {
               </div>
             ))}
             {productLinks.length > 10 && (
-              <p className="text-[9px] text-neutral-600 mt-1">还有 {productLinks.length - 10} 个产品...</p>
+              <p className="text-[9px] text-neutral-600 mt-1">+ {productLinks.length - 10}  more...</p>
             )}
           </div>
         </DataCard>
@@ -802,7 +802,7 @@ function BrandOverview({ detail }) {
       {productLinks.length === 0 && (
         <div className="flex items-center gap-2 px-3 py-2 bg-neutral-800/50 border border-neutral-700 rounded-lg">
           <Info className="w-4 h-4 text-neutral-500 shrink-0" />
-          <p className="text-xs text-neutral-500">暂无关联产品</p>
+          <p className="text-xs text-neutral-500">No linked products</p>
         </div>
       )}
     </div>
@@ -825,33 +825,33 @@ function IngredientOverview({ detail }) {
         <div className="flex items-start gap-2 px-3 py-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
           <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
           <div>
-            <p className="text-xs font-medium text-red-300">常见过敏原</p>
-            <p className="text-[10px] text-red-400/80">该成分被标记为常见过敏原，需在产品标签中明确标注</p>
+            <p className="text-xs font-medium text-red-300">Common Allergen</p>
+            <p className="text-[10px] text-red-400/80">This ingredient is flagged as a common allergen and must be clearly labeled</p>
           </div>
         </div>
       )}
 
       <DataCard>
-        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">成分信息</p>
+        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">Ingredient Info</p>
         <div className="space-y-1.5">
-          <InfoRow label="成分 ID" value={props.ingredient_id || '—'} />
-          <InfoRow label="成分名" value={props.ingredient_name || '—'} />
-          <InfoRow label="类型" value={props.ingredient_type || '—'} />
-          <InfoRow label="风险标签" value={props.risk_tag || '无'} color={props.risk_tag ? 'text-amber-400' : 'text-neutral-500'} />
-          <InfoRow label="常见过敏原" value={isAllergen ? '是' : '否'} color={isAllergen ? 'text-red-400' : 'text-green-400'} />
+          <InfoRow label="Ingredient ID" value={props.ingredient_id || '—'} />
+          <InfoRow label="Ingredient Name" value={props.ingredient_name || '—'} />
+          <InfoRow label="Type" value={props.ingredient_type || '—'} />
+          <InfoRow label="Risk Tag" value={props.risk_tag || 'None'} color={props.risk_tag ? 'text-amber-400' : 'text-neutral-500'} />
+          <InfoRow label="Common Allergen" value={isAllergen ? 'Yes' : 'No'} color={isAllergen ? 'text-red-400' : 'text-green-400'} />
         </div>
       </DataCard>
 
       <DataCard>
-        <p className="text-[10px] text-neutral-500 mb-0.5">包含该成分的产品</p>
+        <p className="text-[10px] text-neutral-500 mb-0.5">Products containing this ingredient</p>
         <p className="text-xl font-bold text-green-400">{productLinks.length}</p>
-        <p className="text-[10px] text-neutral-600">个</p>
+        <p className="text-[10px] text-neutral-600">items</p>
       </DataCard>
 
       {productLinks.length > 0 && (
         <DataCard>
           <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-            含此成分的产品 ({productLinks.length})
+            Products with this ingredient ({productLinks.length})
           </p>
           <div className="space-y-1">
             {productLinks.slice(0, 10).map((l, i) => (
@@ -862,7 +862,7 @@ function IngredientOverview({ detail }) {
               </div>
             ))}
             {productLinks.length > 10 && (
-              <p className="text-[9px] text-neutral-600 mt-1">还有 {productLinks.length - 10} 个产品...</p>
+              <p className="text-[9px] text-neutral-600 mt-1">+ {productLinks.length - 10} more...</p>
             )}
           </div>
         </DataCard>
@@ -890,28 +890,28 @@ function RiskRuleOverview({ detail }) {
           <span className="text-xs font-bold text-white">{props.rule_name || '—'}</span>
           <Badge label={severity} color={sevColor} />
         </div>
-        <p className="text-[10px] text-neutral-400 leading-relaxed">{props.explanation || '暂无说明'}</p>
+        <p className="text-[10px] text-neutral-400 leading-relaxed">{props.explanation || 'No description'}</p>
       </DataCard>
 
       <DataCard>
-        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">规则详情</p>
+        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">Rule Details</p>
         <div className="space-y-1.5">
-          <InfoRow label="规则 ID" value={props.rule_id || '—'} />
-          <InfoRow label="规则名" value={props.rule_name || '—'} />
-          <InfoRow label="严重程度" value={severity} color={`text-${sevColor}-400`} />
+          <InfoRow label="Rule ID" value={props.rule_id || '—'} />
+          <InfoRow label="Rule Name" value={props.rule_name || '—'} />
+          <InfoRow label="Severity" value={severity} color={`text-${sevColor}-400`} />
         </div>
       </DataCard>
 
       <DataCard>
-        <p className="text-[10px] text-neutral-500 mb-0.5">触发该规则的产品</p>
+        <p className="text-[10px] text-neutral-500 mb-0.5">Products triggering this rule</p>
         <p className="text-xl font-bold text-red-400">{triggeredLinks.length}</p>
-        <p className="text-[10px] text-neutral-600">个</p>
+        <p className="text-[10px] text-neutral-600">items</p>
       </DataCard>
 
       {triggeredLinks.length > 0 && (
         <DataCard>
           <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-            触发产品 ({triggeredLinks.length})
+            Triggered Products ({triggeredLinks.length})
           </p>
           <div className="space-y-2">
             {triggeredLinks.slice(0, 10).map((l, i) => (
@@ -922,15 +922,15 @@ function RiskRuleOverview({ detail }) {
                   <span className="text-[9px] text-neutral-600 font-mono ml-auto">{l.sourceId}</span>
                 </div>
                 {l.evidence && (
-                  <p className="text-[9px] text-neutral-500 ml-5">证据: {l.evidence}</p>
+                  <p className="text-[9px] text-neutral-500 ml-5">Evidence: {l.evidence}</p>
                 )}
                 {l.reason && (
-                  <p className="text-[9px] text-neutral-500 ml-5 mt-0.5">原因: {l.reason}</p>
+                  <p className="text-[9px] text-neutral-500 ml-5 mt-0.5">Reason: {l.reason}</p>
                 )}
               </div>
             ))}
             {triggeredLinks.length > 10 && (
-              <p className="text-[9px] text-neutral-600 mt-1">还有 {triggeredLinks.length - 10} 个产品...</p>
+              <p className="text-[9px] text-neutral-600 mt-1">+ {triggeredLinks.length - 10} more...</p>
             )}
           </div>
         </DataCard>
@@ -939,7 +939,7 @@ function RiskRuleOverview({ detail }) {
       {triggeredLinks.length === 0 && (
         <div className="flex items-center gap-2 px-3 py-2 bg-green-500/10 border border-green-500/20 rounded-lg">
           <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
-          <p className="text-xs text-green-300">当前无产品触发此规则</p>
+          <p className="text-xs text-green-300">No products currently trigger this rule</p>
         </div>
       )}
     </div>
@@ -965,23 +965,23 @@ function SpeciesOverview({ detail }) {
   return (
     <div className="space-y-4">
       <DataCard>
-        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">物种信息</p>
+        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">Species Info</p>
         <div className="space-y-1.5">
-          <InfoRow label="物种 ID" value={props.species_id || '—'} />
-          <InfoRow label="物种名" value={props.species_name || '—'} />
+          <InfoRow label="Species ID" value={props.species_id || '—'} />
+          <InfoRow label="Species Name" value={props.species_name || '—'} />
         </div>
       </DataCard>
 
       <DataCard>
-        <p className="text-[10px] text-neutral-500 mb-0.5">面向该物种的产品</p>
+        <p className="text-[10px] text-neutral-500 mb-0.5">Products for this species</p>
         <p className="text-xl font-bold text-blue-400">{productLinks.length}</p>
-        <p className="text-[10px] text-neutral-600">个</p>
+        <p className="text-[10px] text-neutral-600">items</p>
       </DataCard>
 
       {productLinks.length > 0 && (
         <DataCard>
           <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-            产品列表 ({productLinks.length})
+            Products ({productLinks.length})
           </p>
           <div className="space-y-1">
             {productLinks.slice(0, 10).map((l, i) => (
@@ -992,7 +992,7 @@ function SpeciesOverview({ detail }) {
               </div>
             ))}
             {productLinks.length > 10 && (
-              <p className="text-[9px] text-neutral-600 mt-1">还有 {productLinks.length - 10} 个产品...</p>
+              <p className="text-[9px] text-neutral-600 mt-1">+ {productLinks.length - 10} more...</p>
             )}
           </div>
         </DataCard>
@@ -1001,7 +1001,7 @@ function SpeciesOverview({ detail }) {
       {productLinks.length === 0 && (
         <div className="flex items-center gap-2 px-3 py-2 bg-neutral-800/50 border border-neutral-700 rounded-lg">
           <Info className="w-4 h-4 text-neutral-500 shrink-0" />
-          <p className="text-xs text-neutral-500">暂无关联产品</p>
+          <p className="text-xs text-neutral-500">No linked products</p>
         </div>
       )}
     </div>
@@ -1020,23 +1020,23 @@ function LifeStageOverview({ detail }) {
   return (
     <div className="space-y-4">
       <DataCard>
-        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">生命阶段信息</p>
+        <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">Life Stage Info</p>
         <div className="space-y-1.5">
-          <InfoRow label="阶段 ID" value={props.stage_id || '—'} />
-          <InfoRow label="阶段名" value={props.stage_name || '—'} />
+          <InfoRow label="Stage ID" value={props.stage_id || '—'} />
+          <InfoRow label="Stage Name" value={props.stage_name || '—'} />
         </div>
       </DataCard>
 
       <DataCard>
-        <p className="text-[10px] text-neutral-500 mb-0.5">适用于该阶段的产品</p>
+        <p className="text-[10px] text-neutral-500 mb-0.5">Products for this stage</p>
         <p className="text-xl font-bold text-purple-400">{productLinks.length}</p>
-        <p className="text-[10px] text-neutral-600">个</p>
+        <p className="text-[10px] text-neutral-600">items</p>
       </DataCard>
 
       {productLinks.length > 0 && (
         <DataCard>
           <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-            产品列表 ({productLinks.length})
+            Products ({productLinks.length})
           </p>
           <div className="space-y-1">
             {productLinks.slice(0, 10).map((l, i) => (
@@ -1047,7 +1047,7 @@ function LifeStageOverview({ detail }) {
               </div>
             ))}
             {productLinks.length > 10 && (
-              <p className="text-[9px] text-neutral-600 mt-1">还有 {productLinks.length - 10} 个产品...</p>
+              <p className="text-[9px] text-neutral-600 mt-1">+ {productLinks.length - 10} more...</p>
             )}
           </div>
         </DataCard>
@@ -1056,7 +1056,7 @@ function LifeStageOverview({ detail }) {
       {productLinks.length === 0 && (
         <div className="flex items-center gap-2 px-3 py-2 bg-neutral-800/50 border border-neutral-700 rounded-lg">
           <Info className="w-4 h-4 text-neutral-500 shrink-0" />
-          <p className="text-xs text-neutral-500">暂无关联产品</p>
+          <p className="text-xs text-neutral-500">No linked products</p>
         </div>
       )}
     </div>
@@ -1089,7 +1089,7 @@ function InfoRow({ icon: Icon, label, value, color = 'text-neutral-500' }) {
 }
 
 // ══════════════════════════════════════════════════════
-// 链路标签页
+// Links tab
 // ══════════════════════════════════════════════════════
 
 function LinksTab({ incoming, outgoing, onNavigate }) {
@@ -1098,7 +1098,7 @@ function LinksTab({ incoming, outgoing, onNavigate }) {
       {incoming.length > 0 && (
         <div>
           <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-            上游依赖 ({incoming.length})
+            Upstream ({incoming.length})
           </p>
           <div className="space-y-1">
             {incoming.map((l, i) => (
@@ -1111,7 +1111,7 @@ function LinksTab({ incoming, outgoing, onNavigate }) {
       {outgoing.length > 0 && (
         <div>
           <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-            下游流向 ({outgoing.length})
+            Downstream ({outgoing.length})
           </p>
           <div className="space-y-1">
             {outgoing.map((l, i) => (
@@ -1122,7 +1122,7 @@ function LinksTab({ incoming, outgoing, onNavigate }) {
       )}
 
       {incoming.length === 0 && outgoing.length === 0 && (
-        <p className="text-xs text-neutral-600 text-center py-8">暂无关联链路</p>
+        <p className="text-xs text-neutral-600 text-center py-8">No linked relationships</p>
       )}
     </div>
   );
@@ -1134,10 +1134,10 @@ function LinkItem({ link, direction, onNavigate }) {
   const targetType = direction === 'out' ? link.targetType : link.sourceType;
 
   const typeBadge = {
-    supplies: '供应', used_in: '用料', assembled_into: '装配',
-    manufactured_at: '生产于',
-    MADE_BY: '品牌', CONTAINS: '包含', TARGETS_SPECIES: '目标物种',
-    SUITABLE_FOR: '适用阶段', TRIGGERS_RISK: '触发风险', SIMILAR_TO: '相似',
+    supplies: 'supplies', used_in: 'used_in', assembled_into: 'assembles',
+    manufactured_at: 'made_at',
+    MADE_BY: 'MADE_BY', CONTAINS: 'CONTAINS', TARGETS_SPECIES: 'TARGETS_SPECIES',
+    SUITABLE_FOR: 'SUITABLE_FOR', TRIGGERS_RISK: 'TRIGGERS_RISK', SIMILAR_TO: 'SIMILAR_TO',
   };
 
   return (
@@ -1152,7 +1152,7 @@ function LinkItem({ link, direction, onNavigate }) {
         <button
           onClick={() => onNavigate(targetId)}
           className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-neutral-700 rounded"
-          title="在图谱中定位"
+          title="Locate in graph"
         >
           <ExternalLink className="w-3 h-3 text-blue-400" />
         </button>
@@ -1162,7 +1162,7 @@ function LinkItem({ link, direction, onNavigate }) {
 }
 
 // ══════════════════════════════════════════════════════
-// 动作标签页
+// Actions tab
 // ══════════════════════════════════════════════════════
 
 function ActionsTab({ objType, nodeId, detail, onRunAgent }) {
@@ -1171,7 +1171,7 @@ function ActionsTab({ objType, nodeId, detail, onRunAgent }) {
   return (
     <div className="space-y-3">
       <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">
-        可用操作 ({actions.filter(a => a.enabled).length}/{actions.length})
+        Available Actions ({actions.filter(a => a.enabled).length}/{actions.length})
       </p>
 
       {actions.map((action, i) => (
@@ -1194,7 +1194,7 @@ function ActionsTab({ objType, nodeId, detail, onRunAgent }) {
             </span>
             {!action.enabled && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-600 ml-auto">
-                已锁定
+                Locked
               </span>
             )}
           </div>
@@ -1215,24 +1215,24 @@ function getActionsForType(objType, detail) {
     const isAlert = stock < threshold;
     return [
       {
-        title: isAlert ? '紧急下发采购单' : '库存充足，采购锁闭',
+        title: isAlert ? 'Emergency Purchase Order' : 'Stock sufficient — purchasing locked',
         description: isAlert
-          ? `库存 ${stock} < 阈值 ${threshold}，触发紧急补货流程并执行 ERP 回写`
-          : `当前库存 ${stock} ≥ 安全阈值 ${threshold}，护栏已锁——无需采购`,
+          ? `Stock ${stock} < threshold ${threshold} — trigger emergency replenishment and ERP writeback`
+          : `Current stock ${stock} ≥ safety threshold ${threshold} — guardrail locked, no purchase needed`,
         icon: Zap, iconColor: 'text-amber-400',
         enabled: isAlert, runAgent: true,
         bg: 'bg-amber-500/10', border: 'border-amber-500/20',
       },
       {
-        title: '启动供应商切换评估',
-        description: '若当前供应商无法满足交期，评估备用供应商方案',
+        title: 'Supplier Switch Assessment',
+        description: 'Evaluate backup suppliers if current one cannot meet delivery',
         icon: Truck, iconColor: 'text-blue-400',
         enabled: true, runAgent: false,
         bg: 'bg-blue-500/10', border: 'border-blue-500/20',
       },
       {
-        title: '质量追溯分析',
-        description: '追溯该批次原材料的质检记录与下游零部件质量关联',
+        title: 'Quality Trace Analysis',
+        description: 'Trace QC records for this batch and downstream component quality',
         icon: Shield, iconColor: 'text-purple-400',
         enabled: detail.quality_score < 0.85, runAgent: false,
         bg: 'bg-purple-500/10', border: 'border-purple-500/20',
@@ -1244,18 +1244,18 @@ function getActionsForType(objType, detail) {
     const risk = detail.risk_level || detail.riskLevel || 'Medium';
     return [
       {
-        title: risk === 'High' ? '发起风险审查流程' : '供应商定期评估',
+        title: risk === 'High' ? 'Initiate Risk Review' : 'Periodic Supplier Review',
         description: risk === 'High'
-          ? '该供应商为高风险等级，需启动全面审查并评估切换方案'
-          : '该供应商状态正常，可进行常规定期评估',
+          ? 'High-risk supplier — full review and switch evaluation required'
+          : 'Supplier status is normal — periodic review sufficient',
         icon: Shield, iconColor: risk === 'High' ? 'text-red-400' : 'text-green-400',
         enabled: true, runAgent: risk === 'High',
         bg: risk === 'High' ? 'bg-red-500/10' : 'bg-green-500/10',
         border: risk === 'High' ? 'border-red-500/20' : 'border-green-500/20',
       },
       {
-        title: '交期趋势分析',
-        description: '分析该供应商近 12 个月的交货准时率趋势与季节性波动',
+        title: 'Delivery Trend Analysis',
+        description: 'Analyze 12-month delivery trend and seasonal patterns',
         icon: Calendar, iconColor: 'text-blue-400',
         enabled: true, runAgent: false,
         bg: 'bg-blue-500/10', border: 'border-blue-500/20',
@@ -1269,18 +1269,18 @@ function getActionsForType(objType, detail) {
     const ratio = target > 0 ? current / target : 1;
     return [
       {
-        title: ratio < 0.8 ? 'AI 产能瓶颈分析' : '产能达标，无需分析',
+        title: ratio < 0.8 ? 'AI Capacity Bottleneck Analysis' : 'Target achieved — no analysis needed',
         description: ratio < 0.8
-          ? `达标率仅 ${(ratio*100).toFixed(0)}%，启动链路穿透引擎追溯上游缺料根因`
-          : `达标率 ${(ratio*100).toFixed(0)}%，状态健康`,
+          ? `Achievement ${(ratio*100).toFixed(0)}% — launch supply chain trace for upstream shortage root cause`
+          : `Achievement ${(ratio*100).toFixed(0)}% — healthy`,
         icon: Cpu, iconColor: ratio < 0.8 ? 'text-purple-400' : 'text-green-400',
         enabled: ratio < 0.8, runAgent: true,
         bg: ratio < 0.8 ? 'bg-purple-500/10' : 'bg-green-500/10',
         border: ratio < 0.8 ? 'border-purple-500/20' : 'border-green-500/20',
       },
       {
-        title: 'BOM 物料清单查看',
-        description: '展开该产品的完整 BOM 树，查看所有上游零部件和原材料构成',
+        title: 'View BOM',
+        description: 'Expand full BOM tree to view all upstream components and raw materials',
         icon: Package, iconColor: 'text-green-400',
         enabled: true, runAgent: false,
         bg: 'bg-green-500/10', border: 'border-green-500/20',
@@ -1292,10 +1292,10 @@ function getActionsForType(objType, detail) {
     const days = detail.days_remaining || detail.daysRemaining || 7;
     return [
       {
-        title: days < 3 ? '紧急补货' : '库存正常',
+        title: days < 3 ? 'Emergency Replenishment' : 'Stock Normal',
         description: days < 3
-          ? `仅剩 ${days.toFixed(1)} 天用量，需紧急补货至 7 天安全库存`
-          : `库存可支撑 ${days.toFixed(1)} 天，无需操作`,
+          ? `Only ${days.toFixed(1)} days of supply — emergency replenish to 7-day safety stock`
+          : `Stock sufficient for ${days.toFixed(1)} days — no action needed`,
         icon: Zap, iconColor: days < 3 ? 'text-red-400' : 'text-green-400',
         enabled: days < 3, runAgent: true,
         bg: days < 3 ? 'bg-red-500/10' : 'bg-green-500/10',
@@ -1306,8 +1306,8 @@ function getActionsForType(objType, detail) {
 
   return [
     {
-      title: '查看详情',
-      description: '该类型暂无特殊业务动作，可查看完整属性信息',
+      title: 'View Details',
+      description: 'No special actions for this type — view full properties',
       icon: Info, iconColor: 'text-neutral-400',
       enabled: true, runAgent: false,
       bg: 'bg-neutral-800/50', border: 'border-neutral-700',
@@ -1322,32 +1322,32 @@ function getPetFoodActions(detail) {
 
   return [
     {
-      title: '解释产品风险',
+      title: 'Explain Product Risk',
       description: hasRisks
-        ? `该产品触发了 ${riskCount} 条风险规则，点击查看详细解释`
-        : '该产品未触发风险规则，查看健康评估报告',
+        ? `This product triggered ${riskCount} risk rule(s) — click to view explanation`
+        : 'No risk rules triggered — view health assessment',
       icon: Shield, iconColor: hasRisks ? 'text-red-400' : 'text-green-400',
       enabled: true, runAgent: true,
       bg: hasRisks ? 'bg-red-500/10' : 'bg-green-500/10',
       border: hasRisks ? 'border-red-500/20' : 'border-green-500/20',
     },
     {
-      title: '推荐替代产品',
-      description: '基于物种和生命阶段，推荐不触发相同风险的替代产品',
+      title: 'Recommend Alternatives',
+      description: 'Recommend alternatives that avoid the same risks by species and life stage',
       icon: Package, iconColor: 'text-blue-400',
       enabled: true, runAgent: false,
       bg: 'bg-blue-500/10', border: 'border-blue-500/20',
     },
     {
-      title: '加入监控清单',
-      description: '将该产品加入持续监控清单，跟踪风险变化',
+      title: 'Add to Watchlist',
+      description: 'Add to monitoring list to track risk changes',
       icon: AlertTriangle, iconColor: 'text-amber-400',
       enabled: hasRisks, runAgent: false,
       bg: 'bg-amber-500/10', border: 'border-amber-500/20',
     },
     {
-      title: '生成成分报告',
-      description: '生成该产品的完整成分分析报告',
+      title: 'Generate Ingredient Report',
+      description: 'Generate full ingredient analysis report',
       icon: FlaskConical, iconColor: 'text-purple-400',
       enabled: true, runAgent: false,
       bg: 'bg-purple-500/10', border: 'border-purple-500/20',
@@ -1356,11 +1356,11 @@ function getPetFoodActions(detail) {
 }
 
 // ══════════════════════════════════════════════════════
-// 工具
+// Utilities
 // ══════════════════════════════════════════════════════
 
 // ══════════════════════════════════════════════════════
-// 影响分析标签页
+// Impact analysis tab
 // ══════════════════════════════════════════════════════
 
 function BlastRadiusTab({ nodeId, onNavigate }) {
@@ -1377,8 +1377,8 @@ function BlastRadiusTab({ nodeId, onNavigate }) {
     );
   }, [nodeId, depth]);
 
-  if (loading) return <p className="text-xs text-neutral-500 text-center py-8">分析中...</p>;
-  if (!data || data.error) return <p className="text-xs text-neutral-600 text-center py-8">{data?.error || '无法加载影响分析'}</p>;
+  if (loading) return <p className="text-xs text-neutral-500 text-center py-8">Analyzing...</p>;
+  if (!data || data.error) return <p className="text-xs text-neutral-600 text-center py-8">{data?.error || 'Could not load impact analysis'}</p>;
 
   const affected = Object.entries(data.affected_nodes || {})
     .filter(([id]) => id !== nodeId)
@@ -1388,21 +1388,21 @@ function BlastRadiusTab({ nodeId, onNavigate }) {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">
-          受影响节点 ({data.total_affected || affected.length})
+          Affected Nodes ({data.total_affected || affected.length})
         </p>
         <select value={depth} onChange={e => setDepth(Number(e.target.value))}
           className="text-[10px] bg-neutral-800 border border-neutral-700 rounded px-1.5 py-0.5 text-neutral-400">
-          {[1,2,3,4].map(d => <option key={d} value={d}>深度 {d}</option>)}
+          {[1,2,3,4].map(d => <option key={d} value={d}>Depth {d}</option>)}
         </select>
       </div>
 
       <DataCard>
-        <p className="text-[10px] text-neutral-500 mb-1">源节点</p>
+        <p className="text-[10px] text-neutral-500 mb-1">Source Node</p>
         <p className="text-xs font-medium text-white">{data.source_label || nodeId}</p>
       </DataCard>
 
       {affected.length === 0 ? (
-        <p className="text-xs text-neutral-600 text-center py-4">无下游受影响节点</p>
+        <p className="text-xs text-neutral-600 text-center py-4">No downstream affected nodes</p>
       ) : (
         <div className="space-y-1">
           {affected.map(([id, info]) => (
