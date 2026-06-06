@@ -133,8 +133,8 @@ export default function App() {
             <Factory className="w-3.5 h-3.5 text-white" />
           </div>
           <h1 className="text-sm font-bold text-white tracking-wide">
-            Prompt-to-Ontology
-            <span className="ml-2 text-[10px] text-neutral-500 font-normal">{domainCfg.title}</span>
+            Ontology OS
+            <span className="ml-2 text-[10px] text-neutral-500 font-normal">Ready-data operational ontology runtime</span>
           </h1>
         </div>
         <div className="flex items-center gap-2">
