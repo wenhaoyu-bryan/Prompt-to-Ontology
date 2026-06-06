@@ -7,7 +7,7 @@ export const DOMAINS = {
   pet_food: {
     key: 'pet_food',
     label: 'Pet Food',
-    title: 'Pet Food Ontology',
+    title: 'Pet Food Demo',
     dataset: 'pet_food',
     primaryObjectType: 'PetFoodProduct',
     schemaEndpoint: '/api/ontology/pet_food/schema',

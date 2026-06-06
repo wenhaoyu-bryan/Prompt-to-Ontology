@@ -65,7 +65,7 @@ export default function SchemaTab({ graphData, currentDomain = DEFAULT_DOMAIN })
             <Network className="w-5 h-5 text-purple-400" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-white">Pet Food Ontology Schema</h2>
+            <h2 className="text-base font-bold text-white">Pet Food Schema</h2>
             <p className="text-xs text-neutral-500">
               {objectTypes.length} 类型 · {totalProps} 属性 · {linkTypes.length} 关系类型 · {rules.length} 规则 · {actionTypes.length} 动作
             </p>

@@ -67,7 +67,7 @@ export default function PetFoodAgentChat({ context } = {}) {
             </div>
             <div>
               <h2 className="text-base font-bold text-white">Pet Food Agent</h2>
-              <p className="text-[11px] text-neutral-500">Ontology Agent · Graph Evidence + Risk Rules</p>
+              <p className="text-[11px] text-neutral-500">Graph Evidence + Risk Rules</p>
             </div>
           </div>
           {messages.length > 0 && (
@@ -136,7 +136,7 @@ function EmptyState({ onExampleClick }) {
         <Bot className="w-7 h-7 text-violet-400" />
       </div>
       <div>
-        <p className="text-sm font-semibold text-white mb-1">Pet Food Ontology Agent</p>
+        <p className="text-sm font-semibold text-white mb-1">Pet Food Agent</p>
         <p className="text-[11px] text-neutral-500 max-w-sm">
           基于本体图谱的宠物食品安全分析 Agent。使用图数据库证据链回答问题，不做兽医诊断。
         </p>
