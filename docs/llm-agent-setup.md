@@ -57,6 +57,46 @@ Leave all LLM environment variables unset. The agent will automatically use the 
 
 ---
 
+## UI-Based Runtime Configuration
+
+You can also configure the LLM from the Agent tab in the UI:
+
+1. Open the Agent tab
+2. Click "Configure LLM" in the top bar
+3. Select a provider (OpenAI, MiniMax, Anthropic, OpenAI-compatible)
+4. Enter your API key, model, and base URL
+5. Click "Save" to store the config in backend memory
+6. Click "Test Connection" to verify the key works
+
+### Priority Order
+
+1. **Runtime UI config** (highest priority) — set from the Agent tab
+2. **Environment variables** — set before backend starts
+3. **Deterministic fallback** (lowest priority) — no LLM needed
+
+### Deleting Runtime Config
+
+Click "Delete Key" in the LLM Config panel to clear the runtime config. The agent will fall back to environment variables or deterministic mode.
+
+### Security
+
+- API keys are stored only in backend process memory
+- Keys are never persisted to disk, database, or Git
+- Keys are never stored in browser localStorage
+- The UI only shows masked keys after saving
+- Keys are cleared when the backend restarts
+
+### Testing Connection
+
+The "Test Connection" button sends a minimal request (`Say "ok"`) to verify:
+- The API key is valid
+- The model is accessible
+- The endpoint is reachable
+
+It reports success with latency, or a clear error (auth_error, timeout, provider_error).
+
+---
+
 ## Running Without LLM
 
 The agent works fully without an LLM configured. The deterministic fallback:

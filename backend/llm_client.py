@@ -328,28 +328,42 @@ def reason(node_id: str) -> dict:
 
 def _call_llm(messages: list[dict], tools: list[dict] | None = None) -> dict:
     """统一 LLM 调用，返回 OpenAI 格式的 response dict"""
-    import requests
-
-    if LLM_BACKEND == "anthropic":
+    from llm_config_manager import get_active_llm_config
+    config = get_active_llm_config()
+    provider = config.get("provider") or LLM_BACKEND
+    if provider == "anthropic":
         return _call_anthropic_with_tools(messages, tools)
-    elif LLM_BACKEND == "openai":
+    elif provider == "openai" or provider == "openai_compatible":
         return _call_openai_compat(messages, tools)
-    else:  # minimax (OpenAI 兼容)
+    else:  # minimax
         return _call_openai_compat(messages, tools)
 
 
 def _call_openai_compat(messages: list[dict], tools: list[dict] | None = None) -> dict:
     """OpenAI 兼容接口（MiniMax 也用这个）"""
     import requests
+    from llm_config_manager import get_active_llm_config
 
-    if LLM_BACKEND == "minimax":
-        api_key = os.environ.get("MINIMAX_API_KEY", "")
-        base_url = os.environ.get("MINIMAX_BASE_URL", "https://api.minimaxi.com/v1")
-        model = os.environ.get("MINIMAX_MODEL", "MiniMax-M2.7")
+    config = get_active_llm_config()
+    provider = config.get("provider", "minimax")
+    api_key = config.get("api_key", "")
+    model = config.get("model", "")
+    base_url = config.get("base_url", "")
+
+    if provider == "minimax":
+        if not base_url:
+            base_url = os.environ.get("MINIMAX_BASE_URL", "https://api.minimaxi.com/v1")
+        if not model:
+            model = os.environ.get("MINIMAX_MODEL", "MiniMax-M2.7")
+        if not api_key:
+            api_key = os.environ.get("MINIMAX_API_KEY", "")
     else:
-        api_key = os.environ.get("OPENAI_API_KEY", "")
-        base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
-        model = os.environ.get("OPENAI_MODEL", "gpt-4o")
+        if not base_url:
+            base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        if not model:
+            model = os.environ.get("OPENAI_MODEL", "gpt-4o")
+        if not api_key:
+            api_key = os.environ.get("OPENAI_API_KEY", "")
 
     if not api_key:
         raise RuntimeError(f"{LLM_BACKEND} API Key 未配置")
@@ -390,10 +404,12 @@ def _call_openai_compat(messages: list[dict], tools: list[dict] | None = None) -
 def _call_anthropic_with_tools(messages: list[dict], tools: list[dict] | None = None) -> dict:
     """Anthropic Claude API，转换 OpenAI tool 格式"""
     import anthropic
+    from llm_config_manager import get_active_llm_config
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    config = get_active_llm_config()
+    api_key = config.get("api_key") or os.environ.get("ANTHROPIC_API_KEY", "")
     if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY 未配置")
+        raise RuntimeError("ANTHROPIC_API_KEY not configured")
 
     # 提取 system prompt
     system = ""

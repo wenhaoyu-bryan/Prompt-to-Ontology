@@ -132,6 +132,28 @@ export async function fetchViolations(dataset) {
   return data;
 }
 
+// ── LLM Config ──
+
+export async function fetchLLMConfig() {
+  const { data } = await api.get('/llm/config');
+  return data;
+}
+
+export async function saveLLMConfig(config) {
+  const { data } = await api.post('/llm/config', config);
+  return data;
+}
+
+export async function deleteLLMConfig() {
+  const { data } = await api.delete('/llm/config');
+  return data;
+}
+
+export async function testLLMConnection(config) {
+  const { data } = await api.post('/llm/test', config || {});
+  return data;
+}
+
 export async function fetchConstraints(className) {
   const params = className ? { class_name: className } : {};
   const { data } = await api.get('/ontology/constraints', { params });

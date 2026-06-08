@@ -177,23 +177,58 @@ def api_clear_dataset(request: dict):
     return {"status": "ok", "cleared": dataset}
 
 @app.get("/api/llm-config")
-def api_llm_config():
-    """返回当前连接的 LLM 模型信息"""
-    backend = os.environ.get("LLM_BACKEND", "none")
-    config = {"backend": backend, "model": None, "configured": False}
-    if backend == "minimax":
-        key = os.environ.get("MINIMAX_API_KEY", "")
-        config["model"] = os.environ.get("MINIMAX_MODEL", "MiniMax-M1-2.7")
-        config["configured"] = bool(key and len(key) > 10)
-    elif backend == "anthropic":
-        key = os.environ.get("ANTHROPIC_API_KEY", "")
-        config["model"] = "Claude Sonnet 4"
-        config["configured"] = bool(key and key.startswith("sk-ant"))
-    elif backend == "openai":
-        key = os.environ.get("OPENAI_API_KEY", "")
-        config["model"] = os.environ.get("OPENAI_MODEL", "gpt-4o")
-        config["configured"] = bool(key and key.startswith("sk-"))
-    return config
+def api_llm_config_legacy():
+    """Legacy endpoint — redirects to /api/llm/config"""
+    from llm_config_manager import get_active_status
+    return get_active_status()
+
+
+@app.get("/api/llm/config")
+def api_llm_get_config():
+    """Return masked LLM config status."""
+    from llm_config_manager import get_active_status
+    return get_active_status()
+
+
+class LLMConfigRequest(BaseModel):
+    provider: str
+    api_key: str
+    model: str
+    base_url: str = ""
+
+
+@app.post("/api/llm/config")
+def api_llm_set_config(req: LLMConfigRequest):
+    """Save runtime LLM config. Key stored in memory only."""
+    from llm_config_manager import set_runtime_llm_config
+    try:
+        result = set_runtime_llm_config(req.model_dump())
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.delete("/api/llm/config")
+def api_llm_delete_config():
+    """Clear runtime LLM config."""
+    from llm_config_manager import clear_runtime_llm_config
+    return clear_runtime_llm_config()
+
+
+class LLMTestRequest(BaseModel):
+    provider: str = ""
+    api_key: str = ""
+    model: str = ""
+    base_url: str = ""
+
+
+@app.post("/api/llm/test")
+def api_llm_test(req: LLMTestRequest | None = None):
+    """Test LLM connection."""
+    from llm_config_manager import test_llm_connection
+    config = req.model_dump() if req and req.api_key else None
+    result = test_llm_connection(config)
+    return result
 
 
 @app.get("/api/graph")
