@@ -187,6 +187,17 @@ export default function GraphTab({
             <p>Edges: {localGraphData.links.length} / {graphData.links.length}</p>
           </div>
         </div>
+
+        {/* Why Graph? */}
+        <div className="px-3 py-3 border-t border-neutral-800">
+          <p className="text-[10px] font-semibold text-neutral-400 mb-1.5">Why Graph?</p>
+          <p className="text-[9px] text-neutral-500 leading-relaxed">
+            The graph view is not just visualization. It shows the operational evidence network around an object.
+            For a selected product, the local graph shows which brand made it, which ingredients it contains,
+            which species it targets, which life stage it is suitable for, and which risk rules it triggered.
+            This is how object relationships become machine-readable evidence for rules and agents.
+          </p>
+        </div>
       </aside>
 
       {/* ── Graph canvas ── */}

@@ -112,45 +112,80 @@ export default function SchemaTab({ graphData, currentDomain = DEFAULT_DOMAIN })
         </div>
 
         {/* Object Types */}
-        <Section title="Object Types" icon={Layers} count={objectTypes.length}>
+        <Section title="Object Types" icon={Layers} count={objectTypes.length}
+          explanation="Each object type represents a category of domain entities. Objects are modeled as types because users need to inspect them, connect them through relationships, evaluate rules against them, and ask the agent questions about them.">
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
             {objectTypes.map(([typeName, typeDef], i) => (
-              <ObjectTypeCard key={typeName} typeName={typeName} typeDef={typeDef} colorIndex={i}
-                instanceCount={nodeCounts[typeName] || 0} />
+              <ExplainableObjectTypeCard key={typeName} typeName={typeName} typeDef={typeDef} colorIndex={i}
+                instanceCount={nodeCounts[typeName] || 0} linkTypes={linkTypes} />
+            ))}
+          </div>
+        </Section>
+
+        {/* Properties */}
+        <Section title="Properties" icon={FileText} count={totalProps}
+          explanation="Properties describe an object directly as typed values. For example, fat_100g is a property of PetFoodProduct because it is a numeric value used by rules. It is not modeled as a separate node because users do not need to inspect fat as an independent object.">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+            {objectTypes.map(([typeName, typeDef]) => (
+              <div key={typeName} className="bg-neutral-900/60 border border-neutral-800 rounded-lg px-3 py-2">
+                <div className="text-[10px] font-semibold text-white mb-1">{typeName}</div>
+                <div className="flex flex-wrap gap-1">
+                  {(typeDef.properties || []).map((p, j) => (
+                    <span key={j} className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400 font-mono">
+                      {typeof p === 'string' ? p : p.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </Section>
 
         {/* Link Types */}
-        <Section title="Link Types" icon={Link2} count={linkTypes.length}>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+        <Section title="Link Types" icon={Link2} count={linkTypes.length}
+          explanation="Link types define the allowed relationships between objects. Each link has a direction (from → to) and a business meaning. Links are how the graph encodes domain knowledge — rules and agent questions depend on these relationships to find evidence.">
+          <div className="space-y-2">
             {linkTypes.map(([name, lt]) => (
-              <div key={name} className="bg-neutral-900/60 border border-neutral-800 rounded-lg px-3 py-2 flex items-center gap-2">
-                <span className="text-[10px] text-cyan-400 font-mono">{lt.from || '?'}</span>
-                <div className="flex items-center gap-1">
-                  <Link2 className="w-3 h-3 text-purple-400" />
-                  <span className="text-xs text-purple-400 font-semibold">{name}</span>
-                </div>
-                <span className="text-[10px] text-cyan-400 font-mono">{lt.to || '?'}</span>
-              </div>
+              <ExplainableLinkRow key={name} name={name} lt={lt} />
             ))}
           </div>
         </Section>
 
         {/* Rules */}
         {rules.length > 0 && (
-          <Section title="Rules" icon={Shield} count={rules.length}>
+          <Section title="Rules" icon={Shield} count={rules.length}
+            explanation="Rules evaluate instance data against conditions. When a condition is met, a TRIGGERS_RISK edge is created with severity, evidence, and reason. Rules can also return passed (data complete, not triggered), not_evaluable (missing data), or not_applicable (wrong species/life_stage).">
             <div className="space-y-2">
               {rules.map(([key, rule]) => (
-                <RuleRow key={key} ruleKey={key} rule={rule} />
+                <ExplainableRuleRow key={key} ruleKey={key} rule={rule} />
               ))}
             </div>
           </Section>
         )}
 
+        {/* Constraints */}
+        <Section title="Constraints" icon={AlertTriangle} count={5}
+          explanation="Constraints check whether the graph follows the ontology schema. They validate object types, required properties, enum values, link directions, and required edge fields before data is imported.">
+          <div className="space-y-1.5">
+            {[
+              'PetFoodProduct must have product_id and product_name',
+              'target_species must be cat, dog, cat_or_dog, or unknown',
+              'CONTAINS must connect PetFoodProduct to Ingredient',
+              'TRIGGERS_RISK must include severity, evidence, and reason',
+              'MADE_BY must connect PetFoodProduct to Brand',
+            ].map((c, i) => (
+              <div key={i} className="flex items-start gap-2 text-[10px]">
+                <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
+                <span className="text-neutral-300">{c}</span>
+              </div>
+            ))}
+          </div>
+        </Section>
+
         {/* Actions */}
         {actionTypes.length > 0 && (
-          <Section title="Actions" icon={Zap} count={actionTypes.length}>
+          <Section title="Actions" icon={Zap} count={actionTypes.length}
+            explanation="Actions are operations that can be performed on objects. They are triggered by users or agents and use graph data as input.">
             <div className="grid grid-cols-2 gap-2">
               {actionTypes.map(([name, at]) => (
                 <div key={name} className="bg-neutral-900/60 border border-neutral-800 rounded-lg px-3 py-2">
@@ -161,6 +196,9 @@ export default function SchemaTab({ graphData, currentDomain = DEFAULT_DOMAIN })
             </div>
           </Section>
         )}
+
+        {/* Ontology Success Checklist */}
+        <OntologySuccessChecklist />
       </div>
     </div>
   );
@@ -216,7 +254,7 @@ function DataSourcePanel({ graphData, riskEdgeCount, domainCfg }) {
 }
 
 
-function Section({ title, icon: Icon, count, children }) {
+function Section({ title, icon: Icon, count, children, explanation }) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -231,7 +269,12 @@ function Section({ title, icon: Icon, count, children }) {
         <span className="text-[10px] text-neutral-600 ml-auto">{count}</span>
       </button>
       {!collapsed && (
-        <div className="p-4">
+        <div className="p-4 space-y-3">
+          {explanation && (
+            <p className="text-[10px] text-neutral-400 leading-relaxed bg-blue-500/5 border border-blue-500/10 rounded-lg px-3 py-2">
+              {explanation}
+            </p>
+          )}
           {children}
         </div>
       )}
@@ -243,11 +286,16 @@ function Section({ title, icon: Icon, count, children }) {
 const _DOT_COLORS = ['bg-cyan-400', 'bg-purple-400', 'bg-green-400', 'bg-amber-400', 'bg-blue-400', 'bg-pink-400'];
 const _TEXT_COLORS = ['text-cyan-400', 'text-purple-400', 'text-green-400', 'text-amber-400', 'text-blue-400', 'text-pink-400'];
 
-function ObjectTypeCard({ typeName, typeDef, colorIndex = 0, instanceCount }) {
+function ExplainableObjectTypeCard({ typeName, typeDef, colorIndex = 0, instanceCount, linkTypes }) {
   const [expanded, setExpanded] = useState(false);
   const props = typeDef.properties || [];
   const dotColor = _DOT_COLORS[colorIndex % _DOT_COLORS.length];
   const textColor = _TEXT_COLORS[colorIndex % _TEXT_COLORS.length];
+
+  // Find connected link types
+  const connectedLinks = (linkTypes || [])
+    .filter(([_, lt]) => lt.from === typeName || lt.to === typeName)
+    .map(([name]) => name);
 
   return (
     <div
@@ -260,20 +308,37 @@ function ObjectTypeCard({ typeName, typeDef, colorIndex = 0, instanceCount }) {
         <span className="text-[10px] text-neutral-600 ml-auto">{instanceCount} instances</span>
       </div>
       {typeDef.description && (
-        <p className="text-[9px] text-neutral-500 mb-1">{typeDef.description}</p>
+        <p className="text-[9px] text-neutral-400 mb-1">{typeDef.description}</p>
       )}
       <div className="text-[10px] text-neutral-500">{props.length} properties</div>
 
-      {expanded && props.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-neutral-800 space-y-0.5 max-h-32 overflow-y-auto">
-          {props.map((prop, j) => (
-            <div key={j} className="flex items-center gap-1.5 text-[9px]">
-              <span className="text-neutral-400 font-mono">{typeof prop === 'string' ? prop : prop.name}</span>
-              {typeof prop !== 'string' && prop.type && (
-                <span className={textColor}>{prop.type}</span>
-              )}
+      {expanded && (
+        <div className="mt-2 pt-2 border-t border-neutral-800 space-y-2 max-h-48 overflow-y-auto">
+          <div>
+            <span className="text-[9px] text-neutral-500 uppercase tracking-wider">Properties</span>
+            <div className="mt-1 space-y-0.5">
+              {props.map((prop, j) => (
+                <div key={j} className="flex items-center gap-1.5 text-[9px]">
+                  <span className="text-neutral-400 font-mono">{typeof prop === 'string' ? prop : prop.name}</span>
+                  {typeof prop !== 'string' && prop.type && (
+                    <span className={textColor}>{prop.type}</span>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
+          {connectedLinks.length > 0 && (
+            <div>
+              <span className="text-[9px] text-neutral-500 uppercase tracking-wider">Connected Links</span>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {connectedLinks.map((l, j) => (
+                  <span key={j} className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 font-mono">
+                    {l}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -281,27 +346,115 @@ function ObjectTypeCard({ typeName, typeDef, colorIndex = 0, instanceCount }) {
 }
 
 
-function RuleRow({ ruleKey, rule }) {
+const LINK_EXPLANATIONS = {
+  MADE_BY: 'Matters because brand is a key dimension for product comparison and risk analysis.',
+  CONTAINS: 'Matters because rules and agent questions depend on ingredient relationships, such as products containing chicken or cat foods missing taurine.',
+  TARGETS_SPECIES: 'Matters because rules filter by species — e.g. taurine rules only apply to cat food.',
+  SUITABLE_FOR: 'Matters because life stage determines which nutrition thresholds apply — kitten and senior have different requirements.',
+  TRIGGERS_RISK: 'Matters because this is the evidence edge: it records which rule was triggered, why, and with what severity.',
+  SIMILAR_TO: 'Matters because it enables the agent to recommend alternatives based on product similarity.',
+};
+
+function ExplainableLinkRow({ name, lt }) {
+  return (
+    <div className="bg-neutral-900/60 border border-neutral-800 rounded-lg px-3 py-2.5">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-[10px] text-cyan-400 font-mono">{lt.from || '?'}</span>
+        <Link2 className="w-3 h-3 text-purple-400" />
+        <span className="text-xs text-purple-400 font-semibold">{name}</span>
+        <span className="text-[10px] text-cyan-400 font-mono">{lt.to || '?'}</span>
+      </div>
+      {lt.description && (
+        <p className="text-[10px] text-neutral-400 mb-1">{lt.description}</p>
+      )}
+      {LINK_EXPLANATIONS[name] && (
+        <p className="text-[9px] text-neutral-500 italic">{LINK_EXPLANATIONS[name]}</p>
+      )}
+    </div>
+  );
+}
+
+
+function ExplainableRuleRow({ ruleKey, rule }) {
   const sev = rule.severity || 'medium';
   const sevClass = sev === 'critical' ? 'text-red-400 bg-red-500/10 border-red-500/20'
     : sev === 'high' ? 'text-orange-400 bg-orange-500/10 border-orange-500/20'
     : sev === 'medium' ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
     : 'text-green-400 bg-green-500/10 border-green-500/20';
 
+  const cond = rule.condition || {};
+  const inputDesc = cond.type === 'nutrition_threshold'
+    ? `${cond.field} (${cond.operator} ${cond.value})`
+    : cond.type === 'ingredient_absence'
+    ? `target_species=${cond.target_species}, missing_ingredient=${cond.missing_ingredient}`
+    : cond.type === 'ingredient_match'
+    ? `match_ingredients: ${(cond.match_ingredients || []).join(', ')}`
+    : cond.type === 'compound'
+    ? `species=${cond.target_species}, life_stage=${cond.life_stage}, nutrition check`
+    : cond.type || '—';
+
   return (
-    <div className="bg-neutral-900/60 border border-neutral-800 rounded-lg px-3 py-2.5 flex items-start gap-3">
-      <Shield className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-semibold text-white">{rule.name || ruleKey}</span>
-          <span className={`text-[9px] px-1.5 py-0.5 rounded border font-medium ${sevClass}`}>{sev}</span>
+    <div className="bg-neutral-900/60 border border-neutral-800 rounded-lg px-3 py-2.5">
+      <div className="flex items-center gap-2 mb-1">
+        <Shield className="w-3.5 h-3.5 text-amber-400" />
+        <span className="text-xs font-semibold text-white">{rule.name || ruleKey}</span>
+        <span className={`text-[9px] px-1.5 py-0.5 rounded border font-medium ${sevClass}`}>{sev}</span>
+      </div>
+      {rule.explanation && (
+        <p className="text-[10px] text-neutral-400 mb-1.5">{rule.explanation}</p>
+      )}
+      <div className="grid grid-cols-3 gap-2 text-[9px]">
+        <div>
+          <span className="text-neutral-600 uppercase tracking-wider">Inputs</span>
+          <p className="text-neutral-400 font-mono mt-0.5">{inputDesc}</p>
         </div>
-        {rule.explanation && (
-          <p className="text-[10px] text-neutral-400">{rule.explanation}</p>
-        )}
-        {rule.condition?.type && (
-          <p className="text-[9px] text-neutral-600 font-mono mt-1">{rule.condition.type}</p>
-        )}
+        <div>
+          <span className="text-neutral-600 uppercase tracking-wider">Output</span>
+          <p className="text-neutral-400 mt-0.5">Product → TRIGGERS_RISK → Rule</p>
+        </div>
+        <div>
+          <span className="text-neutral-600 uppercase tracking-wider">Condition Type</span>
+          <p className="text-neutral-400 font-mono mt-0.5">{cond.type || '—'}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function OntologySuccessChecklist() {
+  const items = [
+    'Object types are defined',
+    'Properties are typed',
+    'Link types are defined',
+    'Constraints validate graph shape',
+    'Instance data exists',
+    'Objects are connected through links',
+    'Rules evaluate instance data',
+    'Triggered rules generate evidence',
+    'Missing data is marked as not_evaluable',
+    'Agent can answer using graph-grounded tools',
+  ];
+
+  return (
+    <div className="border border-green-500/20 rounded-xl overflow-hidden bg-green-500/5">
+      <div className="flex items-center gap-2 px-4 py-3">
+        <CheckCircle className="w-4 h-4 text-green-400" />
+        <span className="text-xs font-semibold text-white">Ontology Success Checklist</span>
+      </div>
+      <div className="px-4 pb-3">
+        <p className="text-[10px] text-neutral-400 mb-2">
+          Ontology construction is successful if all of the following are true.
+          This is more than graph visualization — it is a working operational ontology.
+        </p>
+        <div className="space-y-1">
+          {items.map((item, i) => (
+            <div key={i} className="flex items-center gap-2 text-[10px]">
+              <CheckCircle className="w-3 h-3 text-green-500 shrink-0" />
+              <span className="text-neutral-300">{item}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

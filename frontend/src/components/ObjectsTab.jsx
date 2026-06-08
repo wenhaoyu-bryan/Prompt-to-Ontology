@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   Package, FlaskConical, Shield, Users, Calendar, Search, Eye, GitBranch, Zap,
-  Truck, Cpu, Factory, Activity, Layers,
+  Truck, Cpu, Factory, Activity, Layers, Info, ChevronDown, ChevronUp, Database,
 } from 'lucide-react';
 import EntityInspector from './EntityInspector';
 
@@ -120,6 +120,9 @@ export default function ObjectsTab({
 
       {/* ── Center: Object List ── */}
       <div className="flex-1 overflow-hidden flex flex-col">
+        {/* About + Ready Data */}
+        <AboutDemoPanel />
+
         {/* Search bar */}
         <div className="px-4 py-3 border-b border-neutral-800 bg-neutral-950 shrink-0">
           <div className="flex items-center gap-2 mb-1">
@@ -316,5 +319,78 @@ function GenericObjectRow({ node, meta, outgoing, isSelected, onSelect }) {
         <span className="text-[10px] text-neutral-600 shrink-0">{outgoing.length} links</span>
       )}
     </button>
+  );
+}
+
+
+// ══════════════════════════════════════════════════════
+// About Demo Panel
+// ══════════════════════════════════════════════════════
+
+function AboutDemoPanel() {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="border-b border-neutral-800 bg-neutral-950 shrink-0">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-neutral-900/30 transition-colors text-left"
+      >
+        <Info className="w-3.5 h-3.5 text-blue-400" />
+        <span className="text-[11px] font-semibold text-neutral-300">About this demo</span>
+        {expanded
+          ? <ChevronUp className="w-3 h-3 text-neutral-600 ml-auto" />
+          : <ChevronDown className="w-3 h-3 text-neutral-600 ml-auto" />}
+      </button>
+
+      {expanded && (
+        <div className="px-4 pb-3 space-y-3 max-h-80 overflow-y-auto">
+          {/* Product definition */}
+          <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg px-3 py-2.5">
+            <p className="text-[11px] text-neutral-300 leading-relaxed">
+              <span className="font-semibold text-white">Prompt to Ontology</span> is a ready-data operational ontology runtime.
+            </p>
+            <p className="text-[10px] text-neutral-400 leading-relaxed mt-1.5">
+              This demo assumes data has already been cleaned and normalized.
+              Using the Pet Food domain, it shows how standardized data can be turned into ontology object types,
+              properties, relationships, constraints, rules, rule evaluations, graph evidence, object views,
+              and agent reasoning.
+            </p>
+            <p className="text-[10px] text-neutral-500 mt-1.5 italic">
+              This is not a pet food app. Pet Food is the validation domain.
+            </p>
+          </div>
+
+          {/* Ready data loaded */}
+          <div>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Database className="w-3 h-3 text-green-400" />
+              <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">Ready Data Loaded</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5 mb-2">
+              {[
+                { label: 'PetFoodProduct', count: 12 },
+                { label: 'Brand', count: 3 },
+                { label: 'Ingredient', count: 20 },
+                { label: 'Species', count: 2 },
+                { label: 'LifeStage', count: 4 },
+                { label: 'RiskRule', count: 5 },
+              ].map(item => (
+                <div key={item.label} className="bg-neutral-900/60 border border-neutral-800 rounded px-2 py-1.5 flex items-center justify-between">
+                  <span className="text-[9px] text-neutral-400 font-mono">{item.label}</span>
+                  <span className="text-[9px] text-cyan-400 font-bold">{item.count}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[9px] text-neutral-500 leading-relaxed">
+              Includes cat and dog products, dry food / wet food / treats, all life stages,
+              ingredient relationships, nutrition fields, and rule-triggering examples.
+              The system does not start from raw web data — it starts from normalized ready data
+              that follows the Ready Data Contract.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
