@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, Row, Col, Statistic, Typography, Space, Tag, Spin, Button, Timeline, Table, Progress, Result, Steps, Alert } from 'antd';
 import {
   AppstoreOutlined,
@@ -178,60 +178,32 @@ export default function DashboardPage() {
 
       {/* Primary Stats */}
       <Row gutter={[16, 16]}>
-        <Col xs={12} sm={8} lg={4}>
-          <Card size="small" hoverable>
-            <Statistic
-              title={t('dashboard.totalNodes')}
-              value={stats?.nodes || 0}
-              prefix={<AppstoreOutlined style={{ color: '#1677ff' }} />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={8} lg={4}>
-          <Card size="small" hoverable>
-            <Statistic
-              title={t('dashboard.totalEdges')}
-              value={stats?.edges || 0}
-              prefix={<NodeIndexOutlined style={{ color: '#52c41a' }} />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={8} lg={4}>
-          <Card size="small" hoverable>
-            <Statistic
-              title={t('dashboard.objectTypes')}
-              value={stats?.objectTypes || 0}
-              prefix={<ApartmentOutlined style={{ color: '#722ed1' }} />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={8} lg={4}>
-          <Card size="small" hoverable>
-            <Statistic
-              title={t('schema.linkTypes')}
-              value={stats?.linkTypes || 0}
-              prefix={<NodeIndexOutlined style={{ color: '#13c2c2' }} />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={8} lg={4}>
-          <Card size="small" hoverable>
-            <Statistic
-              title={t('dashboard.riskRules')}
-              value={stats?.rules || 0}
-              prefix={<WarningOutlined style={{ color: '#fa8c16' }} />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={8} lg={4}>
-          <Card size="small" hoverable>
-            <Statistic
-              title={t('dashboard.evidenceEdges')}
-              value={stats?.evidenceEdges || 0}
-              prefix={<LinkOutlined style={{ color: '#52c41a' }} />}
-            />
-          </Card>
-        </Col>
+        {[
+          { title: t('dashboard.totalNodes'), value: stats?.nodes || 0, icon: <AppstoreOutlined />, color: '#1677ff', path: '/objects' },
+          { title: t('dashboard.totalEdges'), value: stats?.edges || 0, icon: <NodeIndexOutlined />, color: '#52c41a', path: '/graph' },
+          { title: t('dashboard.objectTypes'), value: stats?.objectTypes || 0, icon: <ApartmentOutlined />, color: '#722ed1', path: '/schema?tab=objectTypes' },
+          { title: t('schema.linkTypes'), value: stats?.linkTypes || 0, icon: <LinkOutlined />, color: '#13c2c2', path: '/schema?tab=linkTypes' },
+          { title: t('dashboard.riskRules'), value: stats?.rules || 0, icon: <WarningOutlined />, color: '#fa8c16', path: '/schema?tab=rules' },
+          { title: t('dashboard.evidenceEdges'), value: stats?.evidenceEdges || 0, icon: <LinkOutlined />, color: '#ff4d4f', path: '/graph' },
+        ].map((m, i) => (
+          <Col xs={12} sm={8} lg={4} key={i}>
+            <Card
+              size="small"
+              hoverable
+              onClick={() => navigate(m.path)}
+              style={{ cursor: 'pointer' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Statistic
+                  title={m.title}
+                  value={m.value}
+                  prefix={React.cloneElement(m.icon, { style: { color: m.color } })}
+                />
+                <RightOutlined style={{ fontSize: 10, opacity: 0.3, marginTop: 4 }} />
+              </div>
+            </Card>
+          </Col>
+        ))}
       </Row>
 
       {/* Main content: 2 columns */}

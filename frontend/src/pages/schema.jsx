@@ -11,6 +11,7 @@ import {
   InfoCircleOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../providers/dataProvider';
 
 const OBJECT_TYPE_EXPLANATIONS = {
@@ -50,6 +51,8 @@ const SEVERITY_COLORS = {
 
 export default function SchemaPage() {
   const { t, i18n } = useTranslation();
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'objectTypes';
   const [schema, setSchema] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -290,7 +293,7 @@ export default function SchemaPage() {
       {/* Tabbed content */}
       <Card styles={{ body: { padding: '0 16px 16px' } }}>
         <Tabs
-          defaultActiveKey="objectTypes"
+          defaultActiveKey={defaultTab}
           items={tabItems}
           style={{ marginTop: 8 }}
         />
