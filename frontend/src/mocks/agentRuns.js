@@ -1,0 +1,53 @@
+// Mock data for Agent Runs — used when /api/agent/runs endpoint is unavailable
+// Real backend data comes from /api/pet-food/agent/chat, /api/llm/config
+
+export const MOCK_AGENT_RUNS = [
+  {
+    run_id: 'run-001',
+    prompt: 'Which cat foods are missing taurine?',
+    status: 'completed',
+    created_at: '2026-06-09T10:30:00Z',
+    objects_extracted: 3,
+    relationships_extracted: 5,
+    issues_found: 2,
+    tools_used: ['graph_query', 'rule_check'],
+    answer_summary: 'Found 2 cat food products (PF003, PF005) missing taurine supplementation. Both triggered risk rule R002.',
+    llm_used: true,
+  },
+  {
+    run_id: 'run-002',
+    prompt: 'Compare ingredient profiles of PF001 and PF003',
+    status: 'completed',
+    created_at: '2026-06-09T09:15:00Z',
+    objects_extracted: 0,
+    relationships_extracted: 8,
+    issues_found: 0,
+    tools_used: ['graph_query', 'comparison'],
+    answer_summary: 'PF001 uses beef-based formula with 6 ingredients. PF003 uses fish-based formula with 8 ingredients. Key difference: PF003 includes taurine supplement.',
+    llm_used: true,
+  },
+  {
+    run_id: 'run-003',
+    prompt: 'List all high-risk products and explain why',
+    status: 'completed',
+    created_at: '2026-06-08T16:45:00Z',
+    objects_extracted: 4,
+    relationships_extracted: 12,
+    issues_found: 4,
+    tools_used: ['graph_query', 'rule_engine', 'risk_analysis'],
+    answer_summary: '4 high-risk products identified. Main triggers: high fat content (R001), missing taurine for cats (R002), chicken allergen for sensitive species (R003).',
+    llm_used: false,
+  },
+  {
+    run_id: 'run-004',
+    prompt: 'What ingredients should be avoided for senior cats?',
+    status: 'running',
+    created_at: '2026-06-09T11:00:00Z',
+    objects_extracted: 0,
+    relationships_extracted: 0,
+    issues_found: 0,
+    tools_used: [],
+    answer_summary: '',
+    llm_used: true,
+  },
+];

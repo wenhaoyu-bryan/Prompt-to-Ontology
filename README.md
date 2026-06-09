@@ -1,13 +1,20 @@
-# Prompt to Ontology · Pet Food Demo
+# Prompt-to-Ontology · Pet Food Demo
 
-A ready-data operational ontology runtime inspired by Palantir-style ontology modeling.
-
-This demo uses pet food products as a validation domain to show how domain objects, links, rules, constraints, graph evidence, and agent reasoning can work together.
-
-> This is not a pet food app.
-> This is a ready-data operational ontology runtime demo using Pet Food as the validation domain.
+> An enterprise ontology-building workspace that turns domain prompts and structured data into objects, relationships, evidence, schema, and agent-assisted review workflows.
 
 **Branch:** `pet-food-ontology-mvp`
+
+## What This Is
+
+Prompt-to-Ontology is an enterprise AI workspace for building and operating domain ontologies. The Pet Food Demo validates the runtime using a real domain: pet food products, ingredients, brands, species, risk rules, and nutrition regulations.
+
+**Core workflow:**
+```
+Prompt / Data → Object Extraction → Relationship Mapping → Evidence Grounding
+→ Schema Validation → Agent Analysis → Human Review
+```
+
+This is **not** a pet food app. It is an ontology runtime that can be extended to any domain (supply chain, food safety, compliance, industrial operations).
 
 ---
 
@@ -69,12 +76,15 @@ See [docs/architecture.md](docs/architecture.md) for the full architecture docum
 
 | Component | File | Role |
 |---|---|---|
-| App Shell | `frontend/src/App.jsx` | 4-tab layout (Objects / Graph / Schema / Agent) |
-| Objects Tab | `frontend/src/components/ObjectsTab.jsx` | Product card list + type selector + detail panel |
-| Graph Tab | `frontend/src/components/GraphTab.jsx` | Local/global graph with depth & type controls |
-| Schema Tab | `frontend/src/components/SchemaTab.jsx` | Object types, link types, rules, actions, health stats |
-| Agent Tab | `frontend/src/components/AgentTab.jsx` | Chat interface with selected product context |
-| Entity Inspector | `frontend/src/components/EntityInspector.jsx` | 5-section structured product view |
+| App Shell | `frontend/src/App.jsx` | Refine + Ant Design layout with sidebar navigation |
+| Dashboard | `frontend/src/pages/dashboard.jsx` | Hero narrative, workflow pipeline, stats, agent runs, reviews |
+| Objects | `frontend/src/pages/objects.jsx` | Object table with filters, evidence, risk levels, detail drawer |
+| Graph | `frontend/src/pages/graph.jsx` | D3 graph with left filter panel, local/global views, EntityInspector |
+| Schema | `frontend/src/pages/schema.jsx` | Tabbed schema view: object types, relationship types, rules, JSON |
+| Agent | `frontend/src/pages/agent.jsx` | Chat + run history, LLM config, agent run detail drawer |
+| Review Queue | `frontend/src/pages/review.jsx` | HITL workflow: approve/reject/send-to-agent with detail drawer |
+| Settings | `frontend/src/pages/settings.jsx` | Theme, language, API config, auth, demo reset |
+| Entity Inspector | `frontend/src/legacy/EntityInspector.jsx` | 360° node view: Overview, Links, Impact, Actions |
 
 ---
 
@@ -169,18 +179,51 @@ Open `http://localhost:5173`
 
 ## Tech Stack
 
-- React + Vite
-- FastAPI
-- Neo4j
-- NetworkX
-- YAML-based ontology schema
-- Rule engine with 4-state evaluation
-- Constraint validator
-- LLM tool-calling agent with deterministic fallback
+### Frontend
+- **React 18** + **Vite 6** + **Refine** (meta-framework) + **Ant Design 6**
+- **React Router v6** for routing
+- **i18next** for bilingual i18n (English + Chinese, 370 keys)
+- **D3.js v7** for graph visualization
+- **axios** for API client
+
+### Backend
+- **FastAPI** (Python)
+- **Neo4j** graph database
+- **NetworkX** for graph algorithms
+- **YAML-based** ontology schema (object types, link types, rules, actions, constraints)
+- **Rule engine** with 4-state evaluation (triggered / passed / not_evaluable / not_applicable)
+- **LLM tool-calling agent** with deterministic fallback
+
+## Portfolio Value
+
+This project demonstrates:
+- **Ontology-driven AI product design** — structured domain knowledge, not prompt engineering
+- **Graph reasoning** — BFS traversal, relationship mapping, impact analysis
+- **HITL workflow** — human review for low-confidence extractions and rule violations
+- **Enterprise AI workspace** — professional UI with i18n, theming, auth, and error handling
+- **Explainable AI** — every risk has evidence, every rule has a 4-state evaluation
+- **Domain-agnostic runtime** — same engine works for pet food, supply chain, or compliance
 
 ---
 
-## Safety Boundary
+## Data Sources
+
+### Real Backend API (FastAPI at :8765)
+- Graph data (nodes + links)
+- Node details with outgoing/incoming links
+- Ontology schema (object types, link types, rules, actions)
+- Rule violations from rule engine
+- Agent chat with LLM tool-calling
+- LLM configuration (runtime)
+- Per-product rule evaluations
+
+### Prototype / Mock Data (frontend-only, labeled in UI)
+- Agent run history (`src/mocks/agentRuns.js`) — labeled "Demo Data"
+- HITL review items (`src/mocks/reviewItems.js`) — labeled "Prototype"
+
+## Screenshots
+
+> Add screenshots for Dashboard, Graph, Agent, and Review Queue.
 
 This demo does not provide veterinary diagnosis.
 

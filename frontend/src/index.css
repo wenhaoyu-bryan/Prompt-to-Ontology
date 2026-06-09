@@ -1,26 +1,7 @@
-@import "tailwindcss";
-
-/* ============================================
-   Prompt-to-Ontology · Global Styles
-   纯暗黑科技风格 bg-neutral-950
-   ============================================ */
-
-:root {
-  --primary: #3b82f6;
-  --success: #22c55e;
-  --warning: #f97316;
-  --danger: #ef4444;
-  --purple: #a855f7;
-  --bg-base: #0a0a0a;
-  --bg-panel: #171717;
-  --bg-card: #1f1f1f;
-  --border: #2a2a2a;
-  --text-primary: #f5f5f5;
-  --text-secondary: #a3a3a3;
-  --text-muted: #737373;
-}
+/* Global overrides for Ant Design + Refine integration */
 
 * {
+  box-sizing: border-box;
   scrollbar-width: thin;
   scrollbar-color: #333 transparent;
 }
@@ -38,40 +19,222 @@
 }
 
 body {
+  margin: 0;
+  padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Microsoft YaHei", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* 日志动画 */
+/* =====================================================
+   Tailwind compatibility shims for legacy D3 components.
+   These replicate the Tailwind utilities used by
+   D3GraphCanvas, EntityInspector, and other legacy JSX.
+
+   Ant Design reset.css sets `svg, canvas { display: inline; position: static; }`
+   which breaks Tailwind utilities. The `!important` below restores them.
+   ===================================================== */
+
+canvas.absolute, svg.absolute {
+  position: absolute !important;
+}
+canvas.z-10 { z-index: 10 !important; }
+canvas.z-20 { z-index: 20 !important; }
+canvas.z-30 { z-index: 30 !important; }
+svg.z-10 { z-index: 10 !important; }
+svg.z-20 { z-index: 20 !important; }
+svg.z-30 { z-index: 30 !important; }
+canvas.pointer-events-none, svg.pointer-events-none {
+  pointer-events: none !important;
+}
+canvas.inset-0 {
+  display: block !important;
+}
+
+/* Display & Flex */
+.flex { display: flex; }
+.inline-flex { display: inline-flex; }
+.flex-col { flex-direction: column; }
+.flex-wrap { flex-wrap: wrap; }
+.flex-1 { flex: 1 1 0%; }
+.shrink-0 { flex-shrink: 0; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.justify-end { justify-content: flex-end; }
+.gap-0\.5 { gap: 2px; }
+.gap-1 { gap: 4px; }
+.gap-1\.5 { gap: 6px; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.gap-4 { gap: 16px; }
+.gap-x-4 { column-gap: 16px; }
+.gap-y-1\.5 { row-gap: 6px; }
+
+/* Positioning */
+.relative { position: relative; }
+.absolute { position: absolute; }
+.inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+.top-0 { top: 0; }
+.top-3 { top: 12px; }
+.top-12 { top: 48px; }
+.right-3 { right: 12px; }
+.right-4 { right: 16px; }
+.bottom-3 { bottom: 12px; }
+.bottom-4 { bottom: 16px; }
+.left-3 { left: 12px; }
+.left-4 { left: 16px; }
+.left-10 { left: 40px; }
+.left-1\/2 { left: 50%; }
+.-translate-x-1\/2 { transform: translateX(-50%); }
+
+/* Sizing */
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+.w-3 { width: 12px; }
+.h-3 { height: 12px; }
+.w-3\.5 { width: 14px; }
+.h-3\.5 { height: 14px; }
+.w-4 { width: 16px; }
+.h-4 { height: 16px; }
+.w-5 { width: 20px; }
+.h-5 { height: 20px; }
+.w-7 { width: 28px; }
+.h-7 { height: 28px; }
+.w-px { width: 1px; }
+.min-w-0 { min-width: 0; }
+.max-w-md { max-width: 448px; }
+.w-52 { width: 208px; }
+.w-64 { width: 256px; }
+.max-h-32 { max-height: 128px; }
+.max-h-60 { max-height: 240px; }
+.max-h-64 { max-height: 256px; }
+
+/* Spacing */
+.p-1 { padding: 4px; }
+.p-1\.5 { padding: 6px; }
+.p-3 { padding: 12px; }
+.px-2 { padding-left: 8px; padding-right: 8px; }
+.px-2\.5 { padding-left: 10px; padding-right: 10px; }
+.px-3 { padding-left: 12px; padding-right: 12px; }
+.px-3\.5 { padding-left: 14px; padding-right: 14px; }
+.px-4 { padding-left: 16px; padding-right: 16px; }
+.py-1 { padding-top: 4px; padding-bottom: 4px; }
+.py-1\.5 { padding-top: 6px; padding-bottom: 6px; }
+.py-2 { padding-top: 8px; padding-bottom: 8px; }
+.py-2\.5 { padding-top: 10px; padding-bottom: 10px; }
+.py-3 { padding-top: 12px; padding-bottom: 12px; }
+.mt-4 { margin-top: 16px; }
+.ml-2 { margin-left: 8px; }
+.ml-auto { margin-left: auto; }
+.mb-2 { margin-bottom: 8px; }
+
+/* Overflow */
+.overflow-hidden { overflow: hidden; }
+.overflow-y-auto { overflow-y: auto; }
+.overflow-x-auto { overflow-x: auto; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Z-index */
+.z-10 { z-index: 10; }
+.z-20 { z-index: 20; }
+.z-30 { z-index: 30; }
+.z-40 { z-index: 40; }
+.z-50 { z-index: 50; }
+
+/* Borders & Rounded */
+.rounded { border-radius: 4px; }
+.rounded-lg { border-radius: 8px; }
+.rounded-xl { border-radius: 12px; }
+.rounded-full { border-radius: 9999px; }
+.border { border-width: 1px; border-style: solid; }
+.border-b { border-bottom-width: 1px; border-bottom-style: solid; }
+.border-neutral-700 { border-color: #404040; }
+.border-neutral-800 { border-color: #262626; }
+
+/* Background colors */
+.bg-\[#0a0a0a\] { background-color: #0a0a0a; }
+.bg-\[#0a0a0a\]\/90 { background-color: rgba(10, 10, 10, 0.9); }
+.bg-neutral-900 { background-color: #171717; }
+.bg-neutral-900\/85 { background-color: rgba(23, 23, 23, 0.85); }
+.bg-neutral-900\/90 { background-color: rgba(23, 23, 23, 0.9); }
+.bg-blue-600 { background-color: #2563eb; }
+.bg-amber-600 { background-color: #d97706; }
+.bg-red-500\/10 { background-color: rgba(239, 68, 68, 0.1); }
+
+/* Text */
+.text-xs { font-size: 12px; }
+.text-\[10px\] { font-size: 10px; }
+.text-\[9px\] { font-size: 9px; }
+.text-white { color: #ffffff; }
+.text-neutral-400 { color: #a3a3a3; }
+.text-neutral-500 { color: #737373; }
+.text-neutral-600 { color: #525252; }
+.text-green-400 { color: #4ade80; }
+.text-red-400 { color: #f87171; }
+.text-blue-400 { color: #60a5fa; }
+.text-amber-400 { color: #fbbf24; }
+.text-cyan-400 { color: #22d3ee; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.uppercase { text-transform: uppercase; }
+.tracking-wider { letter-spacing: 0.05em; }
+.text-center { text-align: center; }
+.space-y-0\.5 > * + * { margin-top: 2px; }
+.space-y-1 > * + * { margin-top: 4px; }
+
+/* Transitions */
+.transition-colors { transition: color 0.15s, background-color 0.15s, border-color 0.15s; }
+
+/* Pointer events */
+.pointer-events-none { pointer-events: none; }
+
+/* Shadow */
+.shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+
+/* Backdrop */
+.backdrop-blur { backdrop-filter: blur(8px); }
+
+/* Hover states */
+.hover\:text-white:hover { color: #ffffff; }
+.hover\:text-red-400:hover { color: #f87171; }
+.hover\:bg-red-500\/10:hover { background-color: rgba(239, 68, 68, 0.1); }
+.hover\:bg-blue-500:hover { background-color: #3b82f6; }
+.hover\:bg-amber-500:hover { background-color: #f59e0b; }
+
+/* D3 Graph canvas */
+.d3-graph-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* Fix Ant Design layout transitions */
+.ant-layout-sider {
+  transition: all 0.2s;
+}
+
+/* Legacy animations preserved for D3 graph */
 @keyframes logSlideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
 }
+.log-entry { animation: logSlideIn 0.35s ease-out both; }
 
-.log-entry {
-  animation: logSlideIn 0.35s ease-out both;
-}
-
-/* 告警光晕 */
 @keyframes alertPulse {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
 
-/* 瞄准圈脉冲 */
 @keyframes targetPulse {
   0% { transform: scale(1); opacity: 1; }
   100% { transform: scale(2.5); opacity: 0; }
 }
 
-/* 全屏加载 */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+.animate-spin { animation: spin 1s linear infinite; }
