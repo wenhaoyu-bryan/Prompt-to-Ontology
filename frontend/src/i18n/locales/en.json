@@ -84,7 +84,7 @@
     "tagAgent": "Agent Reasoning",
     "tagHITL": "HITL Review",
     "dataSource": "Data Source",
-    "realApi": "Live API",
+    "realApi": "Ready Data / Demo Dataset",
     "pipeline": {
       "readyData": "Ready Data",
       "extract": "Object Extraction",

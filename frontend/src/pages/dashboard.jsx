@@ -109,8 +109,7 @@ export default function DashboardPage() {
         objectTypes: objectTypes.length,
         linkTypes: linkTypes.length,
         rules: rules.length,
-        evidenceEdges: links.filter(l => l.linkType !== 'TRIGGERS_RISK').length,
-        riskEdges: links.filter(l => l.linkType === 'TRIGGERS_RISK').length,
+        evidenceEdges: links.filter(l => l.linkType === 'TRIGGERS_RISK').length,
         highRisk: nodes.filter(n =>
           links.some(l => l.source === n.id && l.linkType === 'TRIGGERS_RISK')
         ).length,
@@ -166,7 +165,7 @@ export default function DashboardPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
               <Text type="secondary" style={{ fontSize: 11 }}>{t('dashboard.dataSource')}</Text>
               <Space size={4}>
-                <Tag color="success" style={{ fontSize: 10 }}>{t('dashboard.realApi')}</Tag>
+                <Tag color="blue" style={{ fontSize: 10 }}>{t('dashboard.realApi')}</Tag>
                 <Tag style={{ fontSize: 10 }}>{t('common.prototype')}</Tag>
               </Space>
             </div>
@@ -212,15 +211,6 @@ export default function DashboardPage() {
               title={t('schema.linkTypes')}
               value={stats?.linkTypes || 0}
               prefix={<NodeIndexOutlined style={{ color: '#13c2c2' }} />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={8} lg={4}>
-          <Card size="small" hoverable>
-            <Statistic
-              title={t('schema.rules')}
-              value={stats?.rules || 0}
-              prefix={<SafetyCertificateOutlined style={{ color: '#fa8c16' }} />}
             />
           </Card>
         </Col>

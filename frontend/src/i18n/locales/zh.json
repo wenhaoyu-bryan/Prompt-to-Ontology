@@ -84,7 +84,7 @@
     "tagAgent": "智能体推理",
     "tagHITL": "人机协同审核",
     "dataSource": "数据来源",
-    "realApi": "实时 API",
+    "realApi": "标准化数据 / Demo 数据集",
     "pipeline": {
       "readyData": "标准化数据",
       "extract": "对象抽取",
