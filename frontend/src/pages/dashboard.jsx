@@ -206,13 +206,10 @@ export default function DashboardPage() {
         ))}
       </Row>
 
-      {/* Main content: 2 columns */}
-      <Row gutter={[24, 24]} align="stretch">
-        {/* Left: System Health + Recent Agent Runs */}
-        <Col xs={24} lg={14}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24, height: '100%' }}>
-            {/* System Health */}
-            <Card title={<><ThunderboltOutlined /> {t('dashboard.systemHealth')}</>} size="small" style={{ minHeight: 180 }}>
+      {/* Main content: 2x2 CSS Grid for cross-column row alignment */}
+      <div className="dashboard-grid">
+        {/* System Health — row 1, col 1 */}
+          <Card title={<><ThunderboltOutlined /> {t('dashboard.systemHealth')}</>} size="small">
               <Row gutter={[16, 12]}>
                 <Col span={8}>
                   <div style={{ marginBottom: 4 }}>
@@ -240,11 +237,10 @@ export default function DashboardPage() {
               </Row>
             </Card>
 
-            {/* Recent Agent Runs */}
+        {/* Recent Agent Runs — row 2, col 1 */}
             <Card
               title={<><RobotOutlined /> {t('dashboard.recentAgentRuns')} <Tag style={{ fontSize: 10, marginLeft: 4 }}>{t('common.demoData')}</Tag></>}
               size="small"
-              style={{ minHeight: 320 }}
               extra={<Button type="link" size="small" onClick={() => navigate('/agent')}>{t('dashboard.viewAll')} <RightOutlined /></Button>}
             >
               <Table
@@ -281,14 +277,9 @@ export default function DashboardPage() {
                 ]}
               />
             </Card>
-          </div>
-        </Col>
 
-        {/* Right: Quick Actions + Recent Reviews */}
-        <Col xs={24} lg={10}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24, height: '100%' }}>
-            {/* Quick Actions */}
-            <Card title={<><ThunderboltOutlined /> {t('dashboard.quickActions')}</>} size="small" style={{ minHeight: 180 }}>
+        {/* Quick Actions — row 1, col 2 */}
+          <Card title={<><ThunderboltOutlined /> {t('dashboard.quickActions')}</>} size="small">
               <Row gutter={[8, 8]}>
                 {[
                   { icon: <AppstoreOutlined />, label: t('dashboard.journeyObjects'), path: '/objects', color: '#1677ff' },
@@ -319,13 +310,12 @@ export default function DashboardPage() {
               </Row>
             </Card>
 
-            {/* Pending Reviews */}
-            <Card
-              title={<><AuditOutlined /> {t('dashboard.pendingReviews')} ({pendingReviews.length}) <Tag style={{ fontSize: 10, marginLeft: 4 }}>{t('common.prototype')}</Tag></>}
-              size="small"
-              style={{ minHeight: 320 }}
-              extra={<Button type="link" size="small" onClick={() => navigate('/review')}>{t('dashboard.viewAll')} <RightOutlined /></Button>}
-            >
+        {/* Pending Reviews — row 2, col 2 */}
+          <Card
+            title={<><AuditOutlined /> {t('dashboard.pendingReviews')} ({pendingReviews.length}) <Tag style={{ fontSize: 10, marginLeft: 4 }}>{t('common.prototype')}</Tag></>}
+            size="small"
+            extra={<Button type="link" size="small" onClick={() => navigate('/review')}>{t('dashboard.viewAll')} <RightOutlined /></Button>}
+          >
               {pendingReviews.length > 0 ? (
                 <Timeline
                   items={pendingReviews.slice(0, 3).map(item => ({
@@ -342,10 +332,8 @@ export default function DashboardPage() {
               ) : (
                 <Text type="secondary">{t('review.noViolations')}</Text>
               )}
-            </Card>
-          </div>
-        </Col>
-      </Row>
+          </Card>
+      </div>
     </Space>
   );
 }
