@@ -165,11 +165,11 @@ export default function GraphPage() {
           <div>
             <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>{t('graph.viewMode')}</Text>
             <Radio.Group value={viewMode} onChange={e => setViewMode(e.target.value)} size="small" style={{ width: '100%' }}>
-              <Radio.Button value="local" style={{ width: '50%', textAlign: 'center' }}>
-                <CompressOutlined /> {t('graph.localView')}
-              </Radio.Button>
               <Radio.Button value="global" style={{ width: '50%', textAlign: 'center' }}>
                 <ExpandOutlined /> {t('graph.globalView')}
+              </Radio.Button>
+              <Radio.Button value="local" style={{ width: '50%', textAlign: 'center' }}>
+                <CompressOutlined /> {t('graph.localView')}
               </Radio.Button>
             </Radio.Group>
           </div>
