@@ -323,7 +323,7 @@ export default function AgentPage() {
         banner
         showIcon
         icon={<InfoCircleOutlined />}
-        message={
+        title={
           <span style={{ fontSize: 12 }}>
             {t('agent.toolsPanel')}{' '}
             {[t('agent.toolLookup'), t('agent.toolRelation'), t('agent.toolRule'), t('agent.toolEvidence'), t('agent.toolLimitation')].map((tool, i) => (
@@ -371,7 +371,7 @@ export default function AgentPage() {
           {llmStatus?.configured && (
             <Alert
               type={llmStatus.source === 'runtime' ? 'success' : 'info'}
-              message={`${t('agent.currentConfig')}${llmStatus.provider} / ${llmStatus.model}`}
+              title={`${t('agent.currentConfig')}${llmStatus.provider} / ${llmStatus.model}`}
               description={llmStatus.source === 'runtime' ? t('agent.runtimeDesc') : t('agent.envDesc')}
               showIcon
             />
@@ -435,14 +435,14 @@ export default function AgentPage() {
 
           <Alert
             type="warning"
-            message={t('agent.securityNote')}
+            title={t('agent.securityNote')}
             showIcon
           />
 
           {testResult && (
             <Alert
               type={testResult.ok ? 'success' : 'error'}
-              message={testResult.message}
+              title={testResult.message}
               description={testResult.ok && testResult.latency_ms != null ? `${t('agent.latency')}${testResult.latency_ms}ms` : undefined}
               showIcon
             />

@@ -264,7 +264,7 @@ export default function ReviewQueuePage() {
         type="info"
         showIcon
         icon={<InfoCircleOutlined />}
-        message={t('review.hitlNote')}
+        title={t('review.hitlNote')}
         style={{ fontSize: 12 }}
       />
 

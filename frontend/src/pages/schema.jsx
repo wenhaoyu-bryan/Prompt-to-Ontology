@@ -133,7 +133,7 @@ export default function SchemaPage() {
                     type="info"
                     showIcon
                     icon={<InfoCircleOutlined />}
-                    message={t('schema.objectTypeExplanation')}
+                    title={t('schema.objectTypeExplanation')}
                     description={OBJECT_TYPE_EXPLANATIONS[ot.name][i18n.language] || OBJECT_TYPE_EXPLANATIONS[ot.name].en}
                     style={{ fontSize: 12 }}
                   />
@@ -177,7 +177,7 @@ export default function SchemaPage() {
               const exp = LINK_TYPE_EXPLANATIONS[record.name];
               return exp ? (
                 <Alert type="info" showIcon icon={<InfoCircleOutlined />}
-                  message={t('schema.linkTypeExplanation')}
+                  title={t('schema.linkTypeExplanation')}
                   description={exp[i18n.language] || exp.en}
                   style={{ fontSize: 12 }}
                 />
@@ -212,7 +212,7 @@ export default function SchemaPage() {
               const exp = RULE_EXPLANATIONS[record.rule_id];
               return exp ? (
                 <Alert type="info" showIcon icon={<InfoCircleOutlined />}
-                  message={t('schema.ruleExplanation')}
+                  title={t('schema.ruleExplanation')}
                   description={exp[i18n.language] || exp.en}
                   style={{ fontSize: 12 }}
                 />
