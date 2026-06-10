@@ -33,7 +33,7 @@ export default function GraphPage() {
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [viewMode, setViewMode] = useState('local');
+  const [viewMode, setViewMode] = useState('global');
   const [depth, setDepth] = useState(1);
   const [selectedNode, setSelectedNode] = useState(null);
   const [nodeDetail, setNodeDetail] = useState(null);
@@ -72,6 +72,7 @@ export default function GraphPage() {
 
   const handleNodeClick = useCallback(async (node) => {
     setSelectedNode(node);
+    setViewMode('local');
     setDrawerOpen(true);
     try {
       const { data } = await api.get(`/node/${node.id}`);
@@ -277,7 +278,11 @@ export default function GraphPage() {
             </div>
           ) : displayData.nodes.length === 0 && viewMode === 'local' ? (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <Empty description={t('graph.selectNode')} />
+              <Empty description={t('graph.selectNode')}>
+                <Button icon={<ExpandOutlined />} onClick={() => setViewMode('global')}>
+                  {t('graph.globalView')}
+                </Button>
+              </Empty>
             </div>
           ) : (
             <D3GraphCanvas
