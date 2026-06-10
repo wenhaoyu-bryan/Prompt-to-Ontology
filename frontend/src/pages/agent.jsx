@@ -206,7 +206,7 @@ export default function AgentPage() {
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {/* Chat area */}
           <Card style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
-            styles={{ body: { height: '50vh', overflow: 'auto', padding: 16 } }}
+            styles={{ body: { height: '65vh', overflow: 'auto', padding: 16 } }}
           >
             {messages.length === 0 && (
               <div style={{ textAlign: 'center', padding: '40px 0' }}>
@@ -317,24 +317,24 @@ export default function AgentPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
       {/* Subtitle */}
       <Text type="secondary" style={{ fontSize: 12 }}>{t('agent.subtitle')}</Text>
-      {/* Tools explanation */}
+      {/* Tools explanation — compact banner */}
       <Alert
         type="info"
+        banner
         showIcon
         icon={<InfoCircleOutlined />}
-        message={t('agent.toolsPanel')}
-        description={
-          <Space size={4} wrap>
+        message={
+          <span style={{ fontSize: 12 }}>
+            {t('agent.toolsPanel')}{' '}
             {[t('agent.toolLookup'), t('agent.toolRelation'), t('agent.toolRule'), t('agent.toolEvidence'), t('agent.toolLimitation')].map((tool, i) => (
-              <Tag key={i} color="blue" style={{ fontSize: 11 }}>{tool}</Tag>
+              <Tag key={i} color="blue" style={{ fontSize: 10, marginLeft: 2 }}>{tool}</Tag>
             ))}
-          </Space>
+          </span>
         }
-        style={{ fontSize: 12 }}
       />
       {/* Status bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <RobotOutlined style={{ fontSize: 18 }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <RobotOutlined style={{ fontSize: 14 }} />
         <Text style={{ fontSize: 13 }}>{t('agent.llmMode')}:</Text>
         {llmConfigured ? (
           <Tag color="success">{t('agent.llmReasoning')}</Tag>
