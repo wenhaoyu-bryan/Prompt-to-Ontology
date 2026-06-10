@@ -1,20 +1,24 @@
-# Prompt-to-Ontology · Pet Food Demo
+# Prompt-to-Ontology · Pet Food Ontology Demo
 
-> An enterprise ontology-building workspace that turns domain prompts and structured data into objects, relationships, evidence, schema, and agent-assisted review workflows.
+> An operational ontology runtime that turns standardized data into structured objects, relationships, constraints, rules, evidence, and agent-assisted reasoning.
 
 **Branch:** `pet-food-ontology-mvp`
 
+---
+
 ## What This Is
 
-Prompt-to-Ontology is an enterprise AI workspace for building and operating domain ontologies. The Pet Food Demo validates the runtime using a real domain: pet food products, ingredients, brands, species, risk rules, and nutrition regulations.
+Prompt-to-Ontology is a domain-ontology runtime. It takes structured data and schema definitions, builds a graph of typed objects and relationships, evaluates rules against that graph, generates evidence edges, and supports agent-assisted Q&A with human-in-the-loop review.
 
-**Core workflow:**
+The **Pet Food Demo** validates the runtime using a real domain: pet food products, ingredients, brands, species, risk rules, and nutrition regulations.
+
+**Runtime pipeline:**
 ```
-Prompt / Data → Object Extraction → Relationship Mapping → Evidence Grounding
-→ Schema Validation → Agent Analysis → Human Review
+Ready Data → Object Extraction → Relation Mapping → Constraint Validation
+→ Rule Evaluation → Evidence Generation → Agent Reasoning → Human Review
 ```
 
-This is **not** a pet food app. It is an ontology runtime that can be extended to any domain (supply chain, food safety, compliance, industrial operations).
+This is **not** a pet food app. The same runtime can be extended to supply chain, food safety, compliance, or industrial operations.
 
 ---
 
@@ -22,69 +26,51 @@ This is **not** a pet food app. It is an ontology runtime that can be extended t
 
 - Domain objects can be modeled as ontology object types
 - Relationships can be validated against link definitions
-- Rules can generate explainable risk edges
-- Missing data can be separated from safe results (4-state evaluation)
-- Object views can show evidence, not just properties
-- Agents can answer using graph-grounded tools
-- The same runtime can be extended to future domains
+- Rules can generate explainable risk edges (4-state evaluation)
+- Missing data is separated from safe results
+- Object views show evidence, not just properties
+- Agents can answer using graph-grounded tools (not hallucination)
+- The same runtime works across domains
 
 ---
 
 ## Demo Flow
 
-1. Open the **Objects** workspace
-2. Select a pet food product
-3. Review its nutrition, ingredients, risks, and data limitations
-4. Switch to **Graph** to inspect its local ontology neighborhood
-5. Switch to **Schema** to inspect object types, link types, rules, and actions
-6. Ask the **Agent** why the product is risky
-7. Review graph evidence, rule evaluation, tools used, and limitations
+1. **Dashboard** — see ontology health, runtime pipeline, and quick navigation
+2. **Objects** — browse products, filter by type, view detail drawer with evidence and risks
+3. **Graph** — explore the global evidence network, click a node to see its local neighborhood
+4. **Schema** — inspect object types, link types, and rules with modeling explanations
+5. **Agent** — ask natural-language questions, see which ontology tools were called
+6. **Review** — inspect HITL prototype items (low-confidence extractions, rule violations)
 
-See [docs/demo-script.md](docs/demo-script.md) for a 60-second walkthrough.
+See [docs/demo-script.md](docs/demo-script.md) for a detailed walkthrough.
 
 ---
 
-## Architecture
-
-```
-Ready Data Contract
-  → Domain Adapter
-  → Graph Payload
-  → Rule Engine
-  → Constraint Validator
-  → Neo4j Ontology Graph
-  → NetworkX / FastAPI APIs
-  → React Workspaces
-  → Agent Tool Reasoning
-```
-
-See [docs/architecture.md](docs/architecture.md) for the full architecture document.
-
-### Backend
-
-| Component | File | Role |
-|---|---|---|
-| Domain Config | `backend/domain_config.py` | Domain registry — paths, types, endpoints |
-| Ontology Registry | `backend/ontology_registry.py` | Loads YAML schema definitions |
-| Rule Engine | `backend/rule_engine.py` | 4-state rule evaluation (triggered/passed/not_evaluable/not_applicable) |
-| Constraint Validator | `backend/constraint_validator.py` | Validates nodes/edges against schema before import |
-| Agent v2 | `backend/petfood_agent_v2.py` | LLM tool-calling agent with 10 tools + deterministic fallback |
-| Transformer | `backend/domain/petfood_transformer.py` | CSV → Graph payload (domain adapter) |
-| API Server | `backend/main.py` | FastAPI endpoints |
+## Tech Stack
 
 ### Frontend
 
-| Component | File | Role |
-|---|---|---|
-| App Shell | `frontend/src/App.jsx` | Refine + Ant Design layout with sidebar navigation |
-| Dashboard | `frontend/src/pages/dashboard.jsx` | Hero narrative, workflow pipeline, stats, agent runs, reviews |
-| Objects | `frontend/src/pages/objects.jsx` | Object table with filters, evidence, risk levels, detail drawer |
-| Graph | `frontend/src/pages/graph.jsx` | D3 graph with left filter panel, local/global views, EntityInspector |
-| Schema | `frontend/src/pages/schema.jsx` | Tabbed schema view: object types, relationship types, rules, JSON |
-| Agent | `frontend/src/pages/agent.jsx` | Chat + run history, LLM config, agent run detail drawer |
-| Review Queue | `frontend/src/pages/review.jsx` | HITL workflow: approve/reject/send-to-agent with detail drawer |
-| Settings | `frontend/src/pages/settings.jsx` | Theme, language, API config, auth, demo reset |
-| Entity Inspector | `frontend/src/legacy/EntityInspector.jsx` | 360° node view: Overview, Links, Impact, Actions |
+| Layer | Technology |
+|---|---|
+| Framework | React 18 + Vite 6 |
+| Meta-framework | Refine |
+| UI Library | Ant Design 6 |
+| Routing | React Router v6 |
+| i18n | i18next (English + Chinese, 400+ keys) |
+| Graph | D3.js v7 |
+| HTTP | axios |
+
+### Backend
+
+| Layer | Technology |
+|---|---|
+| API | FastAPI (Python) |
+| Database | Neo4j |
+| Graph Algorithms | NetworkX |
+| Schema | YAML-based (object types, link types, rules, actions, constraints) |
+| Rule Engine | 4-state evaluation (triggered / passed / not_evaluable / not_applicable) |
+| Agent | LLM tool-calling with deterministic fallback |
 
 ---
 
@@ -92,29 +78,29 @@ See [docs/architecture.md](docs/architecture.md) for the full architecture docum
 
 ### 6 Object Types
 
-| Type | Description | Key Properties |
-|---|---|---|
-| `PetFoodProduct` | Pet food product | product_name, category, target_species, life_stage, nutrition values |
-| `Brand` | Pet food brand | brand_name, country |
-| `Ingredient` | Food ingredient | ingredient_name, ingredient_type, risk_tag, common_allergen |
-| `RiskRule` | Nutrition/ingredient risk rule | rule_name, severity, condition |
-| `Species` | Target species | species_name (Cat, Dog) |
-| `LifeStage` | Life stage | stage_name (Kitten, Puppy, Adult, Senior) |
+| Type | Description |
+|---|---|
+| `PetFoodProduct` | Pet food product (name, category, species, life stage, nutrition) |
+| `Brand` | Pet food brand (name, country) |
+| `Ingredient` | Food ingredient (name, type, risk tag, allergen flag) |
+| `RiskRule` | Nutrition/ingredient risk rule (severity, condition) |
+| `Species` | Target species (Cat, Dog) |
+| `LifeStage` | Life stage (Kitten, Puppy, Adult, Senior) |
 
 ### 6 Link Types
 
-| Link | From → To | Description |
+| Link | From → To | Meaning |
 |---|---|---|
-| `MADE_BY` | Product → Brand | Product is made by a brand |
-| `CONTAINS` | Product → Ingredient | Product contains an ingredient |
-| `TARGETS_SPECIES` | Product → Species | Product targets a species |
-| `SUITABLE_FOR` | Product → LifeStage | Product is suitable for a life stage |
-| `TRIGGERS_RISK` | Product → RiskRule | Product triggers a risk rule |
-| `SIMILAR_TO` | Product → Product | Similarity between products |
+| `MADE_BY` | Product → Brand | Manufacturer relationship |
+| `CONTAINS` | Product → Ingredient | Composition |
+| `TARGETS_SPECIES` | Product → Species | Target animal |
+| `SUITABLE_FOR` | Product → LifeStage | Age suitability |
+| `TRIGGERS_RISK` | Product → RiskRule | Evidence edge (generated by rule engine) |
+| `SIMILAR_TO` | Product → Product | Similarity |
 
-### 5 Risk Rules (4-State Evaluation)
+### 5 Risk Rules
 
-Each rule evaluates to one of: **triggered** (condition met), **passed** (data complete, not triggered), **not_evaluable** (missing data), **not_applicable** (wrong species/life_stage).
+Each rule evaluates to one of: **triggered**, **passed**, **not_evaluable** (missing data), **not_applicable** (wrong species/stage).
 
 | Rule | Severity | Condition |
 |---|---|---|
@@ -128,13 +114,10 @@ Each rule evaluates to one of: **triggered** (condition met), **passed** (data c
 
 ## Sample Data
 
-12 products across 3 brands (WhiskerPro, PurrfectHealth, TailWag), covering:
-- Cat & dog food
-- Dry food, wet food, treats
-- All life stages (kitten, puppy, adult, senior)
+12 products across 3 brands (WhiskerPro, PurrfectHealth, TailWag):
+- Cat & dog food, dry/wet/treats, all life stages
 - 20 ingredients with allergen and risk tagging
-
-Auto-seeded on first backend startup.
+- Auto-seeded on first backend startup
 
 ---
 
@@ -177,74 +160,27 @@ Open `http://localhost:5173`
 
 ---
 
-## Tech Stack
+## API Endpoints
 
-### Frontend
-- **React 18** + **Vite 6** + **Refine** (meta-framework) + **Ant Design 6**
-- **React Router v6** for routing
-- **i18next** for bilingual i18n (English + Chinese, 370 keys)
-- **D3.js v7** for graph visualization
-- **axios** for API client
-
-### Backend
-- **FastAPI** (Python)
-- **Neo4j** graph database
-- **NetworkX** for graph algorithms
-- **YAML-based** ontology schema (object types, link types, rules, actions, constraints)
-- **Rule engine** with 4-state evaluation (triggered / passed / not_evaluable / not_applicable)
-- **LLM tool-calling agent** with deterministic fallback
-
-## Portfolio Value
-
-This project demonstrates:
-- **Ontology-driven AI product design** — structured domain knowledge, not prompt engineering
-- **Graph reasoning** — BFS traversal, relationship mapping, impact analysis
-- **HITL workflow** — human review for low-confidence extractions and rule violations
-- **Enterprise AI workspace** — professional UI with i18n, theming, auth, and error handling
-- **Explainable AI** — every risk has evidence, every rule has a 4-state evaluation
-- **Domain-agnostic runtime** — same engine works for pet food, supply chain, or compliance
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/graph` | Full graph (nodes + links) |
+| GET | `/api/node/{id}` | Node detail with outgoing/incoming links |
+| GET | `/api/ontology/pet_food/schema` | Schema definition (types, links, rules, actions) |
+| GET | `/api/ontology/violations` | Rule violations from rule engine |
+| POST | `/api/pet-food/agent/chat` | Agent Q&A (LLM tool-calling + fallback) |
+| GET/POST | `/api/llm/config` | LLM configuration (runtime) |
+| POST | `/api/llm/test` | Test LLM connection |
 
 ---
 
 ## Data Sources
 
-### Real Backend API (FastAPI at :8765)
-- Graph data (nodes + links)
-- Node details with outgoing/incoming links
-- Ontology schema (object types, link types, rules, actions)
-- Rule violations from rule engine
-- Agent chat with LLM tool-calling
-- LLM configuration (runtime)
-- Per-product rule evaluations
-
-### Prototype / Mock Data (frontend-only, labeled in UI)
-- Agent run history (`src/mocks/agentRuns.js`) — labeled "Demo Data"
-- HITL review items (`src/mocks/reviewItems.js`) — labeled "Prototype"
-
-## Screenshots
-
-> Add screenshots for Dashboard, Graph, Agent, and Review Queue.
-
-This demo does not provide veterinary diagnosis.
-
-Risk explanations are based only on the current ontology data and demo rules.
-
-If data is missing, the system says that the rule cannot be evaluated rather than claiming the product is safe.
-
----
-
-## API Endpoints
-
-| Method | Path | Description |
+| Source | Type | Label in UI |
 |---|---|---|
-| GET | `/api/domains` | List all registered domains |
-| GET | `/api/domains/default` | Default domain config |
-| GET | `/api/ontology/pet_food/schema` | YAML schema definition |
-| GET | `/api/graph` | Full graph data |
-| POST | `/api/pet-food/import-sample` | Import sample data |
-| GET | `/api/pet-food/products/{id}/risk-explanation` | Full risk explanation |
-| GET | `/api/pet-food/products/{id}/rule-evaluations` | 4-state rule evaluation report |
-| POST | `/api/pet-food/agent/chat` | Agent Q&A (LLM tool-calling + fallback) |
+| Backend API (FastAPI :8765) | Real | "Ready Data / Demo Dataset" |
+| Agent run history (`mocks/agentRuns.js`) | Mock | "Demo Data" |
+| HITL review items (`mocks/reviewItems.js`) | Mock | "Prototype" |
 
 ---
 
@@ -257,31 +193,45 @@ Prompt-to-Ontology/
 │   ├── domain_config.py           # Domain registry
 │   ├── ontology_registry.py       # YAML schema loader
 │   ├── rule_engine.py             # 4-state rule evaluator
-│   ├── constraint_validator.py    # Pre-import schema validation
+│   ├── constraint_validator.py    # Pre-import validation
 │   ├── petfood_agent_v2.py        # LLM tool-calling agent (10 tools)
-│   ├── petfood_neo4j.py           # Pet food Neo4j writer
+│   ├── llm_config_manager.py      # Runtime LLM config
 │   ├── neo4j_connector.py         # Neo4j query layer
 │   └── domain/
-│       ├── petfood_transformer.py # CSV → graph payload
-│       └── petfood/               # Adapter package
+│       └── petfood_transformer.py # CSV → graph payload
 ├── frontend/
+│   ├── index.html
+│   ├── vite.config.js
 │   └── src/
-│       ├── App.jsx                # 4-tab workspace
-│       ├── api.js                 # API client
-│       ├── domainConfig.js        # Domain config (frontend)
-│       └── components/
-│           ├── ObjectsTab.jsx     # Product list + detail
-│           ├── GraphTab.jsx       # Local/global graph
-│           ├── SchemaTab.jsx      # Schema overview
-│           ├── AgentTab.jsx       # Chat interface
-│           ├── EntityInspector.jsx # Object 360° view
-│           └── D3GraphCanvas.jsx  # D3 graph canvas
-├── docs/
-│   ├── architecture.md            # Runtime architecture
-│   ├── demo-script.md             # 60-second demo walkthrough
-│   ├── screenshots-checklist.md   # Screenshot checklist
-│   ├── ready-data-contract.md     # Standard input contract
-│   └── qa-checklist.md            # QA verification checklist
+│       ├── App.jsx                # Refine app shell + routing
+│       ├── main.jsx               # Entry point
+│       ├── index.css              # Global styles + responsive grid
+│       ├── pages/
+│       │   ├── dashboard.jsx      # Hero, pipeline, metrics, journey
+│       │   ├── objects.jsx        # Object table, filters, detail drawer
+│       │   ├── graph.jsx          # D3 graph, local/global, evidence network
+│       │   ├── schema.jsx         # Schema tabs with explanations
+│       │   ├── agent.jsx          # Chat, run history, LLM config
+│       │   ├── review.jsx         # HITL review queue
+│       │   ├── settings.jsx       # Theme, language, API, auth
+│       │   └── login.jsx          # Login page
+│       ├── providers/
+│       │   ├── ThemeProvider.jsx   # Theme + color mode
+│       │   ├── dataProvider.js     # API client (axios)
+│       │   ├── authProvider.js     # Mock auth
+│       │   └── accessControlProvider.js
+│       ├── components/
+│       │   └── layout/
+│       │       └── AppLayout.jsx   # Sidebar + header + content
+│       ├── i18n/
+│       │   ├── index.js            # i18next setup
+│       │   └── locales/
+│       │       ├── en.json         # English (400+ keys)
+│       │       └── zh.json         # Chinese (400+ keys)
+│       ├── legacy/                 # Original components (preserved)
+│       └── mocks/
+│           ├── agentRuns.js        # Mock agent run data
+│           └── reviewItems.js      # Mock review items
 ├── ontology/
 │   └── pet_food/
 │       ├── object_types.yaml
@@ -289,15 +239,33 @@ Prompt-to-Ontology/
 │       ├── rules.yaml
 │       ├── action_types.yaml
 │       └── constraints.yaml
-├── scripts/
-│   └── smoke_test.py              # API smoke test
+├── docs/
+│   ├── architecture.md
+│   ├── demo-script.md
+│   └── ...
 └── sample-data/
     └── pet-food/
         ├── pet_food_products.csv
         ├── pet_food_ingredients.csv
-        ├── product_ingredients.csv
-        └── risk_rules.csv
+        └── product_ingredients.csv
 ```
+
+---
+
+## Portfolio Value
+
+- **Ontology-driven AI** — structured domain knowledge, not prompt engineering
+- **Graph reasoning** — BFS traversal, relationship mapping, impact analysis
+- **HITL workflow** — human review for low-confidence extractions and rule violations
+- **Enterprise UI** — Refine + Ant Design 6, bilingual i18n, dark/light theme, responsive layout
+- **Explainable AI** — every risk has evidence, every rule has a 4-state evaluation
+- **Domain-agnostic runtime** — same engine works for pet food, supply chain, or compliance
+
+---
+
+## Disclaimer
+
+This demo does not provide veterinary diagnosis. Risk explanations are based only on the current ontology data and demo rules. If data is missing, the system reports that the rule cannot be evaluated rather than claiming the product is safe.
 
 ---
 
