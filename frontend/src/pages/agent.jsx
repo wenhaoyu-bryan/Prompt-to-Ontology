@@ -203,10 +203,10 @@ export default function AgentPage() {
       key: 'chat',
       label: <span><RobotOutlined /> {t('agent.chat')}</span>,
       children: (
-        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 280px)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
           {/* Chat area */}
-          <Card style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
-            styles={{ body: { flex: 1, overflow: 'auto', padding: 16 } }}
+          <Card style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+            styles={{ body: { height: '50vh', overflow: 'auto', padding: 16 } }}
           >
             {messages.length === 0 && (
               <div style={{ textAlign: 'center', padding: '40px 0' }}>
