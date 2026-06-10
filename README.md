@@ -197,6 +197,14 @@ Prompt-to-Ontology/
 │   ├── petfood_agent_v2.py        # LLM tool-calling agent (10 tools)
 │   ├── llm_config_manager.py      # Runtime LLM config
 │   ├── neo4j_connector.py         # Neo4j query layer
+│   ├── ontology_kernel/           # Domain-agnostic runtime kernel
+│   │   ├── models.py              # Typed Pydantic models
+│   │   ├── schema_loader.py       # YAML → OntologySchema
+│   │   ├── validator.py           # Graph payload validation
+│   │   ├── evidence.py            # Evidence metadata standardization
+│   │   ├── rule_result.py         # 4-state rule evaluation result
+│   │   ├── versioning.py          # Schema hash + version comparison
+│   │   └── introspection.py       # Schema summaries for API
 │   └── domain/
 │       └── petfood_transformer.py # CSV → graph payload
 ├── frontend/
@@ -249,6 +257,24 @@ Prompt-to-Ontology/
         ├── pet_food_ingredients.csv
         └── product_ingredients.csv
 ```
+
+---
+
+## Ontology Kernel v2
+
+The backend includes a domain-agnostic `ontology_kernel` package that normalizes YAML schema definitions into typed Pydantic models, validates graph payloads, standardizes evidence metadata, and exposes schema versioning and introspection.
+
+| Module | Purpose |
+|---|---|
+| `models.py` | Typed models: OntologySchema, ObjectTypeDef, LinkTypeDef, RuleDef, etc. |
+| `schema_loader.py` | Loads YAML into OntologySchema with backward compatibility |
+| `validator.py` | Validates graph payloads against schema, returns structured ValidationIssue |
+| `evidence.py` | Standardized evidence metadata for TRIGGERS_RISK edges |
+| `rule_result.py` | 4-state RuleEvaluationResult model |
+| `versioning.py` | Deterministic schema hash and version comparison |
+| `introspection.py` | Schema summaries for API/frontend |
+
+See [docs/ontology-kernel.md](docs/ontology-kernel.md) for full documentation.
 
 ---
 

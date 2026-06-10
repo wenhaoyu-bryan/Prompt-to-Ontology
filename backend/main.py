@@ -794,7 +794,22 @@ def api_ontology_domain_schema(domain: str):
     """从 YAML 配置加载指定 domain 的完整 ontology schema"""
     try:
         registry = OntologyRegistry(domain=domain)
-        return registry.get_schema()
+        schema_data = registry.get_schema()
+
+        # Augment with Ontology Kernel v2 metadata
+        try:
+            from ontology_kernel import load_ontology_schema, get_schema_summary
+            from pathlib import Path
+            ontology_path = str(Path(__file__).resolve().parent.parent / "ontology" / domain)
+            kernel_schema = load_ontology_schema(domain, ontology_path)
+            summary = get_schema_summary(kernel_schema)
+            schema_data["schema_version"] = summary["schema_version"]
+            schema_data["schema_hash"] = summary["schema_hash"]
+            schema_data["normalized_summary"] = summary
+        except Exception:
+            pass  # Kernel is optional — don't break existing behavior
+
+        return schema_data
     except FileNotFoundError as e:
         raise HTTPException(404, str(e))
     except Exception as e:

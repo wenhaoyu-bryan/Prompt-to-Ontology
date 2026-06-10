@@ -29,6 +29,7 @@ venv/
 CLAUDE.md
 docs/*
 !docs/ready-data-contract.md
+!docs/ontology-kernel.md
 Phases/
 
 # Test data
