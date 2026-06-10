@@ -1107,6 +1107,89 @@ def api_pet_food_agent_chat(req: PetFoodChatRequest):
             raise HTTPException(500, f"Agent error: {e}")
 
 
+# ── Data Pipeline API ───────────────────────────────────────────────────
+
+# Phase 28 uses in-memory storage. Future phases can persist pipeline runs.
+from data_pipeline import PipelineService
+pipeline_service = PipelineService()
+
+@app.get("/api/pipeline/samples")
+def api_pipeline_samples():
+    """List available built-in sample data sources."""
+    return {"samples": pipeline_service.list_sample_sources()}
+
+@app.post("/api/pipeline/profile/sample")
+def api_pipeline_profile_sample(body: dict):
+    """Profile a built-in sample data source."""
+    sample_name = body.get("sample_name", "")
+    if not sample_name:
+        raise HTTPException(400, "sample_name is required")
+    try:
+        profile = pipeline_service.profile_sample(sample_name)
+        return profile.model_dump()
+    except (ValueError, FileNotFoundError) as e:
+        raise HTTPException(404, str(e))
+
+@app.post("/api/pipeline/profile/csv")
+def api_pipeline_profile_csv(body: dict):
+    """Profile CSV content."""
+    filename = body.get("filename", "upload.csv")
+    content = body.get("content", "")
+    if not content:
+        raise HTTPException(400, "content is required")
+    profile = pipeline_service.profile_csv_content(filename, content)
+    return profile.model_dump()
+
+@app.get("/api/pipeline/profile/{source_id}")
+def api_pipeline_get_profile(source_id: str):
+    """Get a profiled data source."""
+    profile = pipeline_service.get_profile(source_id)
+    if not profile:
+        raise HTTPException(404, f"Profile not found: {source_id}")
+    return profile.model_dump()
+
+@app.post("/api/pipeline/mappings/suggest")
+def api_pipeline_suggest_mappings(body: dict):
+    """Suggest field mappings for a profiled source."""
+    source_id = body.get("source_id", "")
+    domain = body.get("domain", "pet_food")
+    if not source_id:
+        raise HTTPException(400, "source_id is required")
+    try:
+        return pipeline_service.suggest_mappings(source_id, domain)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+
+@app.post("/api/pipeline/import-plan")
+def api_pipeline_create_import_plan(body: dict):
+    """Create an import plan from a profiled source."""
+    source_id = body.get("source_id", "")
+    domain = body.get("domain", "pet_food")
+    object_mappings = body.get("object_mappings")
+    link_mappings = body.get("link_mappings")
+    if not source_id:
+        raise HTTPException(400, "source_id is required")
+    try:
+        plan = pipeline_service.create_import_plan(source_id, domain, object_mappings, link_mappings)
+        return plan.model_dump()
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+
+@app.get("/api/pipeline/import-plan/{plan_id}")
+def api_pipeline_get_import_plan(plan_id: str):
+    """Get an import plan by ID."""
+    plan = pipeline_service.get_import_plan(plan_id)
+    if not plan:
+        raise HTTPException(404, f"Import plan not found: {plan_id}")
+    return plan.model_dump()
+
+@app.get("/api/pipeline/import-plans")
+def api_pipeline_list_import_plans():
+    """List all import plans."""
+    plans = pipeline_service.list_import_plans()
+    return {"plans": [p.model_dump() for p in plans]}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8765)

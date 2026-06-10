@@ -12,6 +12,7 @@ import {
   LogoutOutlined,
   BulbOutlined,
   GlobalOutlined,
+  ApiOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -32,6 +33,7 @@ export default function AppLayout() {
     { key: '/graph',     icon: <NodeIndexOutlined />,  label: t('nav.graph') },
     { key: '/schema',    icon: <ApartmentOutlined />,  label: t('nav.schema') },
     { key: '/agent',     icon: <RobotOutlined />,      label: t('nav.agent') },
+    { key: '/pipeline',  icon: <ApiOutlined />,        label: t('nav.pipeline') },
     { key: '/review',    icon: <AuditOutlined />,       label: t('nav.review') },
     { key: '/settings',  icon: <SettingOutlined />,     label: t('nav.settings') },
   ];

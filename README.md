@@ -205,6 +205,13 @@ Prompt-to-Ontology/
 │   │   ├── rule_result.py         # 4-state rule evaluation result
 │   │   ├── versioning.py          # Schema hash + version comparison
 │   │   └── introspection.py       # Schema summaries for API
+│   ├── data_pipeline/             # Ready Data Workbench
+│   │   ├── models.py              # Pipeline models
+│   │   ├── profiler.py            # CSV/data profiling
+│   │   ├── mapper.py              # Field mapping suggestions
+│   │   ├── transformer.py         # Candidate object/link generation
+│   │   ├── import_plan.py         # Import plan generator
+│   │   └── service.py             # In-memory pipeline service
 │   └── domain/
 │       └── petfood_transformer.py # CSV → graph payload
 ├── frontend/
@@ -275,6 +282,14 @@ The backend includes a domain-agnostic `ontology_kernel` package that normalizes
 | `introspection.py` | Schema summaries for API/frontend |
 
 See [docs/ontology-kernel.md](docs/ontology-kernel.md) for full documentation.
+
+---
+
+## Data Pipeline
+
+The `data_pipeline` package implements a Ready Data Workbench: profile CSV/sample data, suggest field mappings to ontology types, generate candidate objects/links, validate against schema, and produce an import plan. The pipeline does NOT write to the graph — import plans are designed for future HITL review.
+
+See [docs/data-pipeline.md](docs/data-pipeline.md) for full documentation.
 
 ---
 

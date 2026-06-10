@@ -19,6 +19,7 @@ import SchemaPage from './pages/schema';
 import AgentPage from './pages/agent';
 import ReviewQueuePage from './pages/review';
 import SettingsPage from './pages/settings';
+import PipelinePage from './pages/pipeline';
 
 import './i18n';
 
@@ -63,6 +64,7 @@ function AppInner() {
           <Route path="/agent" element={<AgentPage />} />
           <Route path="/review" element={<ReviewQueuePage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/pipeline" element={<PipelinePage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>

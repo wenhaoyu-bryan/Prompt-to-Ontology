@@ -30,6 +30,7 @@ CLAUDE.md
 docs/*
 !docs/ready-data-contract.md
 !docs/ontology-kernel.md
+!docs/data-pipeline.md
 Phases/
 
 # Test data

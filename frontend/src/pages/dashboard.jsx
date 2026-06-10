@@ -287,6 +287,7 @@ export default function DashboardPage() {
                   { icon: <ApartmentOutlined />, label: t('dashboard.journeySchema'), path: '/schema', color: '#722ed1' },
                   { icon: <RobotOutlined />, label: t('dashboard.journeyAgent'), path: '/agent', color: '#13c2c2' },
                   { icon: <AuditOutlined />, label: t('dashboard.journeyReview'), path: '/review', color: '#fa8c16' },
+                  { icon: <ApiOutlined />, label: t('pipeline.journeyPipeline'), path: '/pipeline', color: '#eb2f96' },
                 ].map(action => (
                   <Col span={8} key={action.path}>
                     <div
