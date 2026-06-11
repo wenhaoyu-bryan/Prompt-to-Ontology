@@ -21,7 +21,7 @@ from agent_operator.suggestion_builder import (
 )
 from agent_operator.review_adapter import create_review_items_from_agent_suggestions
 from agent_operator.service import analyze_agent_answer_for_suggestions
-from review_queue.models import ReviewItemStatus, ReviewSource, ReviewItemType
+from review_queue.models import ReviewItem, ReviewItemStatus, ReviewSource, ReviewItemType
 
 
 def test_01_property_update_suggestion():
@@ -219,6 +219,88 @@ def test_15_empty_suggestions_raise():
         print("  ✓ test_15_empty_suggestions_raise")
 
 
+# ── Phase 30.5 tests ──────────────────────────────────────────────────
+
+def test_16_unsupported_apply_returns_failed():
+    """Unsupported item apply returns status='failed', NOT 'applied'."""
+    from review_queue.graph_writer import apply_review_item_to_graph
+
+    item = ReviewItem(
+        id="unsup-agent-1",
+        type=ReviewItemType.AGENT_SUGGESTION,
+        title="Advisory only",
+        status=ReviewItemStatus.APPROVED,
+        metadata={"agent_action_type": "FLAG_DATA_QUALITY_ISSUE"},
+    )
+    result = apply_review_item_to_graph(item)
+    assert result.applied is False
+    assert result.status == "failed"
+    assert "not graph-applicable" in result.error.lower()
+    print("  ✓ test_16_unsupported_apply_returns_failed")
+
+
+def test_17_property_update_metadata_on_review_item():
+    """Property update suggestion includes correct metadata on review item."""
+    sug = build_property_update_suggestion(
+        object_id="PF001", property_name="fat_100g", new_value=18.5,
+        old_value=15.0, agent_run_id="run-test",
+    )
+    _, items = create_review_items_from_agent_suggestions([sug], agent_run_id="run-test")
+    item = items[0]
+    assert item.metadata.get("agent_action_type") == "SUGGEST_PROPERTY_UPDATE"
+    assert item.metadata.get("property_update") is not None
+    assert item.metadata["property_update"]["object_id"] == "PF001"
+    print("  ✓ test_17_property_update_metadata_on_review_item")
+
+
+def test_18_data_quality_not_graph_applicable():
+    """FLAG_DATA_QUALITY_ISSUE is not graph-applicable."""
+    from review_queue.graph_writer import apply_review_item_to_graph
+
+    item = ReviewItem(
+        id="dq-1",
+        type=ReviewItemType.VALIDATION_WARNING,
+        title="Missing data",
+        status=ReviewItemStatus.APPROVED,
+    )
+    result = apply_review_item_to_graph(item)
+    assert result.applied is False
+    assert result.status == "failed"
+    print("  ✓ test_18_data_quality_not_graph_applicable")
+
+
+def test_19_rule_action_not_graph_applicable():
+    """RULE_TRIGGERED_ACTION without candidate data is not graph-applicable."""
+    from review_queue.graph_writer import apply_review_item_to_graph
+
+    item = ReviewItem(
+        id="rule-1",
+        type=ReviewItemType.RULE_TRIGGERED_ACTION,
+        title="Rule action",
+        status=ReviewItemStatus.APPROVED,
+    )
+    result = apply_review_item_to_graph(item)
+    assert result.applied is False
+    assert result.status == "failed"
+    print("  ✓ test_19_rule_action_not_graph_applicable")
+
+
+def test_20_incomplete_property_update_fails():
+    """Incomplete property_update metadata returns failed."""
+    from review_queue.graph_writer import apply_agent_property_update
+
+    item = ReviewItem(
+        id="incomplete-1",
+        type=ReviewItemType.AGENT_SUGGESTION,
+        metadata={"property_update": {"object_id": "PF001"}},  # missing property and new_value
+    )
+    result = apply_agent_property_update(item)
+    assert result.applied is False
+    assert result.status == "failed"
+    assert "incomplete" in result.error.lower()
+    print("  ✓ test_20_incomplete_property_update_fails")
+
+
 def main():
     print("\n🧪 Agent Operator Tests")
     print("=" * 50)
@@ -239,6 +321,11 @@ def main():
         test_13_submit_to_review,
         test_14_suggestion_does_not_write_to_graph,
         test_15_empty_suggestions_raise,
+        test_16_unsupported_apply_returns_failed,
+        test_17_property_update_metadata_on_review_item,
+        test_18_data_quality_not_graph_applicable,
+        test_19_rule_action_not_graph_applicable,
+        test_20_incomplete_property_update_fails,
     ]
 
     passed = failed = 0

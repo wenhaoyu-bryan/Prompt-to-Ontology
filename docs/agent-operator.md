@@ -82,6 +82,27 @@ The Agent Operator uses **deterministic rules** (not LLM) to analyze agent answe
 }
 ```
 
+## Apply Semantics
+
+Agent suggestions have different apply behaviors:
+
+| Suggestion Type | Apply Behavior |
+|---|---|
+| `SUGGEST_PROPERTY_UPDATE` | Updates property on target node in Neo4j |
+| `SUGGEST_LINK_CREATION` | Creates relationship (same as import link candidate) |
+| `SUGGEST_OBJECT_CREATION` | Creates node (same as import object candidate) |
+| `SUGGEST_RULE_ACTION` | Advisory only — returns "not graph-applicable" |
+| `FLAG_DATA_QUALITY_ISSUE` | Advisory only — returns "not graph-applicable" |
+
+Advisory suggestions return `status="failed"` with a clear error message. They are never silently marked as applied.
+
+## Property Update Apply
+
+When an approved `SUGGEST_PROPERTY_UPDATE` item is applied:
+- Target object is found by `object_id`
+- Specified property is updated to `new_value`
+- Metadata attached: `_last_review_item_id`, `_last_agent_run_id`, `_last_updated_by`, `_last_updated_at`, `_last_update_reason`
+
 ## Current Limitations
 
 - Deterministic pattern matching only (no LLM-based suggestion generation)

@@ -372,7 +372,7 @@ def test_12_summary_logic():
 
 
 def test_13_unsupported_item_apply():
-    """Unsupported review item type returns clear message."""
+    """Unsupported review item type returns failed status (not applied)."""
     from review_queue.graph_writer import apply_review_item_to_graph
 
     item = ReviewItem(
@@ -383,6 +383,7 @@ def test_13_unsupported_item_apply():
     )
     result = apply_review_item_to_graph(item)
     assert result.applied is False
+    assert result.status == "failed"
     assert "not graph-applicable" in result.error.lower()
     print("  ✓ test_13_unsupported_item_apply")
 

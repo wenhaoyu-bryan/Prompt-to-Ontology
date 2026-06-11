@@ -542,7 +542,31 @@ export default function ReviewQueuePage() {
               {selectedItem.source_plan_id && (
                 <Descriptions.Item label="Plan ID"><Text code>{selectedItem.source_plan_id}</Text></Descriptions.Item>
               )}
+              {selectedItem.metadata?.agent_run_id && (
+                <Descriptions.Item label={t('review.agentRunId') || 'Agent Run'}><Text code>{selectedItem.metadata.agent_run_id}</Text></Descriptions.Item>
+              )}
+              {selectedItem.metadata?.user_message && (
+                <Descriptions.Item label={t('review.originalMessage') || 'User Message'}><Text style={{ fontSize: 12 }}>{selectedItem.metadata.user_message}</Text></Descriptions.Item>
+              )}
+              {selectedItem.metadata?.agent_action_type && (
+                <Descriptions.Item label={t('review.agentActionType') || 'Action Type'}><Tag color="purple">{selectedItem.metadata.agent_action_type}</Tag></Descriptions.Item>
+              )}
+              {selectedItem.metadata?.reason && (
+                <Descriptions.Item label={t('review.agentReason') || 'Reason'}><Text style={{ fontSize: 12 }}>{selectedItem.metadata.reason}</Text></Descriptions.Item>
+              )}
             </Descriptions>
+
+            {/* Agent property update details */}
+            {selectedItem.metadata?.property_update && (
+              <Card size="small" title={t('review.propertyUpdate') || 'Property Update'} variant="inner">
+                <Descriptions column={1} size="small">
+                  <Descriptions.Item label={t('common.id')}><Text code>{selectedItem.metadata.property_update.object_id}</Text></Descriptions.Item>
+                  <Descriptions.Item label={t('review.property') || 'Property'}><Text code>{selectedItem.metadata.property_update.property}</Text></Descriptions.Item>
+                  <Descriptions.Item label={t('review.oldValue') || 'Old Value'}>{String(selectedItem.metadata.property_update.old_value ?? '—')}</Descriptions.Item>
+                  <Descriptions.Item label={t('review.newValue') || 'New Value'}><Text strong>{String(selectedItem.metadata.property_update.new_value)}</Text></Descriptions.Item>
+                </Descriptions>
+              </Card>
+            )}
 
             {/* Audit timeline */}
             <Card size="small" title={t('review.auditTimeline')} variant="inner">

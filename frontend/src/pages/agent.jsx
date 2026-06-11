@@ -283,11 +283,29 @@ export default function AgentPage() {
                         {t('agent.proposedUpdates')} ({msg.suggestions.length})
                       </Text>
                       {msg.suggestions.map((sug, j) => (
-                        <div key={j} style={{ fontSize: 11, marginBottom: 4, padding: '4px 6px', background: 'rgba(255,255,255,0.5)', borderRadius: 4 }}>
-                          <Tag color="purple" style={{ fontSize: 10 }}>{sug.type?.replace(/_/g, ' ')}</Tag>
-                          <Text style={{ fontSize: 11 }}>{sug.title}</Text>
-                          {sug.confidence && (
-                            <Text type="secondary" style={{ fontSize: 10, marginLeft: 4 }}>({(sug.confidence * 100).toFixed(0)}%)</Text>
+                        <div key={j} style={{ fontSize: 11, marginBottom: 6, padding: '6px 8px', background: 'rgba(255,255,255,0.5)', borderRadius: 4 }}>
+                          <div style={{ marginBottom: 3 }}>
+                            <Tag color="purple" style={{ fontSize: 10 }}>{sug.type?.replace(/_/g, ' ')}</Tag>
+                            {sug.confidence && (
+                              <Text type="secondary" style={{ fontSize: 10 }}>({(sug.confidence * 100).toFixed(0)}%)</Text>
+                            )}
+                          </div>
+                          <Text style={{ fontSize: 11, display: 'block' }}>{sug.title}</Text>
+                          {sug.target_object_id && (
+                            <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>{t('common.target')}: {sug.target_object_id}</Text>
+                          )}
+                          {sug.property_update && (
+                            <Text code style={{ fontSize: 10, display: 'block', marginTop: 2 }}>
+                              {sug.property_update.property}: {sug.property_update.old_value ?? '?'} → {sug.property_update.new_value}
+                            </Text>
+                          )}
+                          {sug.candidate_link && (
+                            <Text code style={{ fontSize: 10, display: 'block', marginTop: 2 }}>
+                              {sug.candidate_link.source_id} → {sug.candidate_link.type} → {sug.candidate_link.target_id}
+                            </Text>
+                          )}
+                          {sug.reason && (
+                            <Text type="secondary" style={{ fontSize: 10, display: 'block', marginTop: 2 }}>{sug.reason}</Text>
                           )}
                         </div>
                       ))}
