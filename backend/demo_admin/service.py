@@ -8,10 +8,9 @@ from .models import DemoState, GraphInfo, ReviewQueueInfo, PipelineInfo, AgentIn
 
 class DemoAdminService:
 
-    def __init__(self, driver, pipeline_service=None, llm_config_manager=None):
+    def __init__(self, driver, pipeline_service=None):
         self.driver = driver
         self.pipeline_service = pipeline_service
-        self.llm_config_manager = llm_config_manager
 
     # ---------- safety guard ----------
 
@@ -113,11 +112,8 @@ class DemoAdminService:
 
     def _get_agent_info(self) -> AgentInfo:
         try:
-            if self.llm_config_manager:
-                cfg = self.llm_config_manager.get_config()
-                configured = cfg is not None and cfg.get("api_key") is not None
-                return AgentInfo(llm_configured=configured)
-            return AgentInfo()
+            from llm_config_manager import is_llm_configured
+            return AgentInfo(llm_configured=is_llm_configured())
         except Exception:
             return AgentInfo()
 

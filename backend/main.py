@@ -1377,9 +1377,7 @@ def api_agent_submit_suggestions(body: dict):
 
 def _get_demo_admin_service():
     from demo_admin import DemoAdminService
-    from llm_config_manager import LLMConfigManager
-    llm_mgr = LLMConfigManager()
-    return DemoAdminService(driver=get_driver(), pipeline_service=pipeline_service, llm_config_manager=llm_mgr)
+    return DemoAdminService(driver=get_driver(), pipeline_service=pipeline_service)
 
 
 @app.get("/api/demo/state")

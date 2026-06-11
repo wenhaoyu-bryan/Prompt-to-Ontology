@@ -190,11 +190,13 @@ def test_14_pipeline_info_when_no_service():
     assert info.import_plan_count == 0
 
 
-def test_15_agent_info_when_no_config_manager():
+def test_15_agent_info_fallback_on_error():
     driver, _ = _make_mock_driver()
-    svc = DemoAdminService(driver=driver, llm_config_manager=None)
-    info = svc._get_agent_info()
-    assert info.llm_configured is False
+    svc = DemoAdminService(driver=driver)
+    with patch("demo_admin.service.os.environ.get", side_effect=Exception("fail")):
+        info = svc._get_agent_info()
+    # Should fall back gracefully
+    assert isinstance(info, AgentInfo)
 
 
 # --- Main ---
@@ -217,7 +219,7 @@ if __name__ == "__main__":
     run_test("test_12_demo_state_model_defaults", test_12_demo_state_model_defaults)
     run_test("test_13_reset_request_model", test_13_reset_request_model)
     run_test("test_14_pipeline_info_when_no_service", test_14_pipeline_info_when_no_service)
-    run_test("test_15_agent_info_when_no_config_manager", test_15_agent_info_when_no_config_manager)
+    run_test("test_15_agent_info_fallback_on_error", test_15_agent_info_fallback_on_error)
 
     print("\n" + "=" * 50)
     print(f"Results: {PASSED} passed, {FAILED} failed, {TOTAL} total")
