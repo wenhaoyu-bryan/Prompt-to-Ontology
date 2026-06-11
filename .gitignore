@@ -31,6 +31,7 @@ docs/*
 !docs/ready-data-contract.md
 !docs/ontology-kernel.md
 !docs/data-pipeline.md
+!docs/review-queue-runtime.md
 Phases/
 
 # Test data
@@ -41,3 +42,6 @@ Phases/
 
 # Neo4j logs
 neo4j-logs/
+
+# Runtime persistence (review queue JSON state)
+backend/.runtime/

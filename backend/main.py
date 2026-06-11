@@ -24,7 +24,7 @@ from ontology import (
     get_supplier_risk_summary,
 )
 from agent import run_agent, execute_action
-from data_pipeline import DataValidator, import_objects, parse_csv, normalize_field_names
+from legacy_data_pipeline import DataValidator, import_objects, parse_csv, normalize_field_names
 from ontology_registry import OntologyRegistry
 from domain_config import list_domains, get_domain_config, get_default_domain
 
@@ -623,7 +623,7 @@ class MultiBatchImportRequest(BaseModel):
 @app.post("/api/pipeline/batch-import")
 async def api_batch_import(req: MultiBatchImportRequest):
     """多表 UNWIND 批量导入"""
-    from data_pipeline import batch_import_nodes as _batch_nodes, batch_import_edges_multi
+    from legacy_data_pipeline import batch_import_nodes as _batch_nodes, batch_import_edges_multi
     from ontology import refresh_graph
 
     results = {"nodes": {}, "edges": {}, "total_imported": 0, "total_duration_ms": 0}
@@ -1188,6 +1188,135 @@ def api_pipeline_list_import_plans():
     """List all import plans."""
     plans = pipeline_service.list_import_plans()
     return {"plans": [p.model_dump() for p in plans]}
+
+
+# ── Review Queue API ──────────────────────────────────────────────────────
+
+from review_queue import (
+    ReviewDecision,
+    submit_import_plan_to_review,
+    list_review_items,
+    get_review_item,
+    approve_review_item,
+    reject_review_item,
+    apply_review_item,
+    apply_approved_batch,
+    get_review_summary,
+    list_review_batches,
+    get_review_batch,
+    set_pipeline_service,
+)
+
+# Wire pipeline service into review queue
+set_pipeline_service(pipeline_service)
+
+
+@app.post("/api/review/from-import-plan/{plan_id}")
+def api_review_submit_plan(plan_id: str):
+    """Submit an ImportPlan to the review queue."""
+    try:
+        batch = submit_import_plan_to_review(plan_id)
+        items = list_review_items(batch_id=batch.id)
+        return {
+            "batch": batch.model_dump(),
+            "items_created": len(items),
+            "item_ids": [i.id for i in items],
+        }
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/review/items")
+def api_review_list_items(
+    status: str | None = None,
+    source: str | None = None,
+    batch_id: str | None = None,
+    type: str | None = None,
+):
+    """List review items with optional filters."""
+    items = list_review_items(status=status, source=source, batch_id=batch_id, type=type)
+    return {"items": [i.model_dump() for i in items]}
+
+
+@app.get("/api/review/items/{item_id}")
+def api_review_get_item(item_id: str):
+    """Get a single review item."""
+    item = get_review_item(item_id)
+    if item is None:
+        raise HTTPException(404, f"Review item not found: {item_id}")
+    return item.model_dump()
+
+
+@app.post("/api/review/items/{item_id}/approve")
+def api_review_approve(item_id: str, body: dict):
+    """Approve a pending review item."""
+    try:
+        decision = ReviewDecision(
+            decision="approve",
+            reason=body.get("reason", ""),
+            reviewed_by=body.get("reviewed_by", "demo_user"),
+        )
+        item = approve_review_item(item_id, decision)
+        return item.model_dump()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/review/items/{item_id}/reject")
+def api_review_reject(item_id: str, body: dict):
+    """Reject a pending review item."""
+    try:
+        decision = ReviewDecision(
+            decision="reject",
+            reason=body.get("reason", ""),
+            reviewed_by=body.get("reviewed_by", "demo_user"),
+        )
+        item = reject_review_item(item_id, decision)
+        return item.model_dump()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/review/items/{item_id}/apply")
+def api_review_apply(item_id: str):
+    """Apply an approved review item to the graph."""
+    try:
+        result = apply_review_item(item_id)
+        return result.model_dump()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/review/batches")
+def api_review_list_batches():
+    """List all review batches."""
+    batches = list_review_batches()
+    return {"batches": [b.model_dump() for b in batches]}
+
+
+@app.get("/api/review/batches/{batch_id}")
+def api_review_get_batch(batch_id: str):
+    """Get a single review batch."""
+    batch = get_review_batch(batch_id)
+    if batch is None:
+        raise HTTPException(404, f"Review batch not found: {batch_id}")
+    return batch.model_dump()
+
+
+@app.post("/api/review/batches/{batch_id}/apply-approved")
+def api_review_apply_batch(batch_id: str):
+    """Apply all approved items in a batch."""
+    try:
+        results = apply_approved_batch(batch_id)
+        return {"results": [r.model_dump() for r in results]}
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/review/summary")
+def api_review_summary():
+    """Get review queue summary statistics."""
+    return get_review_summary().model_dump()
 
 
 if __name__ == "__main__":

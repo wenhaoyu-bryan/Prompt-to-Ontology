@@ -15,8 +15,10 @@ import {
   TableOutlined,
   LinkOutlined,
   RightOutlined,
+  SendOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../providers/dataProvider';
 
 const { Title, Text, Paragraph } = Typography;
@@ -37,6 +39,7 @@ const SAMPLE_INFO = {
 
 export default function PipelinePage() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const [step, setStep] = useState(-1);
   const [samples, setSamples] = useState([]);
   const [selectedSample, setSelectedSample] = useState('');
@@ -44,6 +47,7 @@ export default function PipelinePage() {
   const [mappings, setMappings] = useState(null);
   const [importPlan, setImportPlan] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [reviewBatch, setReviewBatch] = useState(null);
 
   const isZh = i18n.language === 'zh';
 
@@ -88,6 +92,19 @@ export default function PipelinePage() {
       setStep(4);
     } catch { message.error(t('pipeline.planFailed')); }
     finally { setLoading(false); }
+  };
+
+  const handleSubmitToReview = async () => {
+    if (!importPlan) return;
+    setLoading(true);
+    try {
+      const { data } = await api.post(`/review/from-import-plan/${importPlan.plan_id}`);
+      setReviewBatch(data.batch);
+      message.success(t('pipeline.submitReviewSuccess'));
+    } catch (err) {
+      const detail = err?.response?.data?.detail || t('pipeline.submitReviewFailed');
+      message.error(detail);
+    } finally { setLoading(false); }
   };
 
   const stepItems = [
@@ -349,6 +366,31 @@ export default function PipelinePage() {
               <Col span={8}><Card size="small"><Statistic title={t('common.status')} value={importPlan.status} /></Card></Col>
             </Row>
             <Alert type="info" showIcon message={t('pipeline.importNote')} />
+            {reviewBatch ? (
+              <Alert
+                type="success"
+                showIcon
+                message={t('pipeline.submitReviewSuccess')}
+                description={
+                  <span>
+                    {t('pipeline.batchId')}: <Text code>{reviewBatch.id}</Text>
+                    {' '}
+                    <Button type="link" size="small" onClick={() => navigate(`/review?batch_id=${reviewBatch.id}`)}>
+                      {t('pipeline.goToReview')} <RightOutlined />
+                    </Button>
+                  </span>
+                }
+              />
+            ) : (
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                onClick={handleSubmitToReview}
+                loading={loading}
+              >
+                {t('pipeline.submitToReview')}
+              </Button>
+            )}
           </Space>
         </Card>
       )}

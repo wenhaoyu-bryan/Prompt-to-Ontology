@@ -41,7 +41,8 @@ This is **not** a pet food app. The same runtime can be extended to supply chain
 3. **Graph** — explore the global evidence network, click a node to see its local neighborhood
 4. **Schema** — inspect object types, link types, and rules with modeling explanations
 5. **Agent** — ask natural-language questions, see which ontology tools were called
-6. **Review** — inspect HITL prototype items (low-confidence extractions, rule violations)
+6. **Data Pipeline** — profile data, map to ontology, generate import plans
+7. **Review Queue** — review import candidates, approve/reject, apply approved items to graph
 
 See [docs/demo-script.md](docs/demo-script.md) for a detailed walkthrough.
 
@@ -171,6 +172,16 @@ Open `http://localhost:5173`
 | POST | `/api/pet-food/agent/chat` | Agent Q&A (LLM tool-calling + fallback) |
 | GET/POST | `/api/llm/config` | LLM configuration (runtime) |
 | POST | `/api/llm/test` | Test LLM connection |
+| GET | `/api/pipeline/samples` | List available sample datasets |
+| POST | `/api/pipeline/profile/sample` | Profile a sample dataset |
+| POST | `/api/pipeline/import-plan` | Create an import plan |
+| POST | `/api/review/from-import-plan/{plan_id}` | Submit import plan to review |
+| GET | `/api/review/items` | List review items |
+| POST | `/api/review/items/{id}/approve` | Approve review item |
+| POST | `/api/review/items/{id}/reject` | Reject review item |
+| POST | `/api/review/items/{id}/apply` | Apply approved item to graph |
+| POST | `/api/review/batches/{id}/apply-approved` | Apply all approved in batch |
+| GET | `/api/review/summary` | Review queue statistics |
 
 ---
 
@@ -212,6 +223,12 @@ Prompt-to-Ontology/
 │   │   ├── transformer.py         # Candidate object/link generation
 │   │   ├── import_plan.py         # Import plan generator
 │   │   └── service.py             # In-memory pipeline service
+│   ├── review_queue/              # HITL review workflow
+│   │   ├── models.py              # ReviewItem, ReviewBatch, enums
+│   │   ├── storage.py             # JSON file persistence (.runtime/)
+│   │   ├── import_plan_adapter.py # ImportPlan → ReviewItems
+│   │   ├── graph_writer.py        # Write approved items to Neo4j
+│   │   └── service.py             # Approve/reject/apply logic
 │   └── domain/
 │       └── petfood_transformer.py # CSV → graph payload
 ├── frontend/
@@ -290,6 +307,14 @@ See [docs/ontology-kernel.md](docs/ontology-kernel.md) for full documentation.
 The `data_pipeline` package implements a Ready Data Workbench: profile CSV/sample data, suggest field mappings to ontology types, generate candidate objects/links, validate against schema, and produce an import plan. The pipeline does NOT write to the graph — import plans are designed for future HITL review.
 
 See [docs/data-pipeline.md](docs/data-pipeline.md) for full documentation.
+
+---
+
+## Review Queue
+
+The Review Queue implements HITL (Human-in-the-Loop) workflow for ontology graph mutations. Import Plans from the Data Pipeline are converted into reviewable items. Humans approve or reject each item, then approved items are written to Neo4j using MERGE/upsert semantics. State persists in `backend/.runtime/` JSON files.
+
+See [docs/review-queue-runtime.md](docs/review-queue-runtime.md) for full documentation.
 
 ---
 

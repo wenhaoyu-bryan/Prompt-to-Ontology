@@ -27,7 +27,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../providers/dataProvider';
 import { MOCK_AGENT_RUNS } from '../mocks/agentRuns';
-import { MOCK_REVIEW_ITEMS } from '../mocks/reviewItems';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -82,6 +81,7 @@ export default function DashboardPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
+  const [reviewSummary, setReviewSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -89,9 +89,10 @@ export default function DashboardPage() {
     setLoading(true);
     setError(false);
     try {
-      const [graphRes, schemaRes] = await Promise.all([
+      const [graphRes, schemaRes, reviewRes] = await Promise.all([
         api.get('/graph').catch(() => null),
         api.get('/ontology/pet_food/schema').catch(() => null),
+        api.get('/review/summary').catch(() => null),
       ]);
       if (!graphRes && !schemaRes) {
         setError(true);
@@ -114,6 +115,7 @@ export default function DashboardPage() {
           links.some(l => l.source === n.id && l.linkType === 'TRIGGERS_RISK')
         ).length,
       });
+      if (reviewRes?.data) setReviewSummary(reviewRes.data);
     } catch {
       setError(true);
     } finally {
@@ -141,7 +143,9 @@ export default function DashboardPage() {
     );
   }
 
-  const pendingReviews = MOCK_REVIEW_ITEMS.filter(r => r.status === 'pending');
+  const pendingCount = reviewSummary?.pending || 0;
+  const appliedCount = reviewSummary?.applied || 0;
+  const failedCount = reviewSummary?.failed || 0;
   const recentRuns = MOCK_AGENT_RUNS.slice(0, 4);
 
   return (
@@ -311,25 +315,28 @@ export default function DashboardPage() {
               </Row>
             </Card>
 
-        {/* Pending Reviews — row 2, col 2 */}
+        {/* Review Queue Summary — row 2, col 2 */}
           <Card
-            title={<><AuditOutlined /> {t('dashboard.pendingReviews')} ({pendingReviews.length}) <Tag style={{ fontSize: 10, marginLeft: 4 }}>{t('common.prototype')}</Tag></>}
+            title={<><AuditOutlined /> {t('dashboard.pendingReviews')} ({pendingCount})</>}
             size="small"
             extra={<Button type="link" size="small" onClick={() => navigate('/review')}>{t('dashboard.viewAll')} <RightOutlined /></Button>}
           >
-              {pendingReviews.length > 0 ? (
-                <Timeline
-                  items={pendingReviews.slice(0, 3).map(item => ({
-                    color: item.severity === 'high' ? 'red' : item.severity === 'medium' ? 'orange' : 'blue',
-                    content: (
-                      <div>
-                        <Text style={{ fontSize: 13 }}>{item.title}</Text>
-                        <br />
-                        <Text type="secondary" style={{ fontSize: 11 }}>{item.source}</Text>
-                      </div>
-                    ),
-                  }))}
-                />
+              {reviewSummary ? (
+                <Space orientation="vertical" size={8} style={{ width: '100%' }}>
+                  <Row gutter={8}>
+                    <Col span={8}><Statistic title={t('review.pending')} value={pendingCount} valueStyle={{ fontSize: 18, color: '#fa8c16' }} /></Col>
+                    <Col span={8}><Statistic title={t('review.applied') || 'Applied'} value={appliedCount} valueStyle={{ fontSize: 18, color: '#1677ff' }} /></Col>
+                    <Col span={8}><Statistic title={t('review.failed') || 'Failed'} value={failedCount} valueStyle={{ fontSize: 18, color: failedCount > 0 ? '#ff4d4f' : undefined }} /></Col>
+                  </Row>
+                  {pendingCount > 0 && (
+                    <Button type="primary" size="small" block onClick={() => navigate('/review')}>
+                      {t('dashboard.viewAll')} ({pendingCount} {t('review.pending').toLowerCase()})
+                    </Button>
+                  )}
+                  {pendingCount === 0 && appliedCount === 0 && (
+                    <Text type="secondary">{t('review.noViolations')}</Text>
+                  )}
+                </Space>
               ) : (
                 <Text type="secondary">{t('review.noViolations')}</Text>
               )}
