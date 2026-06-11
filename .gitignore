@@ -34,6 +34,7 @@ docs/*
 !docs/review-queue-runtime.md
 !docs/agent-operator.md
 !docs/product-workflow.md
+!docs/release-notes.md
 Phases/
 
 # Test data

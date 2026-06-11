@@ -2,7 +2,7 @@
 
 > An operational ontology runtime that turns standardized data into structured objects, relationships, constraints, rules, evidence, and agent-assisted reasoning.
 
-**Branch:** `pet-food-ontology-mvp`
+**Current mainline:** Operational Ontology Runtime / Pet Food Ontology Demo
 
 ---
 
@@ -213,8 +213,8 @@ Open `http://localhost:5173`
 | Source | Type | Label in UI |
 |---|---|---|
 | Backend API (FastAPI :8765) | Real | "Ready Data / Demo Dataset" |
+| Review Queue (`backend/.runtime/`) | Real | JSON persistence, backend runtime |
 | Agent run history (`mocks/agentRuns.js`) | Mock | "Demo Data" |
-| HITL review items (`mocks/reviewItems.js`) | Mock | "Prototype" |
 
 ---
 
@@ -368,6 +368,14 @@ See [docs/agent-operator.md](docs/agent-operator.md) for full documentation.
 ## Disclaimer
 
 This demo does not provide veterinary diagnosis. Risk explanations are based only on the current ontology data and demo rules. If data is missing, the system reports that the rule cannot be evaluated rather than claiming the product is safe.
+
+---
+
+## Archived Case: Supply Chain Prototype
+
+An earlier prototype explored a supply chain / industrial scenario (Supplier, Raw Material, Component, Final Product, Factory). That prototype validated the initial runtime design but has been archived.
+
+The current mainline is the Pet Food ontology demo. The pet food domain exercises the same generic ontology runtime — object types, link types, rules, evidence edges, HITL review, and agent reasoning — with enough complexity to validate real-world applicability.
 
 ---
 
