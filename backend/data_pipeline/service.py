@@ -1,12 +1,15 @@
-"""Pipeline Service — in-memory service for Phase 28.
+"""Pipeline Service — with JSON persistence for import plans.
 
-Phase 28 uses in-memory storage. Future phases can persist pipeline runs.
+Phase 28: in-memory storage.
+Phase 29.6: JSON persistence under backend/.runtime/import_plans.json.
 """
 
 from __future__ import annotations
 
 import csv
+import json
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -41,16 +44,45 @@ _SAMPLE_LINK_MAPPINGS: dict[str, list[dict]] = {
     ],
 }
 
+# Persistence path
+_RUNTIME_DIR = Path(__file__).resolve().parent.parent / ".runtime"
+_PLANS_FILE = _RUNTIME_DIR / "import_plans.json"
+
 
 class PipelineService:
-    """In-memory pipeline service."""
+    """Pipeline service with JSON persistence for import plans."""
 
     def __init__(self):
         self._profiles: dict[str, DataSourceProfile] = {}
         self._plans: dict[str, ImportPlan] = {}
         self._rows: dict[str, list[dict[str, Any]]] = {}
+        self._load_plans_from_disk()
 
-    # ── Sample sources ────────────────────────────────────────────────
+    # ── Persistence ────────────────────────────────────────────────────
+
+    def _load_plans_from_disk(self):
+        """Load persisted import plans from JSON."""
+        if not _PLANS_FILE.exists():
+            return
+        try:
+            with open(_PLANS_FILE, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+            for plan_data in raw:
+                plan = ImportPlan(**plan_data)
+                self._plans[plan.plan_id] = plan
+        except (json.JSONDecodeError, Exception):
+            pass
+
+    def _save_plans_to_disk(self):
+        """Persist import plans to JSON."""
+        _RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+        with open(_PLANS_FILE, "w", encoding="utf-8") as f:
+            json.dump(
+                [p.model_dump(mode="json") for p in self._plans.values()],
+                f, ensure_ascii=False, indent=2,
+            )
+
+    # ── Sample sources ─────────────────────────────────────────────────
 
     def list_sample_sources(self) -> list[dict[str, str]]:
         """List available built-in sample data sources."""
@@ -59,7 +91,7 @@ class PipelineService:
             for name, path in _SAMPLE_FILES.items()
         ]
 
-    # ── Profiling ────────────────────────────────────────────────────
+    # ── Profiling ──────────────────────────────────────────────────────
 
     def profile_sample(self, sample_name: str) -> DataSourceProfile:
         """Profile a built-in sample data source."""
@@ -93,7 +125,7 @@ class PipelineService:
     def get_profile(self, source_id: str) -> DataSourceProfile | None:
         return self._profiles.get(source_id)
 
-    # ── Mapping suggestions ──────────────────────────────────────────
+    # ── Mapping suggestions ────────────────────────────────────────────
 
     def suggest_mappings(self, source_id: str, domain: str = "pet_food") -> dict[str, Any]:
         """Suggest field mappings for a profiled source."""
@@ -114,7 +146,7 @@ class PipelineService:
             "unmapped_fields": [f.model_dump() for f in unmapped],
         }
 
-    # ── Import plan ──────────────────────────────────────────────────
+    # ── Import plan ────────────────────────────────────────────────────
 
     def create_import_plan(
         self,
@@ -153,15 +185,27 @@ class PipelineService:
         )
 
         self._plans[plan.plan_id] = plan
+        self._save_plans_to_disk()
         return plan
 
     def get_import_plan(self, plan_id: str) -> ImportPlan | None:
         return self._plans.get(plan_id)
 
     def list_import_plans(self) -> list[ImportPlan]:
-        return list(self._plans.values())
+        return sorted(self._plans.values(), key=lambda p: p.created_at, reverse=True)
 
-    # ── Internal ─────────────────────────────────────────────────────
+    def mark_plan_submitted_to_review(self, plan_id: str, batch_id: str) -> ImportPlan | None:
+        """Mark an import plan as submitted to review queue."""
+        plan = self._plans.get(plan_id)
+        if not plan:
+            return None
+        plan.submitted_to_review = True
+        plan.review_batch_id = batch_id
+        plan.submitted_at = datetime.utcnow()
+        self._save_plans_to_disk()
+        return plan
+
+    # ── Internal ───────────────────────────────────────────────────────
 
     def _load_schema(self, domain: str) -> OntologySchema:
         if domain == "pet_food":

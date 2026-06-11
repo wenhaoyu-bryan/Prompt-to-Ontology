@@ -1,27 +1,27 @@
-import { useState } from 'react';
-import { Card, Button, Space, Typography, Tag, Steps, Table, Select, Spin, Alert, Row, Col, Statistic, message, Empty, Progress, Divider } from 'antd';
+import { useState, useEffect } from 'react';
+import { Card, Button, Space, Typography, Tag, Steps, Table, Alert, Row, Col, Statistic, message, Progress, Divider } from 'antd';
 import {
   DatabaseOutlined,
   FileSearchOutlined,
   SwapOutlined,
-  CheckCircleOutlined,
   ImportOutlined,
   PlayCircleOutlined,
   EyeOutlined,
   SafetyCertificateOutlined,
-  WarningOutlined,
-  ExclamationCircleOutlined,
   InfoCircleOutlined,
   TableOutlined,
   LinkOutlined,
   RightOutlined,
   SendOutlined,
+  CheckCircleOutlined,
+  HistoryOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../providers/dataProvider';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 const STATUS_COLORS = {
   draft: 'default',
@@ -37,6 +37,15 @@ const SAMPLE_INFO = {
   risk_rules: { icon: '⚠️', objectType: 'RiskRule', linkType: '', desc_en: 'Domain risk rules with conditions', desc_zh: '含条件的领域风险规则' },
 };
 
+function formatTime(ts) {
+  if (!ts) return '—';
+  try {
+    return new Date(ts).toLocaleString();
+  } catch {
+    return ts;
+  }
+}
+
 export default function PipelinePage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -47,15 +56,28 @@ export default function PipelinePage() {
   const [mappings, setMappings] = useState(null);
   const [importPlan, setImportPlan] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [reviewBatch, setReviewBatch] = useState(null);
+  const [recentPlans, setRecentPlans] = useState([]);
 
   const isZh = i18n.language === 'zh';
+
+  // Auto-load samples and recent plans on mount
+  useEffect(() => {
+    loadSamples();
+    loadRecentPlans();
+  }, []);
 
   const loadSamples = async () => {
     try {
       const { data } = await api.get('/pipeline/samples');
       setSamples(data.samples || []);
     } catch { setSamples([]); }
+  };
+
+  const loadRecentPlans = async () => {
+    try {
+      const { data } = await api.get('/pipeline/import-plans');
+      setRecentPlans(data.plans || []);
+    } catch { setRecentPlans([]); }
   };
 
   const handleProfile = async () => {
@@ -90,22 +112,129 @@ export default function PipelinePage() {
       const { data } = await api.post('/pipeline/import-plan', { source_id: profile.source_id, domain: 'pet_food' });
       setImportPlan(data);
       setStep(4);
+      loadRecentPlans();
     } catch { message.error(t('pipeline.planFailed')); }
     finally { setLoading(false); }
   };
 
-  const handleSubmitToReview = async () => {
-    if (!importPlan) return;
+  const handleSubmitToReview = async (planId) => {
+    const id = planId || importPlan?.plan_id;
+    if (!id) return;
     setLoading(true);
     try {
-      const { data } = await api.post(`/review/from-import-plan/${importPlan.plan_id}`);
-      setReviewBatch(data.batch);
+      const { data } = await api.post(`/review/from-import-plan/${id}`);
       message.success(t('pipeline.submitReviewSuccess'));
+      loadRecentPlans();
+      // If submitting from the active plan, update local state
+      if (!planId && importPlan) {
+        setImportPlan(prev => prev ? { ...prev, submitted_to_review: true, review_batch_id: data.batch.id } : prev);
+      }
     } catch (err) {
       const detail = err?.response?.data?.detail || t('pipeline.submitReviewFailed');
       message.error(detail);
     } finally { setLoading(false); }
   };
+
+  const handleViewPlan = async (planId) => {
+    try {
+      const { data } = await api.get(`/pipeline/import-plan/${planId}`);
+      setImportPlan(data);
+      setStep(4);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch { message.error(t('common.loadFailed')); }
+  };
+
+  // ── Recent Plans columns ────────────────────────────────────────────
+
+  const recentPlanColumns = [
+    {
+      title: 'Plan ID',
+      dataIndex: 'plan_id',
+      key: 'plan_id',
+      width: 130,
+      render: v => <Text code style={{ fontSize: 11 }}>{v}</Text>,
+    },
+    {
+      title: t('pipeline.source'),
+      key: 'source',
+      width: 130,
+      render: (_, r) => r.source_profile?.source_name || '—',
+    },
+    {
+      title: t('common.status'),
+      dataIndex: 'status',
+      key: 'status',
+      width: 100,
+      render: v => <Tag color={STATUS_COLORS[v]}>{v}</Tag>,
+    },
+    {
+      title: t('pipeline.newObjects'),
+      key: 'objects',
+      width: 80,
+      render: (_, r) => r.summary?.new_objects || 0,
+    },
+    {
+      title: t('pipeline.newLinks'),
+      key: 'links',
+      width: 80,
+      render: (_, r) => r.summary?.new_links || 0,
+    },
+    {
+      title: t('pipeline.valErrors'),
+      key: 'errors',
+      width: 70,
+      render: (_, r) => {
+        const v = r.summary?.validation_errors || 0;
+        return <Text type={v > 0 ? 'danger' : undefined}>{v}</Text>;
+      },
+    },
+    {
+      title: t('pipeline.createdAt'),
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 140,
+      render: v => <Text type="secondary" style={{ fontSize: 11 }}>{formatTime(v)}</Text>,
+    },
+    {
+      title: t('pipeline.reviewStatus'),
+      key: 'review',
+      width: 140,
+      render: (_, r) => {
+        if (r.submitted_to_review && r.review_batch_id) {
+          return (
+            <Button type="link" size="small" style={{ padding: 0 }}
+              onClick={() => navigate(`/review?batch_id=${r.review_batch_id}`)}>
+              <CheckCircleOutlined style={{ color: '#52c41a' }} /> {r.review_batch_id.slice(0, 16)}…
+            </Button>
+          );
+        }
+        if (r.summary?.validation_errors > 0) {
+          return <Tag>{t('pipeline.hasErrors')}</Tag>;
+        }
+        return <Tag>{t('pipeline.notSubmitted')}</Tag>;
+      },
+    },
+    {
+      title: t('common.actions'),
+      key: 'actions',
+      width: 160,
+      render: (_, r) => (
+        <Space size={4}>
+          <Button size="small" type="link" onClick={() => handleViewPlan(r.plan_id)}>
+            {t('pipeline.viewPlan')}
+          </Button>
+          {!r.submitted_to_review && r.summary?.validation_errors === 0 && (
+            <Button size="small" type="link" icon={<SendOutlined />}
+              onClick={() => handleSubmitToReview(r.plan_id)}>
+              {t('pipeline.submitShort')}
+            </Button>
+          )}
+        </Space>
+      ),
+    },
+  ];
+
+  // ── Step items ──────────────────────────────────────────────────────
 
   const stepItems = [
     { title: t('pipeline.s1'), icon: <DatabaseOutlined /> },
@@ -132,7 +261,6 @@ export default function PipelinePage() {
     { title: t('pipeline.reason'), dataIndex: 'reason', key: 'reason', ellipsis: true },
   ];
 
-  // Candidate preview tables
   const candidateObjColumns = [
     { title: 'ID', dataIndex: 'id', key: 'id', render: v => <Text code style={{ fontSize: 11 }}>{v}</Text> },
     { title: t('common.type'), dataIndex: 'type', key: 'type', render: v => <Tag color="blue">{v}</Tag> },
@@ -168,13 +296,11 @@ export default function PipelinePage() {
       {/* ── Step 0: Select Source ─────────────────────────────────── */}
       <Card title={<><DatabaseOutlined /> {t('pipeline.s1')}</>}>
         <Space orientation="vertical" size={16} style={{ width: '100%' }}>
-          <Text>{t('pipeline.selectSampleLabel')}</Text>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text>{t('pipeline.selectSampleLabel')}</Text>
+            <Button size="small" icon={<ReloadOutlined />} onClick={loadSamples}>{t('common.refresh')}</Button>
+          </div>
           <Row gutter={[12, 12]}>
-            {samples.length === 0 && (
-              <Col span={24}>
-                <Button icon={<DatabaseOutlined />} onClick={loadSamples} block>{t('pipeline.loadSamples')}</Button>
-              </Col>
-            )}
             {samples.map(s => {
               const info = SAMPLE_INFO[s.name] || {};
               const selected = selectedSample === s.name;
@@ -272,7 +398,7 @@ export default function PipelinePage() {
         </Card>
       )}
 
-      {/* ── Step 3: Candidate Preview (auto-generated with plan) ─── */}
+      {/* ── Step 3: Candidate Preview ─────────────────────────────── */}
       {importPlan && (
         <Card title={<><EyeOutlined /> {t('pipeline.s4')}</>}>
           <Space orientation="vertical" size={16} style={{ width: '100%' }}>
@@ -299,9 +425,6 @@ export default function PipelinePage() {
                 <Text strong>{t('pipeline.candidateLinks')}:</Text>
                 <Table dataSource={importPlan.candidate_links.slice(0, 10)} columns={candidateLinkColumns} rowKey={(_, i) => i} size="small" pagination={false} />
               </>
-            )}
-            {(!importPlan.candidate_objects?.length && !importPlan.candidate_links?.length) && (
-              <Empty description={t('pipeline.noCandidates')} />
             )}
           </Space>
         </Card>
@@ -366,26 +489,28 @@ export default function PipelinePage() {
               <Col span={8}><Card size="small"><Statistic title={t('common.status')} value={importPlan.status} /></Card></Col>
             </Row>
             <Alert type="info" showIcon message={t('pipeline.importNote')} />
-            {reviewBatch ? (
+            {importPlan.submitted_to_review && importPlan.review_batch_id ? (
               <Alert
                 type="success"
                 showIcon
-                message={t('pipeline.submitReviewSuccess')}
+                message={t('pipeline.alreadySubmitted')}
                 description={
                   <span>
-                    {t('pipeline.batchId')}: <Text code>{reviewBatch.id}</Text>
+                    {t('pipeline.batchId')}: <Text code>{importPlan.review_batch_id}</Text>
                     {' '}
-                    <Button type="link" size="small" onClick={() => navigate(`/review?batch_id=${reviewBatch.id}`)}>
+                    <Button type="link" size="small" onClick={() => navigate(`/review?batch_id=${importPlan.review_batch_id}`)}>
                       {t('pipeline.goToReview')} <RightOutlined />
                     </Button>
                   </span>
                 }
               />
+            ) : importPlan.summary?.validation_errors > 0 ? (
+              <Alert type="warning" showIcon message={t('pipeline.cannotSubmit')} />
             ) : (
               <Button
                 type="primary"
                 icon={<SendOutlined />}
-                onClick={handleSubmitToReview}
+                onClick={() => handleSubmitToReview()}
                 loading={loading}
               >
                 {t('pipeline.submitToReview')}
@@ -394,6 +519,24 @@ export default function PipelinePage() {
           </Space>
         </Card>
       )}
+
+      {/* ── Recent Import Plans ───────────────────────────────────── */}
+      <Card
+        title={<><HistoryOutlined /> {t('pipeline.recentPlans')}</>}
+        size="small"
+      >
+        {recentPlans.length > 0 ? (
+          <Table
+            dataSource={recentPlans}
+            columns={recentPlanColumns}
+            rowKey="plan_id"
+            size="small"
+            pagination={{ pageSize: 10, showSizeChanger: false }}
+          />
+        ) : (
+          <Text type="secondary">{t('pipeline.noPlans')}</Text>
+        )}
+      </Card>
     </Space>
   );
 }

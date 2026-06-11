@@ -1216,6 +1216,8 @@ def api_review_submit_plan(plan_id: str):
     """Submit an ImportPlan to the review queue."""
     try:
         batch = submit_import_plan_to_review(plan_id)
+        # Store review linkage on the import plan
+        pipeline_service.mark_plan_submitted_to_review(plan_id, batch.id)
         items = list_review_items(batch_id=batch.id)
         return {
             "batch": batch.model_dump(),

@@ -395,7 +395,18 @@
     "submitReviewFailed": "提交到审核队列失败",
     "batchId": "批次 ID",
     "goToReview": "前往审核队列",
-    "journeyPipeline": "打开数据管道"
+    "journeyPipeline": "打开数据管道",
+    "recentPlans": "最近导入计划",
+    "noPlans": "暂无导入计划。运行管道以创建。",
+    "source": "数据源",
+    "createdAt": "创建时间",
+    "reviewStatus": "审核状态",
+    "notSubmitted": "未提交",
+    "alreadySubmitted": "已提交到审核队列",
+    "cannotSubmit": "计划存在校验错误，请修复后再提交。",
+    "hasErrors": "有错误",
+    "viewPlan": "查看",
+    "submitShort": "提交"
   },
   "entity": {
     "emptyTitle": "点击图谱中的节点",

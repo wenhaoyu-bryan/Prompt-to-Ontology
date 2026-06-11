@@ -395,7 +395,18 @@
     "submitReviewFailed": "Failed to submit to review queue",
     "batchId": "Batch ID",
     "goToReview": "Go to Review Queue",
-    "journeyPipeline": "Open Data Pipeline"
+    "journeyPipeline": "Open Data Pipeline",
+    "recentPlans": "Recent Import Plans",
+    "noPlans": "No import plans yet. Run the pipeline to create one.",
+    "source": "Source",
+    "createdAt": "Created At",
+    "reviewStatus": "Review Status",
+    "notSubmitted": "Not submitted",
+    "alreadySubmitted": "Already submitted to review queue",
+    "cannotSubmit": "Plan has validation errors. Fix issues before submitting.",
+    "hasErrors": "Has errors",
+    "viewPlan": "View",
+    "submitShort": "Submit"
   },
   "entity": {
     "emptyTitle": "Click a node in the graph",

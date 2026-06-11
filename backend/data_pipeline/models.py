@@ -146,3 +146,7 @@ class ImportPlan(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     status: PlanStatus = PlanStatus.DRAFT
     metadata: dict[str, Any] = Field(default_factory=dict)
+    # Review linkage (set when submitted to review queue)
+    submitted_to_review: bool = False
+    review_batch_id: str = ""
+    submitted_at: datetime | None = None
