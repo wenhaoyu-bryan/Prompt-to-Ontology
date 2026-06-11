@@ -143,7 +143,12 @@
       "clean": "Clean Build",
       "unknown": "Unknown"
     },
-    "demoModeHint": "Current demo mode"
+    "demoModeHint": "Current demo mode",
+    "demoPaths": "Demo Paths",
+    "demoPathSeeded": "Seeded Demo",
+    "demoPathSeededDesc": "Explore the completed Pet Food ontology: objects, graph, rules, and agent.",
+    "demoPathClean": "Clean Build",
+    "demoPathCleanDesc": "Start from an empty graph. Use Data Pipeline to build the ontology step by step."
   },
   "objects": {
     "title": "Objects",

@@ -143,7 +143,12 @@
       "clean": "空白构建模式",
       "unknown": "未知"
     },
-    "demoModeHint": "当前演示模式"
+    "demoModeHint": "当前演示模式",
+    "demoPaths": "演示路径",
+    "demoPathSeeded": "完整演示模式",
+    "demoPathSeededDesc": "探索完整的宠物食品本体：对象、图谱、规则和智能体。",
+    "demoPathClean": "空白构建模式",
+    "demoPathCleanDesc": "从空图谱开始，通过数据管道逐步构建本体。"
   },
   "objects": {
     "title": "对象",
