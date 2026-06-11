@@ -301,6 +301,52 @@ def test_20_incomplete_property_update_fails():
     print("  ✓ test_20_incomplete_property_update_fails")
 
 
+def test_21_coerce_value_preserves_float():
+    """Float string '18.5' is coerced to float, not kept as string."""
+    from review_queue.graph_writer import _coerce_value
+    result = _coerce_value("18.5")
+    assert isinstance(result, float)
+    assert result == 18.5
+    print("  ✓ test_21_coerce_value_preserves_float")
+
+
+def test_22_coerce_value_preserves_int():
+    """Integer string '1200' is coerced to int."""
+    from review_queue.graph_writer import _coerce_value
+    result = _coerce_value("1200")
+    assert isinstance(result, int)
+    assert result == 1200
+    print("  ✓ test_22_coerce_value_preserves_int")
+
+
+def test_23_coerce_value_preserves_bool():
+    """Boolean strings are coerced to bool."""
+    from review_queue.graph_writer import _coerce_value
+    assert _coerce_value("true") is True
+    assert _coerce_value("false") is False
+    assert _coerce_value("True") is True
+    print("  ✓ test_23_coerce_value_preserves_bool")
+
+
+def test_24_coerce_value_keeps_string():
+    """Non-numeric strings remain strings."""
+    from review_queue.graph_writer import _coerce_value
+    result = _coerce_value("chicken")
+    assert isinstance(result, str)
+    assert result == "chicken"
+    print("  ✓ test_24_coerce_value_keeps_string")
+
+
+def test_25_coerce_value_passthrough_non_string():
+    """Non-string values pass through unchanged."""
+    from review_queue.graph_writer import _coerce_value
+    assert _coerce_value(42) == 42
+    assert _coerce_value(3.14) == 3.14
+    assert _coerce_value(True) is True
+    assert _coerce_value(None) is None
+    print("  ✓ test_25_coerce_value_passthrough_non_string")
+
+
 def main():
     print("\n🧪 Agent Operator Tests")
     print("=" * 50)
@@ -326,6 +372,11 @@ def main():
         test_18_data_quality_not_graph_applicable,
         test_19_rule_action_not_graph_applicable,
         test_20_incomplete_property_update_fails,
+        test_21_coerce_value_preserves_float,
+        test_22_coerce_value_preserves_int,
+        test_23_coerce_value_preserves_bool,
+        test_24_coerce_value_keeps_string,
+        test_25_coerce_value_passthrough_non_string,
     ]
 
     passed = failed = 0

@@ -133,6 +133,30 @@ def apply_candidate_link(item: ReviewItem, driver: Driver | None = None) -> Revi
         )
 
 
+def _coerce_value(val):
+    """Coerce string values to appropriate Python types for Neo4j."""
+    if not isinstance(val, str):
+        return val
+    # Boolean
+    if val.lower() == "true":
+        return True
+    if val.lower() == "false":
+        return False
+    # Integer
+    try:
+        int_val = int(val)
+        return int_val
+    except ValueError:
+        pass
+    # Float
+    try:
+        float_val = float(val)
+        return float_val
+    except ValueError:
+        pass
+    return val
+
+
 def apply_agent_property_update(item: ReviewItem, driver: Driver | None = None) -> ReviewApplyResult:
     """Apply an Agent property update suggestion to Neo4j."""
     meta = item.metadata or {}
@@ -164,16 +188,21 @@ def apply_agent_property_update(item: ReviewItem, driver: Driver | None = None) 
                     error=f"Target object {object_id} not found",
                 )
 
+            # Sanitize property name
+            safe_prop = property_name.replace(" ", "_").replace("-", "_")
+
             # Get old value for metadata
             if old_value is None:
                 old_val_result = session.run(
-                    f"MATCH (n {{id: $oid}}) RETURN n.`{property_name}` AS val",
+                    f"MATCH (n {{id: $oid}}) RETURN n.`{safe_prop}` AS val",
                     oid=object_id,
                 ).single()
                 old_value = old_val_result["val"] if old_val_result else None
 
+            # Coerce new value to preserve types
+            coerced_value = _coerce_value(new_value)
+
             # Update property
-            safe_prop = property_name.replace(" ", "_").replace("-", "_")
             session.run(
                 f"MATCH (n {{id: $oid}}) "
                 f"SET n.`{safe_prop}` = $new_val, "
@@ -183,7 +212,7 @@ def apply_agent_property_update(item: ReviewItem, driver: Driver | None = None) 
                 f"    n._last_updated_at = $now, "
                 f"    n._last_update_reason = $reason",
                 oid=object_id,
-                new_val=str(new_value),
+                new_val=coerced_value,
                 riid=item.id,
                 arid=meta.get("agent_run_id", ""),
                 now=now,
