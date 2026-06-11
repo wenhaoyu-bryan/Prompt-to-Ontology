@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Tag, Space, Typography, Tabs, Empty, Button, message, Popconfirm, Drawer, Descriptions, Row, Col, Statistic, Alert } from 'antd';
 import {
-  AuditOutlined,
+  Card, Table, Tag, Space, Typography, Tabs, Button, message, Drawer,
+  Descriptions, Row, Col, Statistic, Alert, Timeline, Modal, Input,
+} from 'antd';
+import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   ClockCircleOutlined,
@@ -13,16 +15,17 @@ import {
   FileSearchOutlined,
   PlusCircleOutlined,
   InfoCircleOutlined,
-  SendOutlined,
   CheckOutlined,
   UndoOutlined,
   RocketOutlined,
+  ArrowRightOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../providers/dataProvider';
 
 const { Title, Text, Paragraph } = Typography;
+const { TextArea } = Input;
 
 const TYPE_ICONS = {
   IMPORT_OBJECT_CANDIDATE: <PlusCircleOutlined />,
@@ -31,7 +34,6 @@ const TYPE_ICONS = {
   VALIDATION_WARNING: <BugOutlined />,
   RULE_TRIGGERED_ACTION: <ExclamationCircleOutlined />,
   AGENT_SUGGESTION: <RobotOutlined />,
-  // Legacy types for rule violations
   low_confidence: <BugOutlined />,
   conflicting_property: <WarningOutlined />,
   new_relationship: <PlusCircleOutlined />,
@@ -56,6 +58,16 @@ const SEVERITY_COLORS = {
   info: 'default',
 };
 
+function formatTime(ts) {
+  if (!ts) return '—';
+  try {
+    const d = new Date(ts);
+    return d.toLocaleString();
+  } catch {
+    return ts;
+  }
+}
+
 export default function ReviewQueuePage() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
@@ -63,11 +75,15 @@ export default function ReviewQueuePage() {
 
   const [items, setItems] = useState([]);
   const [summary, setSummary] = useState(null);
+  const [batchDetail, setBatchDetail] = useState(null);
   const [violations, setViolations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('pending');
   const [selectedItem, setSelectedItem] = useState(null);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
+
+  // Reason modal state
+  const [reasonModal, setReasonModal] = useState({ open: false, action: null, itemId: null, reason: '' });
 
   const loadReviewData = useCallback(async () => {
     setLoading(true);
@@ -80,6 +96,16 @@ export default function ReviewQueuePage() {
       ]);
       setItems(itemsRes.data.items || []);
       setSummary(summaryRes.data);
+
+      // Load batch detail when filtering by batch_id
+      if (batchIdFilter) {
+        try {
+          const { data } = await api.get(`/review/batches/${batchIdFilter}`);
+          setBatchDetail(data);
+        } catch { setBatchDetail(null); }
+      } else {
+        setBatchDetail(null);
+      }
     } catch {
       setItems([]);
       setSummary(null);
@@ -102,7 +128,6 @@ export default function ReviewQueuePage() {
     loadViolations();
   }, [loadReviewData]);
 
-  // Combine review items with rule violations
   const violationItems = violations.map((v, i) => ({
     id: `violation-${i}`,
     type: 'rule_violation',
@@ -121,25 +146,34 @@ export default function ReviewQueuePage() {
   const applied = allItems.filter(v => v.status === 'applied');
   const failed = allItems.filter(v => v.status === 'failed');
 
-  const handleApprove = async (itemId) => {
-    try {
-      await api.post(`/review/items/${itemId}/approve`, { reason: '', reviewed_by: 'demo_user' });
-      message.success(t('review.approved'));
-      loadReviewData();
-    } catch (err) {
-      message.error(err?.response?.data?.detail || t('common.error'));
-    }
-    setDetailDrawerOpen(false);
+  // ── Approve / Reject with reason modal ──────────────────────────────
+
+  const openApproveModal = (itemId) => {
+    setReasonModal({ open: true, action: 'approve', itemId, reason: '' });
   };
 
-  const handleReject = async (itemId) => {
+  const openRejectModal = (itemId) => {
+    setReasonModal({ open: true, action: 'reject', itemId, reason: '' });
+  };
+
+  const handleReasonSubmit = async () => {
+    const { action, itemId, reason } = reasonModal;
+    if (action === 'reject' && !reason.trim()) {
+      message.warning(t('review.rejectReasonRequired'));
+      return;
+    }
     try {
-      await api.post(`/review/items/${itemId}/reject`, { reason: '', reviewed_by: 'demo_user' });
-      message.success(t('review.rejected'));
+      const endpoint = action === 'approve' ? 'approve' : 'reject';
+      await api.post(`/review/items/${itemId}/${endpoint}`, {
+        reason: reason.trim(),
+        reviewed_by: 'demo_user',
+      });
+      message.success(action === 'approve' ? t('review.approved') : t('review.rejected'));
       loadReviewData();
     } catch (err) {
       message.error(err?.response?.data?.detail || t('common.error'));
     }
+    setReasonModal({ open: false, action: null, itemId: null, reason: '' });
     setDetailDrawerOpen(false);
   };
 
@@ -177,60 +211,143 @@ export default function ReviewQueuePage() {
     setDetailDrawerOpen(true);
   };
 
+  // ── Build timeline for drawer ───────────────────────────────────────
+
+  const buildTimeline = (item) => {
+    const dots = [];
+    dots.push({
+      color: 'blue',
+      children: (
+        <div>
+          <Text strong>{t('review.timelineCreated')}</Text>
+          <br />
+          <Text type="secondary" style={{ fontSize: 11 }}>{formatTime(item.created_at)}</Text>
+        </div>
+      ),
+    });
+
+    if (item.status === 'approved' || item.status === 'applied') {
+      dots.push({
+        color: 'green',
+        children: (
+          <div>
+            <Text strong>{t('review.timelineApproved')}</Text>
+            <br />
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              {formatTime(item.reviewed_at)}
+              {item.reviewed_by && ` · ${item.reviewed_by}`}
+            </Text>
+            {item.decision_reason && (
+              <>
+                <br />
+                <Text type="secondary" style={{ fontSize: 11 }}>"{item.decision_reason}"</Text>
+              </>
+            )}
+          </div>
+        ),
+      });
+    }
+
+    if (item.status === 'rejected') {
+      dots.push({
+        color: 'red',
+        children: (
+          <div>
+            <Text strong>{t('review.timelineRejected')}</Text>
+            <br />
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              {formatTime(item.reviewed_at)}
+              {item.reviewed_by && ` · ${item.reviewed_by}`}
+            </Text>
+            {item.decision_reason && (
+              <>
+                <br />
+                <Text type="secondary" style={{ fontSize: 11 }}>"{item.decision_reason}"</Text>
+              </>
+            )}
+          </div>
+        ),
+      });
+    }
+
+    if (item.status === 'applied') {
+      dots.push({
+        color: 'blue',
+        children: (
+          <div>
+            <Text strong>{t('review.timelineApplied')}</Text>
+            <br />
+            <Text type="secondary" style={{ fontSize: 11 }}>{formatTime(item.applied_at)}</Text>
+          </div>
+        ),
+      });
+    }
+
+    if (item.status === 'failed') {
+      dots.push({
+        color: 'volcano',
+        children: (
+          <div>
+            <Text strong>{t('review.timelineFailed')}</Text>
+            <br />
+            <Text type="secondary" style={{ fontSize: 11 }}>{formatTime(item.updated_at)}</Text>
+            {item.apply_error && (
+              <>
+                <br />
+                <Text type="danger" style={{ fontSize: 11 }}>{item.apply_error}</Text>
+              </>
+            )}
+          </div>
+        ),
+      });
+    }
+
+    return dots;
+  };
+
+  // ── Action buttons ──────────────────────────────────────────────────
+
   const getActionButtons = (record) => {
     if (record.isViolation) return null;
 
     if (record.status === 'pending') {
       return (
         <Space size={4}>
-          <Popconfirm
-            title={t('review.confirmApprove')}
-            onConfirm={() => handleApprove(record.id)}
-            okText={t('common.confirm')}
-            cancelText={t('common.cancel')}
-          >
-            <Button size="small" type="text" icon={<CheckCircleOutlined />} style={{ color: '#52c41a' }} />
-          </Popconfirm>
-          <Popconfirm
-            title={t('review.confirmReject')}
-            onConfirm={() => handleReject(record.id)}
-            okText={t('common.confirm')}
-            cancelText={t('common.cancel')}
-          >
-            <Button size="small" type="text" icon={<CloseCircleOutlined />} danger />
-          </Popconfirm>
+          <Button size="small" type="text" icon={<CheckCircleOutlined />}
+            style={{ color: '#52c41a' }}
+            onClick={(e) => { e.stopPropagation(); openApproveModal(record.id); }}
+          />
+          <Button size="small" type="text" icon={<CloseCircleOutlined />} danger
+            onClick={(e) => { e.stopPropagation(); openRejectModal(record.id); }}
+          />
         </Space>
       );
     }
 
     if (record.status === 'approved') {
       return (
-        <Popconfirm
-          title={t('review.confirmApply')}
-          onConfirm={() => handleApply(record.id)}
-          okText={t('common.confirm')}
-          cancelText={t('common.cancel')}
+        <Button size="small" type="primary" icon={<RocketOutlined />}
+          onClick={(e) => { e.stopPropagation(); handleApply(record.id); }}
         >
-          <Button size="small" type="primary" icon={<RocketOutlined />}>{t('review.apply')}</Button>
-        </Popconfirm>
+          {t('review.apply')}
+        </Button>
       );
     }
 
     if (record.status === 'failed') {
       return (
-        <Popconfirm
-          title={t('review.confirmApply')}
-          onConfirm={() => handleApply(record.id)}
-          okText={t('common.confirm')}
-          cancelText={t('common.cancel')}
+        <Button size="small" icon={<UndoOutlined />}
+          onClick={(e) => { e.stopPropagation(); handleApply(record.id); }}
         >
-          <Button size="small" icon={<UndoOutlined />}>{t('review.retryApply')}</Button>
-        </Popconfirm>
+          {t('review.retryApply')}
+        </Button>
       );
     }
 
     return null;
   };
+
+  // ── Table columns ───────────────────────────────────────────────────
 
   const columns = [
     {
@@ -256,28 +373,21 @@ export default function ReviewQueuePage() {
       title: t('review.itemType'),
       dataIndex: 'type',
       key: 'type',
-      width: 160,
+      width: 150,
       render: (type) => <Tag>{type?.replace(/_/g, ' ') || '—'}</Tag>,
     },
     {
       title: t('common.severity'),
       dataIndex: 'severity',
       key: 'severity',
-      width: 90,
+      width: 80,
       render: (s) => <Tag color={SEVERITY_COLORS[s] || 'default'}>{s || '—'}</Tag>,
-    },
-    {
-      title: t('review.source'),
-      dataIndex: 'source',
-      key: 'source',
-      width: 100,
-      render: (s) => <Tag>{s || '—'}</Tag>,
     },
     {
       title: t('common.status'),
       dataIndex: 'status',
       key: 'status',
-      width: 100,
+      width: 90,
       render: (status) => {
         const s = status || 'pending';
         const icon = s === 'applied' ? <CheckCircleOutlined /> : s === 'approved' ? <CheckOutlined /> : s === 'rejected' ? <CloseCircleOutlined /> : s === 'failed' ? <ExclamationCircleOutlined /> : <ClockCircleOutlined />;
@@ -285,12 +395,21 @@ export default function ReviewQueuePage() {
       },
     },
     {
+      title: t('review.createdAt'),
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 150,
+      render: (ts) => <Text type="secondary" style={{ fontSize: 11 }}>{formatTime(ts)}</Text>,
+    },
+    {
       title: t('common.actions'),
       key: 'actions',
-      width: 120,
+      width: 100,
       render: (_, record) => getActionButtons(record),
     },
   ];
+
+  // ── Tabs ────────────────────────────────────────────────────────────
 
   const makeTab = (key, label, data) => ({
     key,
@@ -302,6 +421,7 @@ export default function ReviewQueuePage() {
         rowKey="id"
         size="small"
         loading={loading}
+        pagination={{ pageSize: 20, showSizeChanger: false }}
         onRow={(record) => ({
           onClick: () => handleViewDetail(record),
           style: { cursor: 'pointer' },
@@ -314,12 +434,14 @@ export default function ReviewQueuePage() {
     makeTab('pending', <span><ClockCircleOutlined /> {t('review.pending')}</span>, pending),
     makeTab('approved', <span><CheckOutlined /> {t('review.approved')}</span>, approved),
     makeTab('rejected', <span><CloseCircleOutlined /> {t('review.rejected')}</span>, rejected),
-    makeTab('applied', <span><CheckCircleOutlined /> {t('review.applied') || 'Applied'}</span>, applied),
-    makeTab('failed', <span><ExclamationCircleOutlined /> {t('review.failed') || 'Failed'}</span>, failed),
+    makeTab('applied', <span><CheckCircleOutlined /> {t('review.applied')}</span>, applied),
+    makeTab('failed', <span><ExclamationCircleOutlined /> {t('review.failed')}</span>, failed),
   ];
 
+  // ── Render ──────────────────────────────────────────────────────────
+
   return (
-    <Space orientation="vertical" size={20} style={{ width: '100%' }}>
+    <Space orientation="vertical" size={16} style={{ width: '100%' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
@@ -336,34 +458,46 @@ export default function ReviewQueuePage() {
         </Space>
       </div>
 
-      {/* Batch filter indicator */}
-      {batchIdFilter && (
-        <Alert
-          type="info"
-          showIcon
-          message={t('review.showingBatch', { batchId: batchIdFilter })}
-          action={
-            <Button size="small" href="/review">{t('review.showAll')}</Button>
-          }
-        />
-      )}
-
-      {/* HITL Note */}
+      {/* Approve vs Apply distinction */}
       <Alert
         type="info"
         showIcon
         icon={<InfoCircleOutlined />}
-        title={t('review.hitlNote')}
+        message={t('review.approveVsApply')}
         style={{ fontSize: 12 }}
       />
 
-      {/* Summary Stats */}
-      <Row gutter={[16, 16]}>
+      {/* Batch summary when batch_id is present */}
+      {batchIdFilter && batchDetail && (
+        <Card size="small">
+          <Row gutter={16} align="middle">
+            <Col flex="auto">
+              <Space>
+                <Text strong>{t('review.batchLabel')}:</Text>
+                <Text code>{batchIdFilter}</Text>
+                {batchDetail.title && <Text type="secondary">— {batchDetail.title}</Text>}
+              </Space>
+            </Col>
+            <Col>
+              <Space size={16}>
+                <Statistic title={t('review.pending')} value={batchDetail.pending_count || 0} valueStyle={{ fontSize: 16, color: '#fa8c16' }} />
+                <Statistic title={t('review.approved')} value={batchDetail.approved_count || 0} valueStyle={{ fontSize: 16, color: '#52c41a' }} />
+                <Statistic title={t('review.rejected')} value={batchDetail.rejected_count || 0} valueStyle={{ fontSize: 16, color: '#ff4d4f' }} />
+                <Statistic title={t('review.applied')} value={batchDetail.applied_count || 0} valueStyle={{ fontSize: 16, color: '#1677ff' }} />
+                <Statistic title={t('review.failed')} value={batchDetail.failed_count || 0} valueStyle={{ fontSize: 16, color: batchDetail.failed_count > 0 ? '#ff4d4f' : undefined }} />
+              </Space>
+            </Col>
+          </Row>
+        </Card>
+      )}
+
+      {/* Global summary stats */}
+      <Row gutter={[12, 12]}>
         {[
           { title: t('review.pending'), value: summary?.pending ?? pending.length, icon: <ClockCircleOutlined />, color: '#fa8c16' },
           { title: t('review.approved'), value: summary?.approved ?? approved.length, icon: <CheckOutlined />, color: '#52c41a' },
-          { title: t('review.applied') || 'Applied', value: summary?.applied ?? applied.length, icon: <CheckCircleOutlined />, color: '#1677ff' },
-          { title: t('review.failed') || 'Failed', value: summary?.failed ?? failed.length, icon: <ExclamationCircleOutlined />, color: '#ff4d4f' },
+          { title: t('review.applied'), value: summary?.applied ?? applied.length, icon: <CheckCircleOutlined />, color: '#1677ff' },
+          { title: t('review.failed'), value: summary?.failed ?? failed.length, icon: <ExclamationCircleOutlined />, color: '#ff4d4f' },
         ].map((s, i) => (
           <Col xs={12} sm={6} key={i}>
             <Card size="small" hoverable>
@@ -382,16 +516,17 @@ export default function ReviewQueuePage() {
         <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} style={{ marginTop: 8 }} />
       </Card>
 
-      {/* Detail Drawer */}
+      {/* ── Detail Drawer ────────────────────────────────────────────── */}
       <Drawer
         title={selectedItem?.title || t('common.detail')}
         open={detailDrawerOpen}
         onClose={() => { setDetailDrawerOpen(false); setSelectedItem(null); }}
-        size={480}
+        size={520}
       >
         {selectedItem && (
           <Space orientation="vertical" size={16} style={{ width: '100%' }}>
-            <Descriptions column={1} size="small">
+            {/* Basic info */}
+            <Descriptions column={1} size="small" bordered>
               <Descriptions.Item label={t('review.itemType')}>
                 <Tag>{selectedItem.type?.replace(/_/g, ' ')}</Tag>
               </Descriptions.Item>
@@ -401,46 +536,90 @@ export default function ReviewQueuePage() {
               <Descriptions.Item label={t('common.status')}>
                 <Tag color={STATUS_COLORS[selectedItem.status]}>{selectedItem.status}</Tag>
               </Descriptions.Item>
-              <Descriptions.Item label={t('review.source')}>{selectedItem.source}</Descriptions.Item>
+              <Descriptions.Item label={t('review.source')}>
+                <Tag>{selectedItem.source}</Tag>
+              </Descriptions.Item>
               {selectedItem.source_plan_id && (
                 <Descriptions.Item label="Plan ID"><Text code>{selectedItem.source_plan_id}</Text></Descriptions.Item>
               )}
-              {selectedItem.reviewed_by && (
-                <Descriptions.Item label={t('review.reviewedBy') || 'Reviewed By'}>{selectedItem.reviewed_by}</Descriptions.Item>
-              )}
-              {selectedItem.decision_reason && (
-                <Descriptions.Item label={t('review.decisionReason') || 'Reason'}>{selectedItem.decision_reason}</Descriptions.Item>
-              )}
             </Descriptions>
 
-            <Card size="small" title={t('common.description')} variant="inner">
-              <Paragraph style={{ margin: 0 }}>{selectedItem.description}</Paragraph>
+            {/* Audit timeline */}
+            <Card size="small" title={t('review.auditTimeline')} variant="inner">
+              <Timeline items={buildTimeline(selectedItem)} />
             </Card>
 
-            {/* Candidate object/link details */}
+            {/* Description */}
+            <Card size="small" title={t('common.description')} variant="inner">
+              <Paragraph style={{ margin: 0, fontSize: 13 }}>{selectedItem.description}</Paragraph>
+            </Card>
+
+            {/* Candidate Object with properties table */}
             {selectedItem.candidate_object && (
-              <Card size="small" title={t('review.candidateObject') || 'Candidate Object'} variant="inner">
-                <Descriptions column={1} size="small">
+              <Card size="small" title={t('review.candidateObject')} variant="inner">
+                <Descriptions column={1} size="small" style={{ marginBottom: 8 }}>
                   <Descriptions.Item label="ID"><Text code>{selectedItem.candidate_object.id}</Text></Descriptions.Item>
                   <Descriptions.Item label={t('common.type')}><Tag color="blue">{selectedItem.candidate_object.type}</Tag></Descriptions.Item>
-                  <Descriptions.Item label={t('pipeline.confidence')}>{((selectedItem.candidate_object.confidence || 0) * 100).toFixed(0)}%</Descriptions.Item>
+                  <Descriptions.Item label={t('pipeline.confidence')}>
+                    {((selectedItem.candidate_object.confidence || 0) * 100).toFixed(0)}%
+                  </Descriptions.Item>
                 </Descriptions>
+                {selectedItem.candidate_object.properties && Object.keys(selectedItem.candidate_object.properties).length > 0 && (
+                  <Table
+                    size="small"
+                    pagination={false}
+                    dataSource={Object.entries(selectedItem.candidate_object.properties).map(([k, v]) => ({ key: k, value: typeof v === 'object' ? JSON.stringify(v) : String(v) }))}
+                    columns={[
+                      { title: t('review.property'), dataIndex: 'key', key: 'key', width: 120, render: v => <Text code style={{ fontSize: 11 }}>{v}</Text> },
+                      { title: t('common.detail'), dataIndex: 'value', key: 'value', ellipsis: true },
+                    ]}
+                  />
+                )}
+                {selectedItem.candidate_object.evidence && (
+                  <Alert type="info" style={{ marginTop: 8 }} message={t('review.evidence')} description={selectedItem.candidate_object.evidence} />
+                )}
               </Card>
             )}
 
+            {/* Candidate Link with visual arrow */}
             {selectedItem.candidate_link && (
-              <Card size="small" title={t('review.candidateLink') || 'Candidate Link'} variant="inner">
-                <Descriptions column={1} size="small">
-                  <Descriptions.Item label={t('pipeline.sourceId')}><Text code>{selectedItem.candidate_link.source_id}</Text></Descriptions.Item>
-                  <Descriptions.Item label={t('common.type')}><Tag color="green">{selectedItem.candidate_link.type}</Tag></Descriptions.Item>
-                  <Descriptions.Item label={t('pipeline.targetId')}><Text code>{selectedItem.candidate_link.target_id}</Text></Descriptions.Item>
-                </Descriptions>
+              <Card size="small" title={t('review.candidateLink')} variant="inner">
+                <div style={{ textAlign: 'center', padding: '12px 0', background: 'rgba(0,0,0,0.02)', borderRadius: 6, marginBottom: 12 }}>
+                  <Space size={8} align="center">
+                    <Tag color="blue" style={{ fontSize: 13, padding: '4px 12px' }}>{selectedItem.candidate_link.source_id}</Tag>
+                    <ArrowRightOutlined style={{ fontSize: 16, color: '#52c41a' }} />
+                    <Tag color="green" style={{ fontSize: 13, padding: '4px 12px' }}>{selectedItem.candidate_link.type}</Tag>
+                    <ArrowRightOutlined style={{ fontSize: 16, color: '#52c41a' }} />
+                    <Tag color="blue" style={{ fontSize: 13, padding: '4px 12px' }}>{selectedItem.candidate_link.target_id}</Tag>
+                  </Space>
+                </div>
+                {selectedItem.candidate_link.confidence != null && (
+                  <Descriptions column={1} size="small">
+                    <Descriptions.Item label={t('pipeline.confidence')}>
+                      {((selectedItem.candidate_link.confidence || 0) * 100).toFixed(0)}%
+                    </Descriptions.Item>
+                  </Descriptions>
+                )}
+                {selectedItem.candidate_link.properties && Object.keys(selectedItem.candidate_link.properties).length > 0 && (
+                  <Table
+                    size="small"
+                    pagination={false}
+                    dataSource={Object.entries(selectedItem.candidate_link.properties).map(([k, v]) => ({ key: k, value: typeof v === 'object' ? JSON.stringify(v) : String(v) }))}
+                    columns={[
+                      { title: t('review.property'), dataIndex: 'key', key: 'key', width: 120, render: v => <Text code style={{ fontSize: 11 }}>{v}</Text> },
+                      { title: t('common.detail'), dataIndex: 'value', key: 'value', ellipsis: true },
+                    ]}
+                  />
+                )}
+                {selectedItem.candidate_link.evidence && (
+                  <Alert type="info" style={{ marginTop: 8 }} message={t('review.evidence')} description={selectedItem.candidate_link.evidence} />
+                )}
               </Card>
             )}
 
             {/* Apply error */}
             {selectedItem.apply_error && (
-              <Alert type="error" showIcon message={t('review.applyError') || 'Apply Error'} description={selectedItem.apply_error} />
+              <Alert type="error" showIcon message={t('review.applyError')} description={selectedItem.apply_error} />
             )}
 
             {/* Action buttons */}
@@ -449,23 +628,23 @@ export default function ReviewQueuePage() {
                 <Space>
                   {selectedItem.status === 'pending' && (
                     <>
-                      <Popconfirm title={t('review.confirmApprove')} onConfirm={() => handleApprove(selectedItem.id)}>
-                        <Button type="primary" icon={<CheckCircleOutlined />}>{t('review.approve')}</Button>
-                      </Popconfirm>
-                      <Popconfirm title={t('review.confirmReject')} onConfirm={() => handleReject(selectedItem.id)}>
-                        <Button danger icon={<CloseCircleOutlined />}>{t('review.reject')}</Button>
-                      </Popconfirm>
+                      <Button type="primary" icon={<CheckCircleOutlined />} onClick={() => openApproveModal(selectedItem.id)}>
+                        {t('review.approve')}
+                      </Button>
+                      <Button danger icon={<CloseCircleOutlined />} onClick={() => openRejectModal(selectedItem.id)}>
+                        {t('review.reject')}
+                      </Button>
                     </>
                   )}
                   {selectedItem.status === 'approved' && (
-                    <Popconfirm title={t('review.confirmApply')} onConfirm={() => handleApply(selectedItem.id)}>
-                      <Button type="primary" icon={<RocketOutlined />}>{t('review.apply')}</Button>
-                    </Popconfirm>
+                    <Button type="primary" icon={<RocketOutlined />} onClick={() => handleApply(selectedItem.id)}>
+                      {t('review.apply')}
+                    </Button>
                   )}
                   {selectedItem.status === 'failed' && (
-                    <Popconfirm title={t('review.confirmApply')} onConfirm={() => handleApply(selectedItem.id)}>
-                      <Button icon={<UndoOutlined />}>{t('review.retryApply')}</Button>
-                    </Popconfirm>
+                    <Button icon={<UndoOutlined />} onClick={() => handleApply(selectedItem.id)}>
+                      {t('review.retryApply')}
+                    </Button>
                   )}
                 </Space>
               </Card>
@@ -473,6 +652,26 @@ export default function ReviewQueuePage() {
           </Space>
         )}
       </Drawer>
+
+      {/* ── Reason Modal ─────────────────────────────────────────────── */}
+      <Modal
+        open={reasonModal.open}
+        title={reasonModal.action === 'approve' ? t('review.approveModalTitle') : t('review.rejectModalTitle')}
+        onOk={handleReasonSubmit}
+        onCancel={() => setReasonModal({ open: false, action: null, itemId: null, reason: '' })}
+        okText={reasonModal.action === 'approve' ? t('review.approve') : t('review.reject')}
+        okButtonProps={{ danger: reasonModal.action === 'reject' }}
+      >
+        <Space orientation="vertical" size={12} style={{ width: '100%', marginTop: 12 }}>
+          <Text>{reasonModal.action === 'approve' ? t('review.approveReasonHint') : t('review.rejectReasonHint')}</Text>
+          <TextArea
+            rows={3}
+            value={reasonModal.reason}
+            onChange={(e) => setReasonModal(prev => ({ ...prev, reason: e.target.value }))}
+            placeholder={reasonModal.action === 'approve' ? t('review.approveReasonPlaceholder') : t('review.rejectReasonPlaceholder')}
+          />
+        </Space>
+      </Modal>
     </Space>
   );
 }

@@ -143,6 +143,33 @@ Validation warnings, agent suggestions, etc. return: "This review item type is n
 | POST | `/api/review/batches/{batch_id}/apply-approved` | Apply all approved in batch |
 | GET | `/api/review/summary` | Queue statistics |
 
+## Audit Trail
+
+Every ReviewItem tracks a full lifecycle:
+
+| Field | When Set | Description |
+|---|---|---|
+| `created_at` | On creation | When the item entered the review queue |
+| `updated_at` | On every change | Last modification timestamp |
+| `reviewed_at` | On approve/reject | When the human decision was made |
+| `reviewed_by` | On approve/reject | Who made the decision |
+| `decision_reason` | On approve/reject | Why the decision was made |
+| `applied_at` | On apply | When the item was written to the graph |
+| `apply_error` | On apply failure | Error message from graph writer |
+
+The frontend shows these as an **Audit Trail Timeline** in the item detail drawer.
+
+## Approve vs Apply
+
+**Approve** means a human has reviewed the item and decided it is correct. It does NOT write to the graph.
+
+**Apply** writes the approved item to Neo4j using MERGE/upsert semantics. Only applied items exist in the ontology graph.
+
+This two-step design ensures:
+- Human intent is recorded before any graph mutation
+- Failed writes don't lose the approval decision
+- The audit trail is complete
+
 ## Current Limitations
 
 - Single-user (no multi-user auth)
