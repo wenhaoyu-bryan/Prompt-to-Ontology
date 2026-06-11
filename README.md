@@ -34,6 +34,32 @@ This is **not** a pet food app. The same runtime can be extended to supply chain
 
 ---
 
+## Demo
+
+### Video
+
+<!-- TODO: Replace with actual demo video. Place the file at media/demo.mp4 -->
+<!-- For GitHub inline playback, keep video under 10MB. Use GitHub Releases for larger files. -->
+
+<!-- Option A: repo file (under 10MB) -->
+<!-- ![Demo Video](media/demo.mp4) -->
+
+<!-- Option B: GitHub Releases link (recommended for large videos) -->
+<!-- [Watch Demo Video](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.1.0-ontology-runtime/demo.mp4) -->
+
+### Screenshots
+
+<!-- TODO: Replace with actual screenshots. Place files in media/ folder. -->
+
+<!-- ![Dashboard](media/screenshot-dashboard.png) -->
+<!-- ![Data Pipeline](media/screenshot-pipeline.png) -->
+<!-- ![Review Queue](media/screenshot-review.png) -->
+<!-- ![Object Explorer](media/screenshot-objects.png) -->
+<!-- ![Graph Explorer](media/screenshot-graph.png) -->
+<!-- ![Agent Operator](media/screenshot-agent.png) -->
+
+---
+
 ## Product Workflow
 
 The app has two clear user paths:
