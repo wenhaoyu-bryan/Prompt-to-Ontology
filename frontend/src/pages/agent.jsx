@@ -26,6 +26,7 @@ import {
   RightOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useThemeContext } from '../providers/ThemeProvider';
 import { api } from '../providers/dataProvider';
 import { MOCK_AGENT_RUNS } from '../mocks/agentRuns';
@@ -50,6 +51,7 @@ const STATUS_COLORS = {
 export default function AgentPage() {
   const { t, i18n } = useTranslation();
   const { mode } = useThemeContext();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -95,6 +97,10 @@ export default function AgentPage() {
         content: data.answer || t('agent.noAnswer'),
         tools: data.tools_used || [],
         llm_used: data.llm_used || false,
+        suggestions: data.suggestions || [],
+        can_submit_to_review: data.can_submit_to_review || false,
+        agent_run_id: data.agent_run_id || '',
+        user_message: q,
       }]);
     } catch (err) {
       setMessages(prev => [...prev, {
@@ -104,6 +110,23 @@ export default function AgentPage() {
       }]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSubmitSuggestions = async (msgIndex, suggestions, agentRunId, userMessage) => {
+    try {
+      const { data } = await api.post('/agent/suggestions/submit-review', {
+        agent_run_id: agentRunId,
+        user_message: userMessage,
+        suggestions: suggestions,
+      });
+      message.success(t('agent.suggestionsSubmitted'));
+      // Update the message to mark as submitted
+      setMessages(prev => prev.map((msg, i) =>
+        i === msgIndex ? { ...msg, suggestionsSubmitted: true, reviewBatchId: data.batch?.id } : msg
+      ));
+    } catch (err) {
+      message.error(err?.response?.data?.detail || t('agent.suggestionsFailed'));
     }
   };
 
@@ -252,6 +275,44 @@ export default function AgentPage() {
                   <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.6 }}>
                     {msg.content}
                   </div>
+
+                  {/* Phase 30: Show agent suggestions */}
+                  {msg.suggestions?.length > 0 && (
+                    <div style={{ marginTop: 12, padding: '8px 10px', background: 'rgba(22,119,255,0.06)', borderRadius: 8, border: '1px solid rgba(22,119,255,0.15)' }}>
+                      <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+                        {t('agent.proposedUpdates')} ({msg.suggestions.length})
+                      </Text>
+                      {msg.suggestions.map((sug, j) => (
+                        <div key={j} style={{ fontSize: 11, marginBottom: 4, padding: '4px 6px', background: 'rgba(255,255,255,0.5)', borderRadius: 4 }}>
+                          <Tag color="purple" style={{ fontSize: 10 }}>{sug.type?.replace(/_/g, ' ')}</Tag>
+                          <Text style={{ fontSize: 11 }}>{sug.title}</Text>
+                          {sug.confidence && (
+                            <Text type="secondary" style={{ fontSize: 10, marginLeft: 4 }}>({(sug.confidence * 100).toFixed(0)}%)</Text>
+                          )}
+                        </div>
+                      ))}
+                      {msg.suggestionsSubmitted ? (
+                        <div style={{ marginTop: 8 }}>
+                          <Tag color="success"><CheckCircleOutlined /> {t('agent.suggestionsSubmitted')}</Tag>
+                          {msg.reviewBatchId && (
+                            <Button type="link" size="small" onClick={() => navigate(`/review?batch_id=${msg.reviewBatchId}`)}>
+                              {t('agent.goToReview')} <RightOutlined />
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <Button
+                          size="small"
+                          type="primary"
+                          icon={<SendOutlined />}
+                          style={{ marginTop: 8 }}
+                          onClick={() => handleSubmitSuggestions(i, msg.suggestions, msg.agent_run_id, msg.user_message)}
+                        >
+                          {t('agent.submitSuggestions')}
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -331,6 +392,15 @@ export default function AgentPage() {
             ))}
           </span>
         }
+      />
+      {/* Agent safety boundary */}
+      <Alert
+        type="warning"
+        banner
+        showIcon
+        icon={<InfoCircleOutlined />}
+        message={t('agent.safetyBoundary')}
+        style={{ fontSize: 11 }}
       />
       {/* Status bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

@@ -40,7 +40,7 @@ This is **not** a pet food app. The same runtime can be extended to supply chain
 2. **Objects** — browse products, filter by type, view detail drawer with evidence and risks
 3. **Graph** — explore the global evidence network, click a node to see its local neighborhood
 4. **Schema** — inspect object types, link types, and rules with modeling explanations
-5. **Agent** — ask natural-language questions, see which ontology tools were called
+5. **Agent** — ask natural-language questions, propose reviewable ontology updates
 6. **Data Pipeline** — profile data, map to ontology, generate import plans
 7. **Review Queue** — review import candidates, approve/reject, apply approved items to graph
 
@@ -182,6 +182,7 @@ Open `http://localhost:5173`
 | POST | `/api/review/items/{id}/apply` | Apply approved item to graph |
 | POST | `/api/review/batches/{id}/apply-approved` | Apply all approved in batch |
 | GET | `/api/review/summary` | Review queue statistics |
+| POST | `/api/agent/suggestions/submit-review` | Submit agent suggestions to review |
 
 ---
 
@@ -229,6 +230,11 @@ Prompt-to-Ontology/
 │   │   ├── import_plan_adapter.py # ImportPlan → ReviewItems
 │   │   ├── graph_writer.py        # Write approved items to Neo4j
 │   │   └── service.py             # Approve/reject/apply logic
+│   ├── agent_operator/            # Agent as ontology operator
+│   │   ├── models.py              # Suggestion models & enums
+│   │   ├── suggestion_builder.py  # Deterministic suggestion builders
+│   │   ├── review_adapter.py      # Suggestions → Review Queue items
+│   │   └── service.py             # Analyze answers, submit to review
 │   └── domain/
 │       └── petfood_transformer.py # CSV → graph payload
 ├── frontend/
@@ -315,6 +321,14 @@ See [docs/data-pipeline.md](docs/data-pipeline.md) for full documentation.
 The Review Queue implements HITL (Human-in-the-Loop) workflow for ontology graph mutations. Import Plans from the Data Pipeline are converted into reviewable items. Humans approve or reject each item, then approved items are written to Neo4j using MERGE/upsert semantics. State persists in `backend/.runtime/` JSON files.
 
 See [docs/review-queue-runtime.md](docs/review-queue-runtime.md) for full documentation.
+
+---
+
+## Agent Operator
+
+The Agent can propose reviewable ontology updates instead of directly mutating the graph. Suggestions (property updates, link creation, object creation, rule actions, data quality issues) are generated deterministically from agent answers and can be submitted to the Review Queue for human approval.
+
+See [docs/agent-operator.md](docs/agent-operator.md) for full documentation.
 
 ---
 

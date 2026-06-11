@@ -32,6 +32,7 @@ docs/*
 !docs/ontology-kernel.md
 !docs/data-pipeline.md
 !docs/review-queue-runtime.md
+!docs/agent-operator.md
 Phases/
 
 # Test data

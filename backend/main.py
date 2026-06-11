@@ -5,6 +5,7 @@
 
 import json
 import os
+import uuid
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -1086,25 +1087,40 @@ def api_pet_food_agent_chat(req: PetFoodChatRequest):
     Pet Food Agent 聊天接口。
     接收自然语言问题，基于图谱证据链返回结构化回答。
     支持 LLM tool-calling（v2）+ deterministic fallback。
+    Phase 30: 自动分析答案生成审核建议。
     """
     from petfood_agent_v2 import chat as chat_v2
     from petfood_agent import chat as chat_v1
+    from agent_operator import analyze_agent_answer_for_suggestions
 
     if not req.question.strip():
         raise HTTPException(400, "问题不能为空")
 
+    agent_run_id = f"run-{uuid.uuid4().hex[:10]}"
+
     try:
         result = chat_v2(req.question, context=req.context)
-        return result
     except Exception:
         # Fallback to v1
         try:
             result = chat_v1(req.question)
             result["tools_used"] = []
             result["llm_used"] = False
-            return result
         except Exception as e:
             raise HTTPException(500, f"Agent error: {e}")
+
+    # Phase 30: Analyze answer for ontology operator suggestions
+    suggestions = analyze_agent_answer_for_suggestions(
+        req.question, result, agent_run_id=agent_run_id,
+    )
+
+    result["agent_run_id"] = agent_run_id
+    result["suggestions"] = [s.model_dump() for s in suggestions]
+    result["requires_review"] = len(suggestions) > 0
+    result["can_submit_to_review"] = len(suggestions) > 0
+    result["review_batch_id"] = None
+    result["review_item_ids"] = []
+    return result
 
 
 # ── Data Pipeline API ───────────────────────────────────────────────────
@@ -1319,6 +1335,39 @@ def api_review_apply_batch(batch_id: str):
 def api_review_summary():
     """Get review queue summary statistics."""
     return get_review_summary().model_dump()
+
+
+# ── Agent Operator API ────────────────────────────────────────────────────
+
+from agent_operator import (
+    AgentSuggestedAction,
+    submit_agent_suggestions_to_review,
+)
+
+
+@app.post("/api/agent/suggestions/submit-review")
+def api_agent_submit_suggestions(body: dict):
+    """Submit agent suggestions to the review queue."""
+    agent_run_id = body.get("agent_run_id", "")
+    user_message = body.get("user_message", "")
+    raw_suggestions = body.get("suggestions", [])
+
+    if not raw_suggestions:
+        raise HTTPException(400, "No suggestions provided")
+
+    try:
+        suggestions = [AgentSuggestedAction(**s) for s in raw_suggestions]
+        batch = submit_agent_suggestions_to_review(
+            suggestions, agent_run_id=agent_run_id, user_message=user_message,
+        )
+        items = list_review_items(batch_id=batch.id)
+        return {
+            "batch": {"id": batch.id, "item_count": len(items)},
+            "items_created": len(items),
+            "item_ids": [i.id for i in items],
+        }
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 if __name__ == "__main__":
