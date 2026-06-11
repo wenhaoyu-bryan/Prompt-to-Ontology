@@ -35,6 +35,7 @@ docs/*
 !docs/agent-operator.md
 !docs/product-workflow.md
 !docs/release-notes.md
+!docs/resettable-demo-mode.md
 Phases/
 
 # Test data

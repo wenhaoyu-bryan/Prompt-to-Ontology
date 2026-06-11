@@ -135,7 +135,15 @@
     "journeyGraph": "查看局部图谱",
     "journeySchema": "查看模式",
     "journeyAgent": "询问智能体",
-    "journeyReview": "审核建议"
+    "journeyReview": "审核建议",
+    "demoState": "演示状态",
+    "demoSettings": "演示设置",
+    "demoMode": {
+      "seeded": "完整演示模式",
+      "clean": "空白构建模式",
+      "unknown": "未知"
+    },
+    "demoModeHint": "当前演示模式"
   },
   "objects": {
     "title": "对象",
@@ -297,7 +305,17 @@
     "reset": "重置",
     "resetConfirmTitle": "确认重置？",
     "resetConfirmDesc": "这将清除你的主题、语言和认证设置，页面将自动刷新。",
-    "resetSuccess": "演示已重置，正在刷新..."
+    "resetSuccess": "演示已重置，正在刷新...",
+    "demoMode": "演示模式",
+    "demoRefresh": "刷新",
+    "demoCurrentMode": "当前模式",
+    "demoResetSeeded": "重置为完整演示模式",
+    "demoResetClean": "重置为空白构建模式",
+    "demoResetTitle": "重置演示（{{mode}}）",
+    "demoResetSeededConfirm": "这会清空当前图谱和审核队列，并重新加载宠物食品演示本体。",
+    "demoResetCleanConfirm": "这会清空图谱和审核队列。之后你可以从数据管道开始，使用示例数据重新构建本体。",
+    "demoResetSuccess": "演示模式重置成功",
+    "demoResetFailed": "重置演示模式失败"
   },
   "pageFraming": {
     "pipeline": "这是「构建本体」路径的第一步。这里会对数据进行画像、字段映射、候选对象校验，并生成导入计划。它不会直接修改图谱。",

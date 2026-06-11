@@ -135,7 +135,15 @@
     "journeyGraph": "View Local Graph",
     "journeySchema": "Inspect Schema",
     "journeyAgent": "Ask Agent",
-    "journeyReview": "Review Suggestions"
+    "journeyReview": "Review Suggestions",
+    "demoState": "Demo State",
+    "demoSettings": "Demo Settings",
+    "demoMode": {
+      "seeded": "Seeded Demo",
+      "clean": "Clean Build",
+      "unknown": "Unknown"
+    },
+    "demoModeHint": "Current demo mode"
   },
   "objects": {
     "title": "Objects",
@@ -297,7 +305,17 @@
     "reset": "Reset",
     "resetConfirmTitle": "Reset Demo?",
     "resetConfirmDesc": "This will clear your theme, language, and auth settings. The page will reload.",
-    "resetSuccess": "Demo reset. Reloading..."
+    "resetSuccess": "Demo reset. Reloading...",
+    "demoMode": "Demo Mode",
+    "demoRefresh": "Refresh",
+    "demoCurrentMode": "Current mode",
+    "demoResetSeeded": "Reset to Seeded Demo",
+    "demoResetClean": "Reset to Clean Build",
+    "demoResetTitle": "Reset Demo ({{mode}})",
+    "demoResetSeededConfirm": "This will clear the current graph and review queue, then reload the Pet Food demo ontology.",
+    "demoResetCleanConfirm": "This will clear the graph and review queue. You can then use Data Pipeline to build the ontology from sample datasets.",
+    "demoResetSuccess": "Demo mode reset successfully",
+    "demoResetFailed": "Failed to reset demo mode"
   },
   "pageFraming": {
     "pipeline": "This is the first step of the Build Ontology path. It profiles data, maps fields to ontology types, validates candidates, and creates Import Plans. It does not directly mutate the graph.",

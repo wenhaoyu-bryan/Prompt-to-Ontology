@@ -1,4 +1,5 @@
-import { Card, Row, Col, Typography, Space, Radio, Switch, Divider, Tag, Descriptions, List, Button, Modal, message } from 'antd';
+import { useState, useEffect, useCallback } from 'react';
+import { Card, Row, Col, Typography, Space, Radio, Switch, Divider, Tag, Descriptions, List, Button, Modal, message, Statistic, Spin } from 'antd';
 import {
   BulbOutlined,
   GlobalOutlined,
@@ -9,9 +10,13 @@ import {
   ApiOutlined,
   DeleteOutlined,
   ExclamationCircleOutlined,
+  PlayCircleOutlined,
+  ReloadOutlined,
+  ExperimentOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useThemeContext } from '../providers/ThemeProvider';
+import { api } from '../providers/dataProvider';
 
 const { Title, Text, Link } = Typography;
 
@@ -28,6 +33,43 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
   const { mode, setMode, color, setColor } = useThemeContext();
+  const [demoState, setDemoState] = useState(null);
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  const loadDemoState = useCallback(async () => {
+    try {
+      const { data } = await api.get('/demo/state');
+      setDemoState(data);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { loadDemoState(); }, [loadDemoState]);
+
+  const handleDemoReset = (resetMode) => {
+    const msg = resetMode === 'seeded'
+      ? t('settings.demoResetSeededConfirm')
+      : t('settings.demoResetCleanConfirm');
+    Modal.confirm({
+      title: t('settings.demoResetTitle', { mode: resetMode }),
+      icon: <ExclamationCircleOutlined />,
+      content: msg,
+      okText: t('common.confirm'),
+      cancelText: t('common.cancel'),
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        setDemoLoading(true);
+        try {
+          await api.post('/demo/reset', { mode: resetMode, confirm: true });
+          message.success(t('settings.demoResetSuccess'));
+          await loadDemoState();
+        } catch (e) {
+          message.error(e?.response?.data?.detail || t('settings.demoResetFailed'));
+        } finally {
+          setDemoLoading(false);
+        }
+      },
+    });
+  };
 
   const handleResetDemo = () => {
     Modal.confirm({
@@ -152,7 +194,54 @@ export default function SettingsPage() {
         </Descriptions>
       </Card>
 
-      {/* Demo Reset */}
+      {/* Demo Mode */}
+      <Card
+        title={<><PlayCircleOutlined /> {t('settings.demoMode')}</>}
+        extra={<Button type="link" size="small" icon={<ReloadOutlined />} onClick={loadDemoState}>{t('settings.demoRefresh')}</Button>}
+      >
+        {demoState ? (
+          <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <Tag color={demoState.mode === 'seeded' ? 'green' : demoState.mode === 'clean' ? 'blue' : 'default'} style={{ fontSize: 14, padding: '4px 12px' }}>
+                {t(`dashboard.demoMode.${demoState.mode}`, demoState.mode)}
+              </Tag>
+              <Text type="secondary">{t('settings.demoCurrentMode')}</Text>
+            </div>
+            <Descriptions column={2} size="small">
+              <Descriptions.Item label={t('dashboard.totalNodes')}>{demoState.graph?.node_count || 0}</Descriptions.Item>
+              <Descriptions.Item label={t('dashboard.graphEdges')}>{demoState.graph?.relationship_count || 0}</Descriptions.Item>
+              <Descriptions.Item label={t('review.pending')}>{demoState.review_queue?.pending_count || 0}</Descriptions.Item>
+              <Descriptions.Item label={t('review.applied')}>{demoState.review_queue?.applied_count || 0}</Descriptions.Item>
+            </Descriptions>
+            <Divider />
+            <Row gutter={12}>
+              <Col>
+                <Button
+                  type="primary"
+                  icon={<ExperimentOutlined />}
+                  loading={demoLoading}
+                  onClick={() => handleDemoReset('seeded')}
+                >
+                  {t('settings.demoResetSeeded')}
+                </Button>
+              </Col>
+              <Col>
+                <Button
+                  icon={<DeleteOutlined />}
+                  loading={demoLoading}
+                  onClick={() => handleDemoReset('clean')}
+                >
+                  {t('settings.demoResetClean')}
+                </Button>
+              </Col>
+            </Row>
+          </Space>
+        ) : (
+          <Text type="secondary">{t('common.loading')}</Text>
+        )}
+      </Card>
+
+      {/* Demo Reset (local storage) */}
       <Card title={<><DeleteOutlined /> {t('settings.dangerZone')}</>}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>

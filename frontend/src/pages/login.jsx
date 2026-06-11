@@ -28,14 +28,11 @@ export default function LoginPage() {
     }}>
       <Card style={{ width: 380, borderRadius: 12 }} variant="borderless">
         <Space orientation="vertical" size={4} style={{ width: '100%', marginBottom: 32, textAlign: 'center' }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: 12,
-            background: 'linear-gradient(135deg, #1677ff, #722ed1)',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontWeight: 700, fontSize: 20, margin: '0 auto 12px',
-          }}>
-            P
-          </div>
+          <img
+            src="/project_profile.png"
+            alt="Logo"
+            style={{ width: 48, height: 48, borderRadius: 12, margin: '0 auto 12px', display: 'block' }}
+          />
           <Title level={4} style={{ margin: 0 }}>{t('auth.loginTitle')}</Title>
           <Text type="secondary">{t('auth.loginSubtitle')}</Text>
         </Space>
