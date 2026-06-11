@@ -6,13 +6,18 @@
   },
   "nav": {
     "dashboard": "Dashboard",
-    "objects": "Objects",
-    "graph": "Graph",
-    "schema": "Schema",
-    "agent": "Agent",
+    "objects": "Object Explorer",
+    "graph": "Graph Explorer",
+    "schema": "Ontology Manager",
+    "agent": "Agent Operator",
     "review": "Review Queue",
     "pipeline": "Data Pipeline",
-    "settings": "Settings"
+    "settings": "Settings",
+    "groupHome": "Home",
+    "groupBuild": "Build Ontology",
+    "groupExplore": "Explore Ontology",
+    "groupOperate": "Operate",
+    "groupAdmin": "Admin"
   },
   "common": {
     "loading": "Loading...",
@@ -78,8 +83,19 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "subtitle": "Monitor ontology coverage, risk signals, and review progress",
-    "hero": "Prompt-to-Ontology turns standardized data into an operational ontology runtime. This Pet Food Ontology Demo shows how domain knowledge is converted into structured objects, relationships, constraints, rules, evidence, and agent-assisted reasoning.",
+    "subtitle": "Operational Ontology Runtime — Pet Food Demo",
+    "hero": "Prompt-to-Ontology turns standardized data into an operational ontology runtime. Two clear paths: Build Ontology from data, and Explore / Operate the ontology graph.",
+    "buildPath": "Build Ontology",
+    "buildPathDesc": "Start from ready data, map it to ontology objects and links, validate it, review it, and write approved changes to the graph.",
+    "buildPathWorkflow": "Data Pipeline → Ontology Manager → Review Queue → Graph Write",
+    "explorePath": "Explore / Operate Ontology",
+    "explorePathDesc": "Inspect objects, explore relationships, reason with the Agent Operator, and submit reviewable ontology updates.",
+    "explorePathWorkflow": "Object Explorer → Graph Explorer → Agent Operator → Review Actions",
+    "startPipeline": "Start with Data Pipeline",
+    "openSchema": "Open Ontology Manager",
+    "exploreObjects": "Explore Objects",
+    "openGraph": "Open Graph Explorer",
+    "askAgent": "Ask Agent",
     "tagRealtime": "Real-time Graph",
     "tagGraph": "Ontology-Driven",
     "tagAgent": "Agent Reasoning",
@@ -283,6 +299,15 @@
     "resetConfirmDesc": "This will clear your theme, language, and auth settings. The page will reload.",
     "resetSuccess": "Demo reset. Reloading..."
   },
+  "pageFraming": {
+    "pipeline": "This is the first step of the Build Ontology path. It profiles data, maps fields to ontology types, validates candidates, and creates Import Plans. It does not directly mutate the graph.",
+    "schema": "Define and inspect object types, properties, link types, rules, constraints, actions, and schema versioning.",
+    "review": "This is the trust boundary before ontology graph mutation. Only approved and applied items can change the graph.",
+    "objects": "Search, inspect, and compare ontology objects and their properties.",
+    "graph": "Explore object relationships, evidence edges, risk links, and local graph neighborhoods.",
+    "agent": "The Agent Operator can answer ontology-grounded questions and propose reviewable updates. It cannot directly modify the graph.",
+    "settings": "Configure runtime preferences, language, theme, and local demo settings."
+  },
   "review": {
     "title": "Review Queue",
     "subtitle": "Review low-confidence objects, rule violations, and suggested ontology updates",
@@ -356,7 +381,7 @@
   "pipeline": {
     "title": "Data Pipeline",
     "subtitle": "Ready Data Workbench — inspect, map, validate, and preview data before it enters the ontology graph.",
-    "intro": "Inspect, map, validate, and preview data before it enters the ontology graph. This phase does not write directly to Neo4j. It generates an Import Plan for review.",
+    "intro": "This is the first step of the Build Ontology path. It profiles data, maps fields to ontology types, validates candidates, and creates Import Plans. It does not directly mutate the graph.",
     "s1": "Select Source",
     "s2": "Profile Data",
     "s3": "Map to Ontology",

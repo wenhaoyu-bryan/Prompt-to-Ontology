@@ -34,15 +34,37 @@ This is **not** a pet food app. The same runtime can be extended to supply chain
 
 ---
 
+## Product Workflow
+
+The app has two clear user paths:
+
+### Build Ontology
+
+```
+Data Pipeline → Ontology Manager → Review Queue → Graph Write
+```
+
+Converts ready data into reviewable ontology graph updates.
+
+### Explore / Operate Ontology
+
+```
+Object Explorer → Graph Explorer → Agent Operator → Review Actions
+```
+
+Inspect, reason over, and operate on ontology objects with human-in-the-loop review.
+
+See [docs/product-workflow.md](docs/product-workflow.md) for full documentation.
+
 ## Demo Flow
 
-1. **Dashboard** — see ontology health, runtime pipeline, and quick navigation
-2. **Objects** — browse products, filter by type, view detail drawer with evidence and risks
-3. **Graph** — explore the global evidence network, click a node to see its local neighborhood
-4. **Schema** — inspect object types, link types, and rules with modeling explanations
-5. **Agent** — ask natural-language questions, propose reviewable ontology updates
-6. **Data Pipeline** — profile data, map to ontology, generate import plans
-7. **Review Queue** — review import candidates, approve/reject, apply approved items to graph
+1. **Dashboard** — dual-path hero, ontology health, and quick navigation
+2. **Data Pipeline** — profile data, map to ontology, generate import plans (Build path start)
+3. **Ontology Manager** — inspect object types, link types, rules, and schema
+4. **Review Queue** — review candidates, approve/reject, apply to graph (trust boundary)
+5. **Object Explorer** — browse products, view evidence and risks
+6. **Graph Explorer** — explore global/local evidence network
+7. **Agent Operator** — ask questions, propose reviewable updates
 
 See [docs/demo-script.md](docs/demo-script.md) for a detailed walkthrough.
 

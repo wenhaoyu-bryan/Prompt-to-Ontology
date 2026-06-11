@@ -28,14 +28,49 @@ export default function AppLayout() {
   const { mode, setMode } = useThemeContext();
 
   const menuItems = [
-    { key: '/dashboard', icon: <DashboardOutlined />, label: t('nav.dashboard') },
-    { key: '/objects',   icon: <AppstoreOutlined />,  label: t('nav.objects') },
-    { key: '/graph',     icon: <NodeIndexOutlined />,  label: t('nav.graph') },
-    { key: '/schema',    icon: <ApartmentOutlined />,  label: t('nav.schema') },
-    { key: '/agent',     icon: <RobotOutlined />,      label: t('nav.agent') },
-    { key: '/pipeline',  icon: <ApiOutlined />,        label: t('nav.pipeline') },
-    { key: '/review',    icon: <AuditOutlined />,       label: t('nav.review') },
-    { key: '/settings',  icon: <SettingOutlined />,     label: t('nav.settings') },
+    {
+      key: 'group-home',
+      type: 'group',
+      label: !collapsed ? t('nav.groupHome') : null,
+      children: [
+        { key: '/dashboard', icon: <DashboardOutlined />, label: t('nav.dashboard') },
+      ],
+    },
+    {
+      key: 'group-build',
+      type: 'group',
+      label: !collapsed ? t('nav.groupBuild') : null,
+      children: [
+        { key: '/pipeline', icon: <ApiOutlined />, label: t('nav.pipeline') },
+        { key: '/schema', icon: <ApartmentOutlined />, label: t('nav.schema') },
+        { key: '/review', icon: <AuditOutlined />, label: t('nav.review') },
+      ],
+    },
+    {
+      key: 'group-explore',
+      type: 'group',
+      label: !collapsed ? t('nav.groupExplore') : null,
+      children: [
+        { key: '/objects', icon: <AppstoreOutlined />, label: t('nav.objects') },
+        { key: '/graph', icon: <NodeIndexOutlined />, label: t('nav.graph') },
+      ],
+    },
+    {
+      key: 'group-operate',
+      type: 'group',
+      label: !collapsed ? t('nav.groupOperate') : null,
+      children: [
+        { key: '/agent', icon: <RobotOutlined />, label: t('nav.agent') },
+      ],
+    },
+    {
+      key: 'group-admin',
+      type: 'group',
+      label: !collapsed ? t('nav.groupAdmin') : null,
+      children: [
+        { key: '/settings', icon: <SettingOutlined />, label: t('nav.settings') },
+      ],
+    },
   ];
 
   const currentKey = '/' + (location.pathname.split('/')[1] || 'dashboard');

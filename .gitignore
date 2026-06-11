@@ -33,6 +33,7 @@ docs/*
 !docs/data-pipeline.md
 !docs/review-queue-runtime.md
 !docs/agent-operator.md
+!docs/product-workflow.md
 Phases/
 
 # Test data

@@ -150,29 +150,35 @@ export default function DashboardPage() {
 
   return (
     <Space orientation="vertical" size={20} style={{ width: '100%' }}>
-      {/* Hero / Narrative */}
+      {/* Hero */}
       <Card size="small" style={{ background: 'linear-gradient(135deg, rgba(22,119,255,0.06) 0%, rgba(114,46,209,0.06) 100%)' }}>
-        <Row gutter={24} align="middle">
-          <Col xs={24} lg={16}>
-            <Title level={3} style={{ margin: 0 }}>{t('dashboard.title')}</Title>
-            <Paragraph type="secondary" style={{ margin: '8px 0 12px', fontSize: 14, lineHeight: 1.7 }}>
-              {t('dashboard.hero')}
-            </Paragraph>
-            <Space size={8} wrap>
-              <Tag color="blue">{t('dashboard.tagRealtime')}</Tag>
-              <Tag color="purple">{t('dashboard.tagGraph')}</Tag>
-              <Tag color="cyan">{t('dashboard.tagAgent')}</Tag>
-              <Tag color="orange">{t('dashboard.tagHITL')}</Tag>
-            </Space>
-          </Col>
-          <Col xs={24} lg={8}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-              <Text type="secondary" style={{ fontSize: 11 }}>{t('dashboard.dataSource')}</Text>
-              <Space size={4}>
-                <Tag color="blue" style={{ fontSize: 10 }}>{t('dashboard.realApi')}</Tag>
-                <Tag style={{ fontSize: 10 }}>{t('common.prototype')}</Tag>
+        <Title level={3} style={{ margin: 0 }}>{t('dashboard.title')}</Title>
+        <Paragraph type="secondary" style={{ margin: '8px 0 16px', fontSize: 14, lineHeight: 1.7 }}>
+          {t('dashboard.hero')}
+        </Paragraph>
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Card size="small" variant="inner" style={{ height: '100%' }}>
+              <Title level={5} style={{ margin: 0 }}>{t('dashboard.buildPath')}</Title>
+              <Text type="secondary" style={{ fontSize: 12, display: 'block', margin: '6px 0' }}>{t('dashboard.buildPathDesc')}</Text>
+              <Text code style={{ fontSize: 10, display: 'block', marginBottom: 10 }}>{t('dashboard.buildPathWorkflow')}</Text>
+              <Space size={8}>
+                <Button size="small" type="primary" onClick={() => navigate('/pipeline')}>{t('dashboard.startPipeline')}</Button>
+                <Button size="small" onClick={() => navigate('/schema')}>{t('dashboard.openSchema')}</Button>
               </Space>
-            </div>
+            </Card>
+          </Col>
+          <Col xs={24} md={12}>
+            <Card size="small" variant="inner" style={{ height: '100%' }}>
+              <Title level={5} style={{ margin: 0 }}>{t('dashboard.explorePath')}</Title>
+              <Text type="secondary" style={{ fontSize: 12, display: 'block', margin: '6px 0' }}>{t('dashboard.explorePathDesc')}</Text>
+              <Text code style={{ fontSize: 10, display: 'block', marginBottom: 10 }}>{t('dashboard.explorePathWorkflow')}</Text>
+              <Space size={8}>
+                <Button size="small" onClick={() => navigate('/objects')}>{t('dashboard.exploreObjects')}</Button>
+                <Button size="small" onClick={() => navigate('/graph')}>{t('dashboard.openGraph')}</Button>
+                <Button size="small" onClick={() => navigate('/agent')}>{t('dashboard.askAgent')}</Button>
+              </Space>
+            </Card>
           </Col>
         </Row>
       </Card>
