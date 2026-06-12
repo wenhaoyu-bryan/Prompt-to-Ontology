@@ -167,7 +167,8 @@ export default function PipelinePage() {
           const prop = override?.property || fs.suggested_property;
           if (!objType) continue;
           if (!objMappingGroups[objType]) objMappingGroups[objType] = { object_type: objType, id_column: '', field_mappings: [] };
-          if (prop === 'product_id' || prop === 'ingredient_id' || prop === 'brand_id' || prop === 'rule_id' || prop.endsWith('_id')) {
+          const ID_PROPS = { PetFoodProduct: 'product_id', Ingredient: 'ingredient_id', Brand: 'brand_id', RiskRule: 'rule_id', Species: 'species_id', LifeStage: 'stage_id' };
+          if (ID_PROPS[objType] === prop) {
             objMappingGroups[objType].id_column = fs.source_column;
           }
           objMappingGroups[objType].field_mappings.push({ source_column: fs.source_column, target_object_type: objType, target_property: prop, confidence: override ? 1.0 : fs.confidence, mapping_type: override ? 'manual' : fs.mapping_type });
@@ -549,7 +550,7 @@ export default function PipelinePage() {
           {/* Source Mode Switch */}
           <div>
             <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('pipeline.dataSourceMode')}</Text>
-            <Radio.Group value={sourceMode} onChange={e => { setSourceMode(e.target.value); setStep(-1); setProfile(null); setMappings(null); setImportPlan(null); setMappingOverrides({}); }}>
+            <Radio.Group value={sourceMode} onChange={e => { setSourceMode(e.target.value); setCsvImportType('object'); setStep(-1); setProfile(null); setMappings(null); setImportPlan(null); setMappingOverrides({}); setRelSourceIdCol(''); setRelTargetIdCol(''); setRelPropertyCols([]); }}>
               <Radio.Button value="sample"><DatabaseOutlined /> {t('pipeline.sampleData')}</Radio.Button>
               <Radio.Button value="custom"><UploadOutlined /> {t('pipeline.customCSV')}</Radio.Button>
             </Radio.Group>
@@ -602,7 +603,7 @@ export default function PipelinePage() {
             <>
               <div>
                 <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('pipeline.csvImportType')}</Text>
-                <Radio.Group value={csvImportType} onChange={e => { setCsvImportType(e.target.value); setProfile(null); setMappings(null); setImportPlan(null); setMappingOverrides({}); setStep(-1); }}>
+                <Radio.Group value={csvImportType} onChange={e => { setCsvImportType(e.target.value); setProfile(null); setMappings(null); setImportPlan(null); setMappingOverrides({}); setRelSourceIdCol(''); setRelTargetIdCol(''); setRelPropertyCols([]); setStep(-1); }}>
                   <Radio.Button value="object"><TableOutlined /> {t('pipeline.objectCSV')}</Radio.Button>
                   <Radio.Button value="relationship"><LinkOutlined /> {t('pipeline.relationshipCSV')}</Radio.Button>
                 </Radio.Group>

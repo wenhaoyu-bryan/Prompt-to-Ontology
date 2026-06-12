@@ -1156,8 +1156,11 @@ def api_pipeline_profile_csv(body: dict):
     content = body.get("content", "")
     if not content:
         raise HTTPException(400, "content is required")
-    profile = pipeline_service.profile_csv_content(filename, content)
-    return profile.model_dump()
+    try:
+        profile = pipeline_service.profile_csv_content(filename, content)
+        return profile.model_dump()
+    except Exception as e:
+        raise HTTPException(400, f"Failed to profile CSV: {e}")
 
 @app.get("/api/pipeline/profile/{source_id}")
 def api_pipeline_get_profile(source_id: str):

@@ -393,7 +393,6 @@
     "agentActionType": "Action Type",
     "agentReason": "Reason",
     "propertyUpdate": "Property Update",
-    "property": "Property",
     "oldValue": "Old Value",
     "newValue": "New Value",
     "sentToAgent": "Item sent back to agent for re-evaluation",

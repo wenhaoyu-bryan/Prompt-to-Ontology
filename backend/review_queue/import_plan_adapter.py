@@ -94,7 +94,7 @@ def create_review_batch_from_import_plan(import_plan: ImportPlan) -> ReviewBatch
 
     # ── Candidate links → review items ─────────────────────────────────
     for idx, link in enumerate(import_plan.candidate_links):
-        link_meta = {**source_meta, "source_row_index": link.source_row if link.source_row >= 0 else idx} if source_meta else {}
+        link_meta = {**source_meta, "source_row_index": link.source_row if link.source_row >= 0 else idx}
         ri = ReviewItem(
             id=f"ri-{uuid.uuid4().hex[:12]}",
             batch_id=batch_id,

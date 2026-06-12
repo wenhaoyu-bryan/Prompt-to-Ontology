@@ -393,7 +393,6 @@
     "agentActionType": "操作类型",
     "agentReason": "原因",
     "propertyUpdate": "属性更新",
-    "property": "属性",
     "oldValue": "原值",
     "newValue": "新值",
     "sentToAgent": "已退回智能体重新评估",

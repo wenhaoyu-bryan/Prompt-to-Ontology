@@ -277,6 +277,7 @@ class PipelineService:
                     "message": f"Row {row_idx}: duplicate {link_type} from {src_id} to {tgt_id}",
                     "object_id": src_id, "link_id": f"{src_id}-[{link_type}]->{tgt_id}", "field": "",
                 })
+                continue
             seen_links.add(link_key)
 
             candidate_links.append(CandidateLink(
