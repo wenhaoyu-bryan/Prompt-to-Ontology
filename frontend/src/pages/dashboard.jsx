@@ -362,9 +362,20 @@ export default function DashboardPage() {
           >
             <Space orientation="vertical" size={12} style={{ width: '100%' }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <Tag color={demoState.mode === 'seeded' ? 'green' : demoState.mode === 'clean' ? 'blue' : 'default'} style={{ fontSize: 13, padding: '2px 10px' }}>
+                <Tag color={
+                  demoState.mode === 'seeded' ? 'green' :
+                  demoState.mode === 'clean' ? 'blue' :
+                  demoState.mode === 'custom_build' ? 'orange' : 'default'
+                } style={{ fontSize: 13, padding: '2px 10px' }}>
                   {t(`dashboard.demoMode.${demoState.mode}`, demoState.mode)}
                 </Tag>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {t({
+                    seeded: 'dashboard.demoModeSeededLine',
+                    clean: 'dashboard.demoModeCleanLine',
+                    custom_build: 'dashboard.demoModeCustomLine',
+                  }[demoState.mode] || '', '')}
+                </Text>
               </div>
               <Row gutter={8}>
                 <Col span={6}><Statistic title={t('dashboard.totalNodes')} value={demoState.graph?.node_count || 0} valueStyle={{ fontSize: 16 }} /></Col>
@@ -388,11 +399,14 @@ export default function DashboardPage() {
                 }}>
                   <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{t('dashboard.demoPathSeeded')}</div>
                   <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>{t('dashboard.demoPathSeededDesc')}</Text>
+                  {demoState.mode === 'seeded' && (
+                    <Space size={8}>
+                      <Button size="small" type="primary" onClick={() => navigate('/objects')}>{t('dashboard.exploreObjects')}</Button>
+                      <Button size="small" onClick={() => navigate('/agent')}>{t('dashboard.askAgent')}</Button>
+                    </Space>
+                  )}
                   {demoState.mode !== 'seeded' && (
                     <Button size="small" type="primary" ghost onClick={() => navigate('/settings')}>{t('settings.demoResetSeeded')}</Button>
-                  )}
-                  {demoState.mode === 'seeded' && (
-                    <Button size="small" onClick={() => navigate('/objects')}>{t('dashboard.exploreObjects')}</Button>
                   )}
                 </div>
               </Col>
@@ -404,11 +418,11 @@ export default function DashboardPage() {
                 }}>
                   <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{t('dashboard.demoPathClean')}</div>
                   <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>{t('dashboard.demoPathCleanDesc')}</Text>
-                  {demoState.mode !== 'clean' && (
-                    <Button size="small" onClick={() => navigate('/settings')}>{t('settings.demoResetClean')}</Button>
-                  )}
                   {demoState.mode === 'clean' && (
                     <Button size="small" type="primary" icon={<ApiOutlined />} onClick={() => navigate('/pipeline')}>{t('dashboard.startPipeline')}</Button>
+                  )}
+                  {demoState.mode !== 'clean' && (
+                    <Button size="small" onClick={() => navigate('/settings')}>{t('settings.demoResetClean')}</Button>
                   )}
                 </div>
               </Col>

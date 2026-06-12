@@ -93,6 +93,8 @@ Reset endpoints are protected by the `DEMO_ADMIN_ENABLED` environment variable.
 
 All reset actions require `"confirm": true` in the request body. Without it, the endpoint returns HTTP 400.
 
+> **Warning:** Never enable `DEMO_ADMIN_ENABLED` in production. These endpoints delete all graph data and review queue state.
+
 ---
 
 ## Environment variables
@@ -103,6 +105,47 @@ All reset actions require `"confirm": true` in the request body. Without it, the
 | `AUTO_SEED_DEMO_DATA` | `true` | Auto-seed Pet Food data on startup if graph is empty |
 
 Set `AUTO_SEED_DEMO_DATA=false` to start with an empty graph on first launch (Clean Build Mode by default).
+
+---
+
+## Demo Modes
+
+| Mode | Description |
+|---|---|
+| `seeded` | Full Pet Food demo loaded (>= 40 nodes, >= 80 rels, has PetFoodProduct/Ingredient/RiskRule labels) |
+| `clean` | Graph is empty (0 nodes, 0 relationships) |
+| `custom_build` | Graph has data but does not match the full seeded demo (e.g. after partial Data Pipeline import) |
+| `unknown` | State cannot be detected |
+
+---
+
+## Manual QA Checklist
+
+### Seeded Mode QA
+
+1. Settings → Reset to Seeded Demo
+2. Verify: `/api/demo/state` returns `mode: "seeded"`
+3. Verify: `/api/graph` returns nodes > 0 and links > 0
+4. Verify: Object Explorer shows products, ingredients, brands
+5. Verify: Graph Explorer shows network
+6. Verify: Agent Operator answers questions correctly
+
+### Clean Build Mode QA
+
+1. Settings → Reset to Clean Build
+2. Verify: `/api/demo/state` returns `mode: "clean"`
+3. Verify: `/api/graph` returns 0 nodes and 0 links
+4. Verify: Review Queue is empty
+5. Verify: Data Pipeline still shows sample datasets
+6. Run Data Pipeline → create Import Plan → submit to Review → approve → apply
+7. Verify: `/api/demo/state` returns `mode: "custom_build"`
+
+### Reset Safety QA
+
+1. Reset requires `confirm: true` (returns 400 without it)
+2. Set `DEMO_ADMIN_ENABLED=false` → reset returns 403
+3. After clean reset, `/api/graph` returns empty graph (no stale NetworkX data)
+4. After seeded reset, `/api/graph` returns full Pet Food graph
 
 ---
 

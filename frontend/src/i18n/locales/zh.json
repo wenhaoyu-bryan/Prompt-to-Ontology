@@ -141,9 +141,13 @@
     "demoMode": {
       "seeded": "完整演示模式",
       "clean": "空白构建模式",
-      "unknown": "未知"
+      "custom_build": "自定义构建模式",
+      "unknown": "未知状态"
     },
     "demoModeHint": "当前演示模式",
+    "demoModeSeededLine": "宠物食品本体已加载完成。",
+    "demoModeCleanLine": "从示例数据开始，通过数据管道构建本体。",
+    "demoModeCustomLine": "图谱包含用户已应用的演示数据。",
     "demoPaths": "演示路径",
     "demoPathSeeded": "完整演示模式",
     "demoPathSeededDesc": "探索完整的宠物食品本体：对象、图谱、规则和智能体。",
@@ -305,8 +309,8 @@
     "status": "状态",
     "connected": "已连接",
     "dangerZone": "危险操作",
-    "resetDemo": "重置演示数据",
-    "resetDemoHint": "清除所有本地设置并强制重新登录。",
+    "resetDemo": "重置本地偏好设置",
+    "resetDemoHint": "清除已保存的语言、主题、颜色和模拟登录状态。",
     "reset": "重置",
     "resetConfirmTitle": "确认重置？",
     "resetConfirmDesc": "这将清除你的主题、语言和认证设置，页面将自动刷新。",

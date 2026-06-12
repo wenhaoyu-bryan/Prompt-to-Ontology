@@ -5,6 +5,11 @@ from datetime import datetime, timezone
 
 from .models import DemoState, GraphInfo, ReviewQueueInfo, PipelineInfo, AgentInfo
 
+# Labels expected in a fully seeded Pet Food demo
+_SEEDED_LABELS = {"PetFoodProduct", "Ingredient", "RiskRule"}
+_SEEDED_MIN_NODES = 40
+_SEEDED_MIN_RELS = 80
+
 
 class DemoAdminService:
 
@@ -21,19 +26,19 @@ class DemoAdminService:
     # ---------- state ----------
 
     def get_state(self) -> DemoState:
-        graph = self._get_graph_info()
+        graph_info = self._get_graph_info()
         review = self._get_review_info()
         pipeline = self._get_pipeline_info()
         agent = self._get_agent_info()
 
-        mode = self._detect_mode(graph)
+        mode = self._detect_mode(graph_info)
         warnings = []
-        if graph.node_count == 0:
+        if mode == "clean":
             warnings.append("Graph is empty. Use Data Pipeline or reset to Seeded Demo Mode.")
 
         return DemoState(
             mode=mode,
-            graph=graph,
+            graph=graph_info,
             review_queue=review,
             pipeline=pipeline,
             agent=agent,
@@ -47,6 +52,7 @@ class DemoAdminService:
             raise ValueError(f"Invalid mode: {mode}. Must be 'seeded' or 'clean'.")
 
         self._clear_graph()
+        self._refresh_graph()
         self._clear_review_queue()
         self._clear_pipeline()
 
@@ -65,6 +71,7 @@ class DemoAdminService:
 
     def clear(self) -> DemoState:
         self._clear_graph()
+        self._refresh_graph()
         self._clear_review_queue()
         self._clear_pipeline()
         return self.get_state()
@@ -79,6 +86,15 @@ class DemoAdminService:
             return GraphInfo(node_count=nodes, relationship_count=rels)
         except Exception:
             return GraphInfo()
+
+    def _get_graph_labels(self) -> set[str]:
+        """Return the set of node labels currently in Neo4j."""
+        try:
+            with self.driver.session() as session:
+                result = session.run("CALL db.labels()")
+                return {record["label"] for record in result}
+        except Exception:
+            return set()
 
     def _get_review_info(self) -> ReviewQueueInfo:
         try:
@@ -117,15 +133,31 @@ class DemoAdminService:
         except Exception:
             return AgentInfo()
 
-    @staticmethod
-    def _detect_mode(graph: GraphInfo) -> str:
-        if graph.node_count > 0:
-            return "seeded"
-        return "clean"
+    def _detect_mode(self, graph_info: GraphInfo) -> str:
+        if graph_info.node_count == 0 and graph_info.relationship_count == 0:
+            return "clean"
+
+        if (graph_info.node_count >= _SEEDED_MIN_NODES
+                and graph_info.relationship_count >= _SEEDED_MIN_RELS):
+            labels = self._get_graph_labels()
+            if _SEEDED_LABELS.issubset(labels):
+                return "seeded"
+
+        # Has data but doesn't match full seeded demo
+        if graph_info.node_count > 0:
+            return "custom_build"
+
+        return "unknown"
 
     def _clear_graph(self):
         with self.driver.session() as session:
             session.run("MATCH (n) DETACH DELETE n")
+
+    @staticmethod
+    def _refresh_graph():
+        """Rebuild in-memory NetworkX graph from current Neo4j state."""
+        from ontology import refresh_graph
+        refresh_graph()
 
     @staticmethod
     def _clear_review_queue():
@@ -135,10 +167,7 @@ class DemoAdminService:
 
     def _clear_pipeline(self):
         if self.pipeline_service:
-            self.pipeline_service._plans.clear()
-            self.pipeline_service._profiles.clear()
-            self.pipeline_service._rows.clear()
-            self.pipeline_service._save_plans_to_disk()
+            self.pipeline_service.reset_runtime()
 
     def _seed_pet_food(self):
         from pathlib import Path

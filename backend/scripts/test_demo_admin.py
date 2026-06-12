@@ -53,7 +53,7 @@ def test_01_state_returns_expected_structure():
             with patch.object(svc, '_get_agent_info', return_value=AgentInfo(llm_configured=False)):
                 state = svc.get_state()
     assert isinstance(state, DemoState), f"Expected DemoState, got {type(state)}"
-    assert state.mode in ("seeded", "clean", "unknown"), f"Unexpected mode: {state.mode}"
+    assert state.mode in ("seeded", "clean", "custom_build", "unknown"), f"Unexpected mode: {state.mode}"
     assert state.graph.node_count == 12
     assert state.graph.relationship_count == 30
     assert state.review_queue.pending_count == 2
@@ -61,12 +61,13 @@ def test_01_state_returns_expected_structure():
 
 
 def test_02_seeded_mode_detected_when_nodes_present():
-    driver, _ = _make_mock_driver(12, 30)
+    driver, _ = _make_mock_driver(50, 100)
     svc = DemoAdminService(driver=driver)
-    with patch.object(svc, '_get_review_info', return_value=ReviewQueueInfo()):
-        with patch.object(svc, '_get_pipeline_info', return_value=PipelineInfo()):
-            with patch.object(svc, '_get_agent_info', return_value=AgentInfo()):
-                state = svc.get_state()
+    with patch.object(svc, '_get_graph_labels', return_value={"PetFoodProduct", "Ingredient", "RiskRule", "Brand", "Species", "LifeStage"}):
+        with patch.object(svc, '_get_review_info', return_value=ReviewQueueInfo()):
+            with patch.object(svc, '_get_pipeline_info', return_value=PipelineInfo()):
+                with patch.object(svc, '_get_agent_info', return_value=AgentInfo()):
+                    state = svc.get_state()
     assert state.mode == "seeded", f"Expected 'seeded', got '{state.mode}'"
 
 
@@ -138,10 +139,11 @@ def test_09_clean_reset_clears_graph():
 
     with patch.object(svc, '_clear_review_queue'):
         with patch.object(svc, '_clear_pipeline'):
-            with patch.object(svc, '_get_review_info', return_value=ReviewQueueInfo()):
-                with patch.object(svc, '_get_pipeline_info', return_value=PipelineInfo()):
-                    with patch.object(svc, '_get_agent_info', return_value=AgentInfo()):
-                        svc.reset("clean")
+            with patch.object(svc, '_refresh_graph'):
+                with patch.object(svc, '_get_review_info', return_value=ReviewQueueInfo()):
+                    with patch.object(svc, '_get_pipeline_info', return_value=PipelineInfo()):
+                        with patch.object(svc, '_get_agent_info', return_value=AgentInfo()):
+                            svc.reset("clean")
 
     delete_calls = [q for q in call_log if "DETACH DELETE" in q]
     assert len(delete_calls) > 0, "Expected DETACH DELETE query"
@@ -157,12 +159,13 @@ def test_10_graph_info_on_error():
 
 
 def test_11_seeded_mode_has_no_empty_warning():
-    driver, _ = _make_mock_driver(12, 30)
+    driver, _ = _make_mock_driver(50, 100)
     svc = DemoAdminService(driver=driver)
-    with patch.object(svc, '_get_review_info', return_value=ReviewQueueInfo()):
-        with patch.object(svc, '_get_pipeline_info', return_value=PipelineInfo()):
-            with patch.object(svc, '_get_agent_info', return_value=AgentInfo()):
-                state = svc.get_state()
+    with patch.object(svc, '_get_graph_labels', return_value={"PetFoodProduct", "Ingredient", "RiskRule"}):
+        with patch.object(svc, '_get_review_info', return_value=ReviewQueueInfo()):
+            with patch.object(svc, '_get_pipeline_info', return_value=PipelineInfo()):
+                with patch.object(svc, '_get_agent_info', return_value=AgentInfo()):
+                    state = svc.get_state()
     assert len(state.warnings) == 0, f"Expected no warnings for seeded mode, got: {state.warnings}"
 
 
@@ -199,6 +202,50 @@ def test_15_agent_info_fallback_on_error():
     assert isinstance(info, AgentInfo)
 
 
+def test_16_custom_build_mode_detected():
+    """Graph has data but doesn't match seeded pattern."""
+    driver, _ = _make_mock_driver(node_count=10, rel_count=15)
+    svc = DemoAdminService(driver=driver)
+    with patch.object(svc, '_get_graph_labels', return_value={"PetFoodProduct", "Ingredient"}):
+        with patch.object(svc, '_get_review_info', return_value=ReviewQueueInfo()):
+            with patch.object(svc, '_get_pipeline_info', return_value=PipelineInfo()):
+                with patch.object(svc, '_get_agent_info', return_value=AgentInfo()):
+                    state = svc.get_state()
+    assert state.mode == "custom_build", f"Expected 'custom_build', got '{state.mode}'"
+
+
+def test_17_custom_build_with_enough_nodes_but_missing_labels():
+    """Has enough nodes but missing RiskRule label."""
+    driver, _ = _make_mock_driver(node_count=50, rel_count=100)
+    svc = DemoAdminService(driver=driver)
+    with patch.object(svc, '_get_graph_labels', return_value={"PetFoodProduct", "Ingredient"}):
+        with patch.object(svc, '_get_review_info', return_value=ReviewQueueInfo()):
+            with patch.object(svc, '_get_pipeline_info', return_value=PipelineInfo()):
+                with patch.object(svc, '_get_agent_info', return_value=AgentInfo()):
+                    state = svc.get_state()
+    assert state.mode == "custom_build", f"Expected 'custom_build', got '{state.mode}'"
+
+
+def test_18_refresh_graph_called_after_clear():
+    driver, _ = _make_mock_driver(0, 0)
+    svc = DemoAdminService(driver=driver)
+    with patch.object(svc, '_clear_review_queue'):
+        with patch.object(svc, '_clear_pipeline'):
+            with patch.object(DemoAdminService, '_refresh_graph') as mock_refresh:
+                svc.clear()
+    mock_refresh.assert_called_once()
+
+
+def test_19_pipeline_reset_uses_public_method():
+    driver, _ = _make_mock_driver(0, 0)
+    mock_pipeline = MagicMock()
+    svc = DemoAdminService(driver=driver, pipeline_service=mock_pipeline)
+    with patch.object(svc, '_clear_review_queue'):
+        with patch.object(DemoAdminService, '_refresh_graph'):
+            svc.clear()
+    mock_pipeline.reset_runtime.assert_called_once()
+
+
 # --- Main ---
 
 if __name__ == "__main__":
@@ -220,6 +267,10 @@ if __name__ == "__main__":
     run_test("test_13_reset_request_model", test_13_reset_request_model)
     run_test("test_14_pipeline_info_when_no_service", test_14_pipeline_info_when_no_service)
     run_test("test_15_agent_info_fallback_on_error", test_15_agent_info_fallback_on_error)
+    run_test("test_16_custom_build_mode_detected", test_16_custom_build_mode_detected)
+    run_test("test_17_custom_build_with_enough_nodes_but_missing_labels", test_17_custom_build_with_enough_nodes_but_missing_labels)
+    run_test("test_18_refresh_graph_called_after_clear", test_18_refresh_graph_called_after_clear)
+    run_test("test_19_pipeline_reset_uses_public_method", test_19_pipeline_reset_uses_public_method)
 
     print("\n" + "=" * 50)
     print(f"Results: {PASSED} passed, {FAILED} failed, {TOTAL} total")
