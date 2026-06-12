@@ -311,16 +311,18 @@ class PipelineService:
                         b_labels = check["b_labels"] or []
                         if source_object_type and source_object_type not in a_labels:
                             validation_issues.append({
-                                "level": "warning", "code": "WRONG_SOURCE_TYPE",
+                                "level": "error", "code": "WRONG_SOURCE_TYPE",
                                 "message": f"Source {cl.source_id} has labels {a_labels}, expected {source_object_type}",
                                 "object_id": cl.source_id, "link_id": "", "field": "",
                             })
+                            endpoint_errors += 1
                         if target_object_type and target_object_type not in b_labels:
                             validation_issues.append({
-                                "level": "warning", "code": "WRONG_TARGET_TYPE",
+                                "level": "error", "code": "WRONG_TARGET_TYPE",
                                 "message": f"Target {cl.target_id} has labels {b_labels}, expected {target_object_type}",
                                 "object_id": cl.target_id, "link_id": "", "field": "",
                             })
+                            endpoint_errors += 1
         except Exception as e:
             validation_issues.append({
                 "level": "warning", "code": "ENDPOINT_CHECK_FAILED",

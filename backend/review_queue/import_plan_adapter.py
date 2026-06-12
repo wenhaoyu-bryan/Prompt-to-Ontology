@@ -63,6 +63,11 @@ def create_review_batch_from_import_plan(import_plan: ImportPlan) -> ReviewBatch
             "source_type": "custom_csv",
             "filename": import_plan.metadata.get("filename", ""),
         }
+        # Include relationship-specific metadata when present
+        for key in ("import_type", "link_type", "source_object_type", "target_object_type"):
+            val = import_plan.metadata.get(key)
+            if val:
+                source_meta[key] = val
 
     # ── Candidate objects → review items ───────────────────────────────
     for idx, obj in enumerate(import_plan.candidate_objects):
