@@ -88,7 +88,8 @@ def create_review_batch_from_import_plan(import_plan: ImportPlan) -> ReviewBatch
         items.append(ri)
 
     # ── Candidate links → review items ─────────────────────────────────
-    for link in import_plan.candidate_links:
+    for idx, link in enumerate(import_plan.candidate_links):
+        link_meta = {**source_meta, "source_row_index": link.source_row if link.source_row >= 0 else idx} if source_meta else {}
         ri = ReviewItem(
             id=f"ri-{uuid.uuid4().hex[:12]}",
             batch_id=batch_id,
@@ -104,8 +105,8 @@ def create_review_batch_from_import_plan(import_plan: ImportPlan) -> ReviewBatch
             created_at=now,
             updated_at=now,
         )
-        if source_meta:
-            ri.metadata = source_meta
+        if link_meta:
+            ri.metadata = link_meta
         items.append(ri)
 
     # ── Validation warnings → review items ─────────────────────────────

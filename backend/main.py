@@ -1194,6 +1194,53 @@ def api_pipeline_create_import_plan(body: dict):
     except ValueError as e:
         raise HTTPException(404, str(e))
 
+@app.post("/api/pipeline/relationship-import-plan")
+def api_pipeline_create_relationship_import_plan(body: dict):
+    """Create a relationship import plan from a profiled CSV source."""
+    source_id = body.get("source_id", "")
+    domain = body.get("domain", "pet_food")
+    link_type = body.get("link_type", "")
+    source_id_column = body.get("source_id_column", "")
+    target_id_column = body.get("target_id_column", "")
+    source_object_type = body.get("source_object_type", "")
+    target_object_type = body.get("target_object_type", "")
+    property_columns = body.get("property_columns", [])
+    if not source_id or not link_type or not source_id_column or not target_id_column:
+        raise HTTPException(400, "source_id, link_type, source_id_column, and target_id_column are required")
+    try:
+        plan = pipeline_service.create_relationship_import_plan(
+            source_id=source_id,
+            domain=domain,
+            link_type=link_type,
+            source_id_column=source_id_column,
+            target_id_column=target_id_column,
+            source_object_type=source_object_type,
+            target_object_type=target_object_type,
+            property_columns=property_columns,
+        )
+        return plan.model_dump()
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+
+@app.get("/api/pipeline/link-types/{domain}")
+def api_pipeline_get_link_types(domain: str):
+    """Get available link types and their source/target object types for a domain."""
+    try:
+        schema = pipeline_service._load_schema(domain)
+        result = {}
+        for name, lt in schema.link_types.items():
+            if name == "TRIGGERS_RISK":
+                continue  # Not available for user upload
+            result[name] = {
+                "name": name,
+                "source_type": lt.source_type,
+                "target_type": lt.target_type,
+                "description": lt.description,
+            }
+        return {"link_types": result}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
 @app.get("/api/pipeline/import-plan/{plan_id}")
 def api_pipeline_get_import_plan(plan_id: str):
     """Get an import plan by ID."""

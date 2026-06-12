@@ -38,6 +38,7 @@ docs/*
 !docs/resettable-demo-mode.md
 !docs/full-build-scenario.md
 !docs/custom-csv-upload.md
+!docs/relationship-csv-upload.md
 Phases/
 
 # Test data

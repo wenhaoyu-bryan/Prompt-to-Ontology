@@ -77,6 +77,12 @@ export default function PipelinePage() {
   const [sourceMode, setSourceMode] = useState('sample');
   const [targetObjectType, setTargetObjectType] = useState('PetFoodProduct');
   const [mappingOverrides, setMappingOverrides] = useState({});
+  const [csvImportType, setCsvImportType] = useState('object');
+  const [linkTypes, setLinkTypes] = useState({});
+  const [relLinkType, setRelLinkType] = useState('CONTAINS');
+  const [relSourceIdCol, setRelSourceIdCol] = useState('');
+  const [relTargetIdCol, setRelTargetIdCol] = useState('');
+  const [relPropertyCols, setRelPropertyCols] = useState([]);
 
   const isZh = i18n.language === 'zh';
 
@@ -85,6 +91,7 @@ export default function PipelinePage() {
     loadSamples();
     loadRecentPlans();
     api.get('/demo/state').then(r => setDemoState(r.data)).catch(() => {});
+    api.get('/pipeline/link-types/pet_food').then(r => setLinkTypes(r.data.link_types || {})).catch(() => {});
   }, []);
 
   const loadSamples = async () => {
@@ -175,6 +182,29 @@ export default function PipelinePage() {
     finally { setLoading(false); }
   };
 
+  const handleCreateRelationshipPlan = async () => {
+    if (!profile) return;
+    if (!relSourceIdCol || !relTargetIdCol) { message.warning('Select source and target ID columns'); return; }
+    setLoading(true);
+    try {
+      const lt = linkTypes[relLinkType] || {};
+      const { data } = await api.post('/pipeline/relationship-import-plan', {
+        source_id: profile.source_id,
+        domain: 'pet_food',
+        link_type: relLinkType,
+        source_id_column: relSourceIdCol,
+        target_id_column: relTargetIdCol,
+        source_object_type: lt.source_type || '',
+        target_object_type: lt.target_type || '',
+        property_columns: relPropertyCols,
+      });
+      setImportPlan(data);
+      setStep(4);
+      loadRecentPlans();
+    } catch (err) { message.error(err?.response?.data?.detail || t('pipeline.planFailed')); }
+    finally { setLoading(false); }
+  };
+
   const handleSubmitToReview = async (planId) => {
     const id = planId || importPlan?.plan_id;
     if (!id) return;
@@ -241,8 +271,17 @@ export default function PipelinePage() {
       width: 130,
       render: (_, r) => {
         const st = r.metadata?.source_type || r.source_profile?.source_type;
-        const color = st === 'custom_csv' ? 'orange' : st === 'sample' ? 'blue' : 'default';
-        const label = SOURCE_TYPE_LABELS[st] ? t(SOURCE_TYPE_LABELS[st]) : (r.source_profile?.source_name || '—');
+        const importType = r.metadata?.import_type;
+        let color = st === 'custom_csv' ? 'orange' : st === 'sample' ? 'blue' : 'default';
+        let label;
+        if (st === 'custom_csv' && importType === 'relationship') {
+          label = t('pipeline.sourceTypeRelCSV');
+          color = 'purple';
+        } else if (st === 'custom_csv') {
+          label = t('pipeline.sourceTypeObjectCSV');
+        } else {
+          label = SOURCE_TYPE_LABELS[st] ? t(SOURCE_TYPE_LABELS[st]) : (r.source_profile?.source_name || '—');
+        }
         return <><Tag color={color} style={{ fontSize: 10 }}>{label}</Tag> {r.source_profile?.source_name || ''}</>;
       },
     },
@@ -561,7 +600,14 @@ export default function PipelinePage() {
           {/* Custom CSV Mode */}
           {sourceMode === 'custom' && (
             <>
-              <Alert type="info" showIcon icon={<InfoCircleOutlined />} message={t('pipeline.customCSVNote')} style={{ fontSize: 12 }} />
+              <div>
+                <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('pipeline.csvImportType')}</Text>
+                <Radio.Group value={csvImportType} onChange={e => { setCsvImportType(e.target.value); setProfile(null); setMappings(null); setImportPlan(null); setMappingOverrides({}); setStep(-1); }}>
+                  <Radio.Button value="object"><TableOutlined /> {t('pipeline.objectCSV')}</Radio.Button>
+                  <Radio.Button value="relationship"><LinkOutlined /> {t('pipeline.relationshipCSV')}</Radio.Button>
+                </Radio.Group>
+              </div>
+              <Alert type="info" showIcon icon={<InfoCircleOutlined />} message={csvImportType === 'object' ? t('pipeline.objectCSVDesc') : t('pipeline.relationshipCSVDesc')} style={{ fontSize: 12 }} />
               <Card size="small" style={{ background: 'rgba(22,119,255,0.03)' }}>
                 <div style={{ textAlign: 'center', padding: '12px 0' }}>
                   <Upload.Dragger
@@ -576,14 +622,64 @@ export default function PipelinePage() {
                   </Upload.Dragger>
                 </div>
               </Card>
-              <div>
-                <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('pipeline.targetObjectType')}</Text>
-                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t('pipeline.targetObjectTypeDesc')}</Text>
-                <Select style={{ width: 240 }} value={targetObjectType} onChange={setTargetObjectType}>
-                  {TARGET_OBJECT_TYPES.map(ot => <Select.Option key={ot} value={ot}>{ot}</Select.Option>)}
-                </Select>
-              </div>
-              <Alert type="warning" showIcon message={t('pipeline.csvPhaseNote')} style={{ fontSize: 11 }} />
+              {csvImportType === 'object' && (
+                <div>
+                  <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('pipeline.targetObjectType')}</Text>
+                  <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t('pipeline.targetObjectTypeDesc')}</Text>
+                  <Select style={{ width: 240 }} value={targetObjectType} onChange={setTargetObjectType}>
+                    {TARGET_OBJECT_TYPES.map(ot => <Select.Option key={ot} value={ot}>{ot}</Select.Option>)}
+                  </Select>
+                </div>
+              )}
+              {csvImportType === 'relationship' && demoState?.mode === 'clean' && (demoState?.graph?.node_count || 0) === 0 && (
+                <Alert type="warning" showIcon message={t('pipeline.relationshipRequiresObjects')} />
+              )}
+              {csvImportType === 'relationship' && (
+                <Card size="small" title={t('pipeline.targetLinkType')}>
+                  <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+                    <div>
+                      <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t('pipeline.targetLinkTypeDesc')}</Text>
+                      <Select style={{ width: '100%' }} value={relLinkType} onChange={setRelLinkType}>
+                        {Object.entries(linkTypes).map(([name, lt]) => (
+                          <Select.Option key={name} value={name}>{name} ({lt.source_type} → {lt.target_type})</Select.Option>
+                        ))}
+                      </Select>
+                      {relLinkType && linkTypes[relLinkType] && (
+                        <div style={{ marginTop: 8 }}>
+                          <Tag color="blue">{linkTypes[relLinkType].source_type}</Tag>
+                          <RightOutlined style={{ margin: '0 8px', fontSize: 12 }} />
+                          <Tag color="green">{linkTypes[relLinkType].target_type}</Tag>
+                        </div>
+                      )}
+                    </div>
+                    {profile && (
+                      <>
+                        <Divider style={{ margin: '8px 0' }} />
+                        <Row gutter={16}>
+                          <Col span={8}>
+                            <Text strong style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>{t('pipeline.sourceIdColumn')}</Text>
+                            <Select style={{ width: '100%' }} placeholder={t('pipeline.sourceIdColumn')} value={relSourceIdCol || undefined} onChange={setRelSourceIdCol}>
+                              {profile.columns?.map(c => <Select.Option key={c.name} value={c.name}>{c.name}</Select.Option>)}
+                            </Select>
+                          </Col>
+                          <Col span={8}>
+                            <Text strong style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>{t('pipeline.targetIdColumn')}</Text>
+                            <Select style={{ width: '100%' }} placeholder={t('pipeline.targetIdColumn')} value={relTargetIdCol || undefined} onChange={setRelTargetIdCol}>
+                              {profile.columns?.map(c => <Select.Option key={c.name} value={c.name}>{c.name}</Select.Option>)}
+                            </Select>
+                          </Col>
+                          <Col span={8}>
+                            <Text strong style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>{t('pipeline.propertyColumns')}</Text>
+                            <Select mode="multiple" style={{ width: '100%' }} placeholder={t('pipeline.propertyColumns')} value={relPropertyCols} onChange={setRelPropertyCols}>
+                              {profile.columns?.filter(c => c.name !== relSourceIdCol && c.name !== relTargetIdCol).map(c => <Select.Option key={c.name} value={c.name}>{c.name}</Select.Option>)}
+                            </Select>
+                          </Col>
+                        </Row>
+                      </>
+                    )}
+                  </Space>
+                </Card>
+              )}
             </>
           )}
         </Space>
@@ -644,7 +740,7 @@ export default function PipelinePage() {
             )}
             <Table dataSource={mappings.field_suggestions} columns={mappingColumns} rowKey="source_column" size="small" pagination={false} />
             {step === 2 && (
-              <Button type="primary" icon={<EyeOutlined />} onClick={handleCreatePlan} loading={loading}>
+              <Button type="primary" icon={<EyeOutlined />} onClick={csvImportType === 'relationship' && sourceMode === 'custom' ? handleCreateRelationshipPlan : handleCreatePlan} loading={loading}>
                 {t('pipeline.generatePlan')}
               </Button>
             )}

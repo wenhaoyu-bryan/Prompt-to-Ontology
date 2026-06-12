@@ -15,6 +15,7 @@ The Data Pipeline originally only supported built-in Pet Food sample datasets. C
 - Import Plan creation with custom CSV metadata
 - Submission to Review Queue with source metadata preserved
 - Apply approved items to the graph
+- **Phase 36:** Relationship CSV upload (CONTAINS, MADE_BY, TARGETS_SPECIES, SUITABLE_FOR) — see [Relationship CSV Upload](relationship-csv-upload.md)
 
 ## What It Does Not Support Yet
 
