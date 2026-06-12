@@ -419,7 +419,7 @@ export default function DashboardPage() {
                   <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{t('dashboard.demoPathClean')}</div>
                   <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>{t('dashboard.demoPathCleanDesc')}</Text>
                   {demoState.mode === 'clean' && (
-                    <Button size="small" type="primary" icon={<ApiOutlined />} onClick={() => navigate('/pipeline')}>{t('dashboard.startPipeline')}</Button>
+                    <Button size="small" type="primary" icon={<RocketOutlined />} onClick={() => navigate('/pipeline')}>{t('dashboard.startFullBuild')}</Button>
                   )}
                   {demoState.mode !== 'clean' && (
                     <Button size="small" onClick={() => navigate('/settings')}>{t('settings.demoResetClean')}</Button>

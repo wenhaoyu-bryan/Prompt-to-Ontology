@@ -152,7 +152,8 @@
     "demoPathSeeded": "Seeded Demo",
     "demoPathSeededDesc": "Explore the completed Pet Food ontology: objects, graph, rules, and agent.",
     "demoPathClean": "Clean Build",
-    "demoPathCleanDesc": "Start from an empty graph. Use Data Pipeline to build the ontology step by step."
+    "demoPathCleanDesc": "Start from an empty graph. Use Data Pipeline to build the ontology step by step.",
+    "startFullBuild": "Start Full Build"
   },
   "objects": {
     "title": "Objects",
@@ -472,7 +473,16 @@
     "cannotSubmit": "Plan has validation errors. Fix issues before submitting.",
     "hasErrors": "Has errors",
     "viewPlan": "View",
-    "submitShort": "Submit"
+    "submitShort": "Submit",
+    "buildScenarioTitle": "Build Full Pet Food Ontology",
+    "buildScenarioDesc": "Start from multiple sample datasets and generate a complete reviewable ontology build plan.",
+    "buildScenarioCTA": "Start Full Build Scenario",
+    "buildScenarioRecommended": "Recommended for Clean Build Mode",
+    "buildPlanTitle": "Build Plan Preview",
+    "buildPlanCreated": "Build plan created successfully",
+    "buildPlanFailed": "Failed to create build plan",
+    "buildPlanSubmitted": "Build plan submitted to review queue",
+    "crossSourceErrors": "Cross-source validation errors"
   },
   "entity": {
     "emptyTitle": "Click a node in the graph",

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Card, Button, Space, Typography, Tag, Steps, Table, Alert, Row, Col, Statistic, message, Progress, Divider } from 'antd';
+import { useState, useEffect, useCallback } from 'react';
+import { Card, Button, Space, Typography, Tag, Steps, Table, Alert, Row, Col, Statistic, message, Progress, Divider, Collapse, Badge } from 'antd';
 import {
   DatabaseOutlined,
   FileSearchOutlined,
@@ -16,9 +16,12 @@ import {
   CheckCircleOutlined,
   HistoryOutlined,
   ReloadOutlined,
+  ExperimentOutlined,
+  RocketOutlined,
+  ApartmentOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../providers/dataProvider';
 
 const { Title, Text } = Typography;
@@ -57,13 +60,17 @@ export default function PipelinePage() {
   const [importPlan, setImportPlan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [recentPlans, setRecentPlans] = useState([]);
+  const [buildPlan, setBuildPlan] = useState(null);
+  const [buildPlanLoading, setBuildPlanLoading] = useState(false);
+  const [demoState, setDemoState] = useState(null);
 
   const isZh = i18n.language === 'zh';
 
-  // Auto-load samples and recent plans on mount
+  // Auto-load samples, recent plans, and demo state on mount
   useEffect(() => {
     loadSamples();
     loadRecentPlans();
+    api.get('/demo/state').then(r => setDemoState(r.data)).catch(() => {});
   }, []);
 
   const loadSamples = async () => {
@@ -142,6 +149,29 @@ export default function PipelinePage() {
       setStep(4);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch { message.error(t('common.loadFailed')); }
+  };
+
+  const handleCreateBuildPlan = async () => {
+    setBuildPlanLoading(true);
+    try {
+      const { data } = await api.post('/pipeline/build-scenario', { scenario_id: 'pet_food_full_build' });
+      setBuildPlan(data);
+      message.success(t('pipeline.buildPlanCreated'));
+    } catch (err) {
+      message.error(err?.response?.data?.detail || t('pipeline.buildPlanFailed'));
+    } finally { setBuildPlanLoading(false); }
+  };
+
+  const handleSubmitBuildPlan = async () => {
+    if (!buildPlan) return;
+    setBuildPlanLoading(true);
+    try {
+      const { data } = await api.post(`/review/from-build-plan/${buildPlan.id}`);
+      setBuildPlan(prev => prev ? { ...prev, submitted_to_review: true, review_batch_id: data.batch_id } : prev);
+      message.success(t('pipeline.buildPlanSubmitted'));
+    } catch (err) {
+      message.error(err?.response?.data?.detail || t('pipeline.submitReviewFailed'));
+    } finally { setBuildPlanLoading(false); }
   };
 
   // ── Recent Plans columns ────────────────────────────────────────────
@@ -289,6 +319,97 @@ export default function PipelinePage() {
         message={t('pipeline.intro')}
         style={{ fontSize: 12 }}
       />
+
+      {/* Build Full Scenario */}
+      {!buildPlan && (
+        <Card
+          style={{ background: 'linear-gradient(135deg, rgba(22,119,255,0.04) 0%, rgba(114,46,209,0.04) 100%)', border: '1px solid rgba(22,119,255,0.15)' }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>
+                <RocketOutlined style={{ marginRight: 8, color: '#1677ff' }} />
+                {t('pipeline.buildScenarioTitle')}
+              </div>
+              <Text type="secondary" style={{ fontSize: 13 }}>{t('pipeline.buildScenarioDesc')}</Text>
+              {demoState?.mode === 'clean' && (
+                <div style={{ marginTop: 4 }}><Tag color="blue">{t('pipeline.buildScenarioRecommended')}</Tag></div>
+              )}
+            </div>
+            <Button type="primary" icon={<ExperimentOutlined />} loading={buildPlanLoading} onClick={handleCreateBuildPlan}>
+              {t('pipeline.buildScenarioCTA')}
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Build Plan Preview */}
+      {buildPlan && (
+        <Card
+          title={<><ApartmentOutlined /> {t('pipeline.buildPlanTitle')}</>}
+          extra={
+            !buildPlan.submitted_to_review ? (
+              <Button type="primary" icon={<SendOutlined />} loading={buildPlanLoading} onClick={handleSubmitBuildPlan}>
+                {t('pipeline.submitToReview')}
+              </Button>
+            ) : (
+              <Button type="link" onClick={() => navigate('/review')}>
+                {t('pipeline.goToReview')} <RightOutlined />
+              </Button>
+            )
+          }
+        >
+          <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+            {/* Summary */}
+            <Row gutter={16}>
+              <Col span={4}><Statistic title={t('pipeline.source')} value={buildPlan.summary?.sources || 0} prefix={<DatabaseOutlined />} /></Col>
+              <Col span={5}><Statistic title={t('pipeline.candidateObjects')} value={buildPlan.summary?.total_candidate_objects || 0} /></Col>
+              <Col span={5}><Statistic title={t('pipeline.candidateLinks')} value={buildPlan.summary?.total_candidate_links || 0} /></Col>
+              <Col span={5}><Statistic title={t('pipeline.valErrors')} value={buildPlan.summary?.total_validation_errors || 0} valueStyle={{ color: (buildPlan.summary?.total_validation_errors || 0) > 0 ? '#ff4d4f' : undefined }} /></Col>
+              <Col span={5}><Statistic title={t('pipeline.valWarnings')} value={buildPlan.summary?.total_validation_warnings || 0} /></Col>
+            </Row>
+
+            {/* Validation */}
+            {buildPlan.validation?.cross_source_errors?.length > 0 && (
+              <Alert type="error" showIcon message={t('pipeline.crossSourceErrors')} description={buildPlan.validation.cross_source_errors.join('; ')} />
+            )}
+
+            {/* Stages */}
+            <Collapse
+              defaultActiveKey={buildPlan.stages?.map(s => s.stage_id) || []}
+              items={(buildPlan.stages || []).map(stage => ({
+                key: stage.stage_id,
+                label: (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <span><Tag color="blue">{stage.order}</Tag> {stage.title}</span>
+                    <Space size={8}>
+                      <Tag>{stage.candidate_objects?.length || 0} {t('pipeline.candidateObjects').toLowerCase()}</Tag>
+                      <Tag>{stage.candidate_links?.length || 0} {t('pipeline.candidateLinks').toLowerCase()}</Tag>
+                    </Space>
+                  </div>
+                ),
+                children: (
+                  <Space orientation="vertical" size={8} style={{ width: '100%' }}>
+                    <Text type="secondary">{stage.description}</Text>
+                    {stage.object_types?.length > 0 && (
+                      <div>{t('schema.objectTypes')}: {stage.object_types.map(t => <Tag key={t}>{t}</Tag>)}</div>
+                    )}
+                    {stage.link_types?.length > 0 && (
+                      <div>{t('schema.linkTypes')}: {stage.link_types.map(t => <Tag key={t} color="green">{t}</Tag>)}</div>
+                    )}
+                    {stage.validation_errors?.length > 0 && (
+                      <Alert type="error" showIcon message={stage.validation_errors.join('; ')} />
+                    )}
+                    {stage.validation_warnings?.length > 0 && (
+                      <Alert type="warning" showIcon message={stage.validation_warnings.join('; ')} />
+                    )}
+                  </Space>
+                ),
+              }))}
+            />
+          </Space>
+        </Card>
+      )}
 
       {/* Steps */}
       <Steps current={step < 0 ? 0 : step} items={stepItems} size="small" onChange={i => { if (i <= step) setStep(i); }} />

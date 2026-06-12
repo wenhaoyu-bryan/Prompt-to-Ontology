@@ -152,7 +152,8 @@
     "demoPathSeeded": "完整演示模式",
     "demoPathSeededDesc": "探索完整的宠物食品本体：对象、图谱、规则和智能体。",
     "demoPathClean": "空白构建模式",
-    "demoPathCleanDesc": "从空图谱开始，通过数据管道逐步构建本体。"
+    "demoPathCleanDesc": "从空图谱开始，通过数据管道逐步构建本体。",
+    "startFullBuild": "开始完整构建"
   },
   "objects": {
     "title": "对象",
@@ -472,7 +473,16 @@
     "cannotSubmit": "计划存在校验错误，请修复后再提交。",
     "hasErrors": "有错误",
     "viewPlan": "查看",
-    "submitShort": "提交"
+    "submitShort": "提交",
+    "buildScenarioTitle": "构建完整宠物食品本体",
+    "buildScenarioDesc": "从多张示例数据表开始，生成一个完整的、可审核的本体构建计划。",
+    "buildScenarioCTA": "开始完整构建场景",
+    "buildScenarioRecommended": "推荐在空白构建模式下使用",
+    "buildPlanTitle": "构建计划预览",
+    "buildPlanCreated": "构建计划创建成功",
+    "buildPlanFailed": "创建构建计划失败",
+    "buildPlanSubmitted": "构建计划已提交到审核队列",
+    "crossSourceErrors": "跨数据源校验错误"
   },
   "entity": {
     "emptyTitle": "点击图谱中的节点",

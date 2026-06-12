@@ -1427,6 +1427,61 @@ def api_demo_clear(body: dict):
     return svc.clear().model_dump()
 
 
+# ---- Build Scenario Endpoints ----
+
+@app.get("/api/pipeline/build-scenarios")
+def api_list_build_scenarios():
+    """List available build scenario templates."""
+    from build_scenario import BuildScenarioService
+    svc = BuildScenarioService()
+    return [s.model_dump() for s in svc.list_scenarios()]
+
+
+@app.post("/api/pipeline/build-scenario")
+def api_create_build_plan(body: dict):
+    """Create a build plan from a scenario template."""
+    from build_scenario import BuildScenarioService
+    scenario_id = body.get("scenario_id")
+    if not scenario_id:
+        raise HTTPException(400, "scenario_id is required")
+    svc = BuildScenarioService()
+    try:
+        plan = svc.create_build_plan(scenario_id)
+        return plan.model_dump()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/pipeline/build-plans")
+def api_list_build_plans():
+    """List all build plans."""
+    from build_scenario import BuildScenarioService
+    svc = BuildScenarioService()
+    return [p.model_dump() for p in svc.list_build_plans()]
+
+
+@app.get("/api/pipeline/build-plans/{plan_id}")
+def api_get_build_plan(plan_id: str):
+    """Get a specific build plan."""
+    from build_scenario import BuildScenarioService
+    svc = BuildScenarioService()
+    plan = svc.get_build_plan(plan_id)
+    if not plan:
+        raise HTTPException(404, "Build plan not found")
+    return plan.model_dump()
+
+
+@app.post("/api/review/from-build-plan/{plan_id}")
+def api_submit_build_plan_to_review(plan_id: str):
+    """Submit a build plan to the review queue."""
+    from build_scenario import BuildScenarioService
+    svc = BuildScenarioService()
+    try:
+        return svc.submit_to_review(plan_id)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8765)

@@ -36,6 +36,7 @@ docs/*
 !docs/product-workflow.md
 !docs/release-notes.md
 !docs/resettable-demo-mode.md
+!docs/full-build-scenario.md
 Phases/
 
 # Test data
