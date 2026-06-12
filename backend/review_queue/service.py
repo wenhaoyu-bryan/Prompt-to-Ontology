@@ -171,6 +171,14 @@ def apply_approved_batch(batch_id: str) -> list[ReviewApplyResult]:
     for item in items:
         result = apply_review_item(item.id)
         results.append(result)
+
+    # Refresh in-memory graph after batch apply
+    try:
+        from ontology import refresh_graph
+        refresh_graph()
+    except Exception:
+        pass
+
     return results
 
 
