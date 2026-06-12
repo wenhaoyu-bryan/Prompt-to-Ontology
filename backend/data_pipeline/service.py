@@ -82,6 +82,13 @@ class PipelineService:
                 f, ensure_ascii=False, indent=2,
             )
 
+    def reset_runtime(self) -> None:
+        """Clear all in-memory profiles, plans, rows, and persisted plans."""
+        self._profiles.clear()
+        self._plans.clear()
+        self._rows.clear()
+        self._save_plans_to_disk()
+
     # ── Sample sources ─────────────────────────────────────────────────
 
     def list_sample_sources(self) -> list[dict[str, str]]:

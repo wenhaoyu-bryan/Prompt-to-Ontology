@@ -22,6 +22,8 @@ import {
   WarningOutlined,
   LinkOutlined,
   StopOutlined,
+  SettingOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -82,6 +84,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [reviewSummary, setReviewSummary] = useState(null);
+  const [demoState, setDemoState] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -89,10 +92,11 @@ export default function DashboardPage() {
     setLoading(true);
     setError(false);
     try {
-      const [graphRes, schemaRes, reviewRes] = await Promise.all([
+      const [graphRes, schemaRes, reviewRes, demoRes] = await Promise.all([
         api.get('/graph').catch(() => null),
         api.get('/ontology/pet_food/schema').catch(() => null),
         api.get('/review/summary').catch(() => null),
+        api.get('/demo/state').catch(() => null),
       ]);
       if (!graphRes && !schemaRes) {
         setError(true);
@@ -116,6 +120,7 @@ export default function DashboardPage() {
         ).length,
       });
       if (reviewRes?.data) setReviewSummary(reviewRes.data);
+      if (demoRes?.data) setDemoState(demoRes.data);
     } catch {
       setError(true);
     } finally {
@@ -347,6 +352,83 @@ export default function DashboardPage() {
                 <Text type="secondary">{t('review.noViolations')}</Text>
               )}
           </Card>
+
+        {/* Demo State — row 3, col 1 */}
+        {demoState && (
+          <Card
+            title={<><PlayCircleOutlined /> {t('dashboard.demoState')}</>}
+            size="small"
+            extra={<Button type="link" size="small" onClick={() => navigate('/settings')}>{t('dashboard.demoSettings')} <RightOutlined /></Button>}
+          >
+            <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <Tag color={
+                  demoState.mode === 'seeded' ? 'green' :
+                  demoState.mode === 'clean' ? 'blue' :
+                  demoState.mode === 'custom_build' ? 'orange' : 'default'
+                } style={{ fontSize: 13, padding: '2px 10px' }}>
+                  {t(`dashboard.demoMode.${demoState.mode}`, demoState.mode)}
+                </Tag>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {t({
+                    seeded: 'dashboard.demoModeSeededLine',
+                    clean: 'dashboard.demoModeCleanLine',
+                    custom_build: 'dashboard.demoModeCustomLine',
+                  }[demoState.mode] || '', '')}
+                </Text>
+              </div>
+              <Row gutter={8}>
+                <Col span={6}><Statistic title={t('dashboard.totalNodes')} value={demoState.graph?.node_count || 0} valueStyle={{ fontSize: 16 }} /></Col>
+                <Col span={6}><Statistic title={t('dashboard.graphEdges')} value={demoState.graph?.relationship_count || 0} valueStyle={{ fontSize: 16 }} /></Col>
+                <Col span={6}><Statistic title={t('review.pending')} value={demoState.review_queue?.pending_count || 0} valueStyle={{ fontSize: 16, color: (demoState.review_queue?.pending_count || 0) > 0 ? '#fa8c16' : undefined }} /></Col>
+                <Col span={6}><Statistic title={t('pipeline.newObjects')} value={demoState.pipeline?.import_plan_count || 0} valueStyle={{ fontSize: 16 }} /></Col>
+              </Row>
+            </Space>
+          </Card>
+        )}
+
+        {/* Demo Paths — row 3, col 2 */}
+        {demoState && (
+          <Card title={<><ExperimentOutlined /> {t('dashboard.demoPaths')}</>} size="small">
+            <Row gutter={12}>
+              <Col span={12}>
+                <div style={{
+                  padding: 12, borderRadius: 8, height: '100%',
+                  background: demoState.mode === 'seeded' ? 'rgba(82,196,26,0.06)' : 'transparent',
+                  border: demoState.mode === 'seeded' ? '1px solid rgba(82,196,26,0.2)' : '1px solid rgba(255,255,255,0.06)',
+                }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{t('dashboard.demoPathSeeded')}</div>
+                  <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>{t('dashboard.demoPathSeededDesc')}</Text>
+                  {demoState.mode === 'seeded' && (
+                    <Space size={8}>
+                      <Button size="small" type="primary" onClick={() => navigate('/objects')}>{t('dashboard.exploreObjects')}</Button>
+                      <Button size="small" onClick={() => navigate('/agent')}>{t('dashboard.askAgent')}</Button>
+                    </Space>
+                  )}
+                  {demoState.mode !== 'seeded' && (
+                    <Button size="small" type="primary" ghost onClick={() => navigate('/settings')}>{t('settings.demoResetSeeded')}</Button>
+                  )}
+                </div>
+              </Col>
+              <Col span={12}>
+                <div style={{
+                  padding: 12, borderRadius: 8, height: '100%',
+                  background: demoState.mode === 'clean' ? 'rgba(22,119,255,0.06)' : 'transparent',
+                  border: demoState.mode === 'clean' ? '1px solid rgba(22,119,255,0.2)' : '1px solid rgba(255,255,255,0.06)',
+                }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{t('dashboard.demoPathClean')}</div>
+                  <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>{t('dashboard.demoPathCleanDesc')}</Text>
+                  {demoState.mode === 'clean' && (
+                    <Button size="small" type="primary" icon={<RocketOutlined />} onClick={() => navigate('/pipeline')}>{t('dashboard.startFullBuild')}</Button>
+                  )}
+                  {demoState.mode !== 'clean' && (
+                    <Button size="small" onClick={() => navigate('/settings')}>{t('settings.demoResetClean')}</Button>
+                  )}
+                </div>
+              </Col>
+            </Row>
+          </Card>
+        )}
       </div>
     </Space>
   );

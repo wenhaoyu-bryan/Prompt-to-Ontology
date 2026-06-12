@@ -11,6 +11,18 @@ from neo4j_connector import get_driver
 from .models import ReviewApplyResult, ReviewItem, ReviewItemType
 
 
+def _sanitize_props(props: dict) -> dict:
+    """Filter out non-primitive values that Neo4j can't store (nested dicts, etc.)."""
+    result = {}
+    for k, v in props.items():
+        if v is None or isinstance(v, (str, int, float, bool)):
+            result[k] = v
+        elif isinstance(v, list) and all(isinstance(x, (str, int, float, bool)) for x in v):
+            result[k] = v
+        # Skip nested dicts and other non-primitive types
+    return result
+
+
 def apply_candidate_object(item: ReviewItem, driver: Driver | None = None) -> ReviewApplyResult:
     """MERGE a candidate object node into Neo4j."""
     obj = item.candidate_object
@@ -21,7 +33,7 @@ def apply_candidate_object(item: ReviewItem, driver: Driver | None = None) -> Re
 
     node_id = obj.get("id", "")
     node_type = obj.get("type", "")
-    props = obj.get("properties", {})
+    props = _sanitize_props(obj.get("properties", {}))
 
     if not node_id or not node_type:
         return ReviewApplyResult(
@@ -44,9 +56,11 @@ def apply_candidate_object(item: ReviewItem, driver: Driver | None = None) -> Re
             set_parts.append("n._review_status = 'applied'")
             set_parts.append("n._applied_at = $applied_at")
             set_parts.append("n._confidence = $confidence")
+            set_parts.append("n.dataset = $dataset")
             params["review_item_id"] = item.id
             params["applied_at"] = now
             params["confidence"] = obj.get("confidence", 1.0)
+            params["dataset"] = "pet_food"
 
             set_clause = ", ".join(set_parts)
             query = f"MERGE (n:`{node_type}` {{id: $node_id}}) SET {set_clause}"
@@ -76,7 +90,7 @@ def apply_candidate_link(item: ReviewItem, driver: Driver | None = None) -> Revi
     source_id = link.get("source_id", "")
     target_id = link.get("target_id", "")
     rel_type = link.get("type", "")
-    props = link.get("properties", {})
+    props = _sanitize_props(link.get("properties", {}))
 
     if not source_id or not target_id or not rel_type:
         return ReviewApplyResult(
@@ -109,9 +123,11 @@ def apply_candidate_link(item: ReviewItem, driver: Driver | None = None) -> Revi
             set_parts.append("r._review_status = 'applied'")
             set_parts.append("r._applied_at = $applied_at")
             set_parts.append("r._confidence = $confidence")
+            set_parts.append("r.dataset = $dataset")
             params["review_item_id"] = item.id
             params["applied_at"] = now
             params["confidence"] = link.get("confidence", 1.0)
+            params["dataset"] = "pet_food"
 
             set_clause = ", ".join(set_parts)
             query = (

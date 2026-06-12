@@ -135,7 +135,25 @@
     "journeyGraph": "View Local Graph",
     "journeySchema": "Inspect Schema",
     "journeyAgent": "Ask Agent",
-    "journeyReview": "Review Suggestions"
+    "journeyReview": "Review Suggestions",
+    "demoState": "Demo State",
+    "demoSettings": "Demo Settings",
+    "demoMode": {
+      "seeded": "Seeded Demo",
+      "clean": "Clean Build",
+      "custom_build": "Custom Build",
+      "unknown": "Unknown"
+    },
+    "demoModeHint": "Current demo mode",
+    "demoModeSeededLine": "The Pet Food ontology is already loaded.",
+    "demoModeCleanLine": "Start from sample data and build the ontology through Data Pipeline.",
+    "demoModeCustomLine": "The graph contains user-applied demo data.",
+    "demoPaths": "Demo Paths",
+    "demoPathSeeded": "Seeded Demo",
+    "demoPathSeededDesc": "Explore the completed Pet Food ontology: objects, graph, rules, and agent.",
+    "demoPathClean": "Clean Build",
+    "demoPathCleanDesc": "Start from an empty graph. Use Data Pipeline to build the ontology step by step.",
+    "startFullBuild": "Start Full Build"
   },
   "objects": {
     "title": "Objects",
@@ -292,12 +310,22 @@
     "status": "Status",
     "connected": "Connected",
     "dangerZone": "Danger Zone",
-    "resetDemo": "Reset Demo Data",
-    "resetDemoHint": "Clears all local settings and forces a fresh login.",
+    "resetDemo": "Reset Local Preferences",
+    "resetDemoHint": "Clear saved language, theme, color, and mock auth state.",
     "reset": "Reset",
     "resetConfirmTitle": "Reset Demo?",
     "resetConfirmDesc": "This will clear your theme, language, and auth settings. The page will reload.",
-    "resetSuccess": "Demo reset. Reloading..."
+    "resetSuccess": "Demo reset. Reloading...",
+    "demoMode": "Demo Mode",
+    "demoRefresh": "Refresh",
+    "demoCurrentMode": "Current mode",
+    "demoResetSeeded": "Reset to Seeded Demo",
+    "demoResetClean": "Reset to Clean Build",
+    "demoResetTitle": "Reset Demo ({{mode}})",
+    "demoResetSeededConfirm": "This will clear the current graph and review queue, then reload the Pet Food demo ontology.",
+    "demoResetCleanConfirm": "This will clear the graph and review queue. You can then use Data Pipeline to build the ontology from sample datasets.",
+    "demoResetSuccess": "Demo mode reset successfully",
+    "demoResetFailed": "Failed to reset demo mode"
   },
   "pageFraming": {
     "pipeline": "This is the first step of the Build Ontology path. It profiles data, maps fields to ontology types, validates candidates, and creates Import Plans. It does not directly mutate the graph.",
@@ -445,7 +473,16 @@
     "cannotSubmit": "Plan has validation errors. Fix issues before submitting.",
     "hasErrors": "Has errors",
     "viewPlan": "View",
-    "submitShort": "Submit"
+    "submitShort": "Submit",
+    "buildScenarioTitle": "Build Full Pet Food Ontology",
+    "buildScenarioDesc": "Start from multiple sample datasets and generate a complete reviewable ontology build plan.",
+    "buildScenarioCTA": "Start Full Build Scenario",
+    "buildScenarioRecommended": "Recommended for Clean Build Mode",
+    "buildPlanTitle": "Build Plan Preview",
+    "buildPlanCreated": "Build plan created successfully",
+    "buildPlanFailed": "Failed to create build plan",
+    "buildPlanSubmitted": "Build plan submitted to review queue",
+    "crossSourceErrors": "Cross-source validation errors"
   },
   "entity": {
     "emptyTitle": "Click a node in the graph",

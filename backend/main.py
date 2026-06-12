@@ -94,14 +94,17 @@ def startup():
     dataset = config["dataset"]
 
     # 4. 自动导入默认 domain sample data（如果还没有数据）
+    auto_seed = os.environ.get("AUTO_SEED_DEMO_DATA", "true").lower() == "true"
     with driver.session() as session:
         count = session.run(
             f"MATCH (n:`{primary_type}`) RETURN count(n) AS c"
         ).single()["c"]
-    if count == 0:
+    if count == 0 and auto_seed:
         print(f"⏳ 自动导入 {config['label']} Demo 数据...")
         if domain == "pet_food":
             _auto_import_pet_food(driver)
+    elif count == 0 and not auto_seed:
+        print(f"ℹ AUTO_SEED_DEMO_DATA=false，跳过自动导入。从 Clean Build Mode 开始。")
     else:
         print(f"✅ {config['label']} 数据已就绪：{count} 个实例")
 
@@ -1366,6 +1369,115 @@ def api_agent_submit_suggestions(body: dict):
             "items_created": len(items),
             "item_ids": [i.id for i in items],
         }
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+# ---- Demo Admin Endpoints ----
+
+def _get_demo_admin_service():
+    from demo_admin import DemoAdminService
+    return DemoAdminService(driver=get_driver(), pipeline_service=pipeline_service)
+
+
+@app.get("/api/demo/state")
+def api_demo_state():
+    """Return current demo state."""
+    svc = _get_demo_admin_service()
+    return svc.get_state().model_dump()
+
+
+@app.post("/api/demo/reset")
+def api_demo_reset(body: dict):
+    """Reset demo to seeded or clean mode. Requires confirm=true."""
+    from demo_admin import DemoAdminService as _DAS
+    if not _DAS.is_enabled():
+        raise HTTPException(403, "Demo admin reset is disabled. Set DEMO_ADMIN_ENABLED=true for local demo use.")
+    mode = body.get("mode")
+    confirm = body.get("confirm", False)
+    if mode not in ("seeded", "clean"):
+        raise HTTPException(400, "mode must be 'seeded' or 'clean'")
+    if not confirm:
+        raise HTTPException(400, "confirm must be true")
+    svc = _get_demo_admin_service()
+    return svc.reset(mode).model_dump()
+
+
+@app.post("/api/demo/seed")
+def api_demo_seed(body: dict):
+    """Seed Pet Food demo graph. Requires confirm=true."""
+    from demo_admin import DemoAdminService as _DAS
+    if not _DAS.is_enabled():
+        raise HTTPException(403, "Demo admin reset is disabled. Set DEMO_ADMIN_ENABLED=true for local demo use.")
+    if not body.get("confirm", False):
+        raise HTTPException(400, "confirm must be true")
+    svc = _get_demo_admin_service()
+    return svc.seed().model_dump()
+
+
+@app.post("/api/demo/clear")
+def api_demo_clear(body: dict):
+    """Clear graph and runtime review state. Requires confirm=true."""
+    from demo_admin import DemoAdminService as _DAS
+    if not _DAS.is_enabled():
+        raise HTTPException(403, "Demo admin reset is disabled. Set DEMO_ADMIN_ENABLED=true for local demo use.")
+    if not body.get("confirm", False):
+        raise HTTPException(400, "confirm must be true")
+    svc = _get_demo_admin_service()
+    return svc.clear().model_dump()
+
+
+# ---- Build Scenario Endpoints ----
+
+@app.get("/api/pipeline/build-scenarios")
+def api_list_build_scenarios():
+    """List available build scenario templates."""
+    from build_scenario import BuildScenarioService
+    svc = BuildScenarioService()
+    return [s.model_dump() for s in svc.list_scenarios()]
+
+
+@app.post("/api/pipeline/build-scenario")
+def api_create_build_plan(body: dict):
+    """Create a build plan from a scenario template."""
+    from build_scenario import BuildScenarioService
+    scenario_id = body.get("scenario_id")
+    if not scenario_id:
+        raise HTTPException(400, "scenario_id is required")
+    svc = BuildScenarioService()
+    try:
+        plan = svc.create_build_plan(scenario_id)
+        return plan.model_dump()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/pipeline/build-plans")
+def api_list_build_plans():
+    """List all build plans."""
+    from build_scenario import BuildScenarioService
+    svc = BuildScenarioService()
+    return [p.model_dump() for p in svc.list_build_plans()]
+
+
+@app.get("/api/pipeline/build-plans/{plan_id}")
+def api_get_build_plan(plan_id: str):
+    """Get a specific build plan."""
+    from build_scenario import BuildScenarioService
+    svc = BuildScenarioService()
+    plan = svc.get_build_plan(plan_id)
+    if not plan:
+        raise HTTPException(404, "Build plan not found")
+    return plan.model_dump()
+
+
+@app.post("/api/review/from-build-plan/{plan_id}")
+def api_submit_build_plan_to_review(plan_id: str):
+    """Submit a build plan to the review queue."""
+    from build_scenario import BuildScenarioService
+    svc = BuildScenarioService()
+    try:
+        return svc.submit_to_review(plan_id)
     except ValueError as e:
         raise HTTPException(400, str(e))
 

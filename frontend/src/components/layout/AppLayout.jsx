@@ -131,21 +131,11 @@ export default function AppLayout() {
           gap: 10,
           borderBottom: mode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0',
         }}>
-          <div style={{
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            background: 'linear-gradient(135deg, #1677ff, #722ed1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            fontWeight: 700,
-            fontSize: 14,
-            flexShrink: 0,
-          }}>
-            P
-          </div>
+          <img
+            src="/project_profile.png"
+            alt="Logo"
+            style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0 }}
+          />
           {!collapsed && (
             <div style={{ overflow: 'hidden' }}>
               <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap' }}>

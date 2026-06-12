@@ -150,16 +150,35 @@ def apply_review_item(item_id: str) -> ReviewApplyResult:
 
 
 def apply_approved_batch(batch_id: str) -> list[ReviewApplyResult]:
-    """Apply all approved items in a batch."""
+    """Apply all approved items in a batch. Objects are applied before links."""
     batch = get_batch(batch_id)
     if batch is None:
         raise ValueError(f"Review batch '{batch_id}' not found")
 
     items = [i for i in load_items() if i.batch_id == batch_id and i.status == ReviewItemStatus.APPROVED]
+
+    # Sort: objects first, then links, then others. Within each group, respect stage_order.
+    _TYPE_ORDER = {
+        "import_object_candidate": 0,
+        "import_link_candidate": 1,
+    }
+    items.sort(key=lambda i: (
+        _TYPE_ORDER.get(i.type.value if hasattr(i.type, 'value') else i.type, 2),
+        (i.metadata or {}).get("_stage_order", 99),
+    ))
+
     results = []
     for item in items:
         result = apply_review_item(item.id)
         results.append(result)
+
+    # Refresh in-memory graph after batch apply
+    try:
+        from ontology import refresh_graph
+        refresh_graph()
+    except Exception:
+        pass
+
     return results
 
 

@@ -135,7 +135,25 @@
     "journeyGraph": "查看局部图谱",
     "journeySchema": "查看模式",
     "journeyAgent": "询问智能体",
-    "journeyReview": "审核建议"
+    "journeyReview": "审核建议",
+    "demoState": "演示状态",
+    "demoSettings": "演示设置",
+    "demoMode": {
+      "seeded": "完整演示模式",
+      "clean": "空白构建模式",
+      "custom_build": "自定义构建模式",
+      "unknown": "未知状态"
+    },
+    "demoModeHint": "当前演示模式",
+    "demoModeSeededLine": "宠物食品本体已加载完成。",
+    "demoModeCleanLine": "从示例数据开始，通过数据管道构建本体。",
+    "demoModeCustomLine": "图谱包含用户已应用的演示数据。",
+    "demoPaths": "演示路径",
+    "demoPathSeeded": "完整演示模式",
+    "demoPathSeededDesc": "探索完整的宠物食品本体：对象、图谱、规则和智能体。",
+    "demoPathClean": "空白构建模式",
+    "demoPathCleanDesc": "从空图谱开始，通过数据管道逐步构建本体。",
+    "startFullBuild": "开始完整构建"
   },
   "objects": {
     "title": "对象",
@@ -292,12 +310,22 @@
     "status": "状态",
     "connected": "已连接",
     "dangerZone": "危险操作",
-    "resetDemo": "重置演示数据",
-    "resetDemoHint": "清除所有本地设置并强制重新登录。",
+    "resetDemo": "重置本地偏好设置",
+    "resetDemoHint": "清除已保存的语言、主题、颜色和模拟登录状态。",
     "reset": "重置",
     "resetConfirmTitle": "确认重置？",
     "resetConfirmDesc": "这将清除你的主题、语言和认证设置，页面将自动刷新。",
-    "resetSuccess": "演示已重置，正在刷新..."
+    "resetSuccess": "演示已重置，正在刷新...",
+    "demoMode": "演示模式",
+    "demoRefresh": "刷新",
+    "demoCurrentMode": "当前模式",
+    "demoResetSeeded": "重置为完整演示模式",
+    "demoResetClean": "重置为空白构建模式",
+    "demoResetTitle": "重置演示（{{mode}}）",
+    "demoResetSeededConfirm": "这会清空当前图谱和审核队列，并重新加载宠物食品演示本体。",
+    "demoResetCleanConfirm": "这会清空图谱和审核队列。之后你可以从数据管道开始，使用示例数据重新构建本体。",
+    "demoResetSuccess": "演示模式重置成功",
+    "demoResetFailed": "重置演示模式失败"
   },
   "pageFraming": {
     "pipeline": "这是「构建本体」路径的第一步。这里会对数据进行画像、字段映射、候选对象校验，并生成导入计划。它不会直接修改图谱。",
@@ -445,7 +473,16 @@
     "cannotSubmit": "计划存在校验错误，请修复后再提交。",
     "hasErrors": "有错误",
     "viewPlan": "查看",
-    "submitShort": "提交"
+    "submitShort": "提交",
+    "buildScenarioTitle": "构建完整宠物食品本体",
+    "buildScenarioDesc": "从多张示例数据表开始，生成一个完整的、可审核的本体构建计划。",
+    "buildScenarioCTA": "开始完整构建场景",
+    "buildScenarioRecommended": "推荐在空白构建模式下使用",
+    "buildPlanTitle": "构建计划预览",
+    "buildPlanCreated": "构建计划创建成功",
+    "buildPlanFailed": "创建构建计划失败",
+    "buildPlanSubmitted": "构建计划已提交到审核队列",
+    "crossSourceErrors": "跨数据源校验错误"
   },
   "entity": {
     "emptyTitle": "点击图谱中的节点",
