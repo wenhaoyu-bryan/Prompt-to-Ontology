@@ -270,6 +270,9 @@ export default function SchemaPage() {
         <Button icon={<ReloadOutlined />} onClick={loadSchema}>{t('common.refresh')}</Button>
       </div>
 
+      {/* Schema vs Instance explanation */}
+      <Alert type="info" showIcon icon={<InfoCircleOutlined />} message={t('pipeline.schemaExplanation')} style={{ fontSize: 12 }} />
+
       {/* Summary stats */}
       <Row gutter={[16, 16]}>
         {[

@@ -24,6 +24,7 @@ import {
   StopOutlined,
   SettingOutlined,
   PlayCircleOutlined,
+  RocketOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -254,10 +255,13 @@ export default function DashboardPage() {
 
         {/* Recent Agent Runs — row 2, col 1 */}
             <Card
-              title={<><RobotOutlined /> {t('dashboard.recentAgentRuns')} <Tag style={{ fontSize: 10, marginLeft: 4 }}>{t('common.demoData')}</Tag></>}
+              title={<><RobotOutlined /> {t('dashboard.recentAgentRuns')} {demoState?.mode !== 'clean' && <Tag style={{ fontSize: 10, marginLeft: 4 }}>{t('common.demoData')}</Tag>}</>}
               size="small"
-              extra={<Button type="link" size="small" onClick={() => navigate('/agent')}>{t('dashboard.viewAll')} <RightOutlined /></Button>}
+              extra={demoState?.mode !== 'clean' && <Button type="link" size="small" onClick={() => navigate('/agent')}>{t('dashboard.viewAll')} <RightOutlined /></Button>}
             >
+              {demoState?.mode === 'clean' && (demoState?.graph?.node_count || 0) === 0 ? (
+                <Text type="secondary" style={{ fontSize: 13 }}>{t('dashboard.noAgentRuns')}</Text>
+              ) : (
               <Table
                 dataSource={recentRuns}
                 rowKey="run_id"
@@ -291,6 +295,7 @@ export default function DashboardPage() {
                   },
                 ]}
               />
+              )}
             </Card>
 
         {/* Quick Actions — row 1, col 2 */}
@@ -377,6 +382,9 @@ export default function DashboardPage() {
                   }[demoState.mode] || '', '')}
                 </Text>
               </div>
+              {demoState.mode === 'clean' && (
+                <Alert type="info" showIcon message={t('dashboard.cleanModeExplanation')} style={{ fontSize: 12 }} />
+              )}
               <Row gutter={8}>
                 <Col span={6}><Statistic title={t('dashboard.totalNodes')} value={demoState.graph?.node_count || 0} valueStyle={{ fontSize: 16 }} /></Col>
                 <Col span={6}><Statistic title={t('dashboard.graphEdges')} value={demoState.graph?.relationship_count || 0} valueStyle={{ fontSize: 16 }} /></Col>

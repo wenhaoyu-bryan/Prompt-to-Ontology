@@ -122,6 +122,7 @@ class PipelineService:
         """Profile CSV content from a string."""
         from .profiler import profile_csv_content as _profile_content
         profile = _profile_content(content, filename)
+        profile.source_type = "custom_csv"
         self._profiles[profile.source_id] = profile
 
         import io
@@ -190,6 +191,12 @@ class PipelineService:
             link_mappings=lnk_maps,
             schema=schema,
         )
+
+        # Add source metadata for custom CSV uploads
+        if profile.source_type == "custom_csv":
+            plan.metadata["source_type"] = "custom_csv"
+            plan.metadata["filename"] = profile.source_name
+            plan.metadata["uploaded_at"] = profile.created_at.isoformat() if profile.created_at else ""
 
         self._plans[plan.plan_id] = plan
         self._save_plans_to_disk()
