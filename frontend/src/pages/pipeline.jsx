@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Button, Space, Typography, Tag, Steps, Table, Alert, Row, Col, Statistic, message, Progress, Divider, Collapse, Badge } from 'antd';
+import { Card, Button, Space, Typography, Tag, Steps, Table, Alert, Row, Col, Statistic, message, Progress, Divider, Collapse, Badge, Radio, Upload, Select } from 'antd';
 import {
   DatabaseOutlined,
   FileSearchOutlined,
@@ -19,6 +19,9 @@ import {
   ExperimentOutlined,
   RocketOutlined,
   ApartmentOutlined,
+  UploadOutlined,
+  InboxOutlined,
+  CloudUploadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -38,6 +41,14 @@ const SAMPLE_INFO = {
   pet_food_ingredients: { icon: '🧪', objectType: 'Ingredient', linkType: '', desc_en: 'Ingredient definitions with allergen flags', desc_zh: '含过敏原标记的成分定义' },
   product_ingredients: { icon: '🔗', objectType: '', linkType: 'CONTAINS', desc_en: 'Product-to-ingredient relationships', desc_zh: '产品与成分的关联关系' },
   risk_rules: { icon: '⚠️', objectType: 'RiskRule', linkType: '', desc_en: 'Domain risk rules with conditions', desc_zh: '含条件的领域风险规则' },
+};
+
+const TARGET_OBJECT_TYPES = ['PetFoodProduct', 'Ingredient', 'Brand', 'RiskRule', 'Species', 'LifeStage'];
+
+const SOURCE_TYPE_LABELS = {
+  sample: 'pipeline.sourceTypeSample',
+  custom_csv: 'pipeline.sourceTypeCustomCSV',
+  build_scenario: 'pipeline.sourceTypeBuildScenario',
 };
 
 function formatTime(ts) {
@@ -63,6 +74,9 @@ export default function PipelinePage() {
   const [buildPlan, setBuildPlan] = useState(null);
   const [buildPlanLoading, setBuildPlanLoading] = useState(false);
   const [demoState, setDemoState] = useState(null);
+  const [sourceMode, setSourceMode] = useState('sample');
+  const [targetObjectType, setTargetObjectType] = useState('PetFoodProduct');
+  const [mappingOverrides, setMappingOverrides] = useState({});
 
   const isZh = i18n.language === 'zh';
 
@@ -95,9 +109,26 @@ export default function PipelinePage() {
       setProfile(data);
       setMappings(null);
       setImportPlan(null);
+      setMappingOverrides({});
       setStep(1);
     } catch { message.error(t('pipeline.profileFailed')); }
     finally { setLoading(false); }
+  };
+
+  const handleCSVUpload = async (file) => {
+    setLoading(true);
+    try {
+      const content = await file.text();
+      const { data } = await api.post('/pipeline/profile/csv', { filename: file.name, content });
+      setProfile(data);
+      setMappings(null);
+      setImportPlan(null);
+      setMappingOverrides({});
+      setStep(1);
+      message.success(`${file.name} — ${data.row_count} rows × ${data.column_count} columns`);
+    } catch { message.error(t('pipeline.profileFailed')); }
+    finally { setLoading(false); }
+    return false; // prevent default upload
   };
 
   const handleSuggestMappings = async () => {
@@ -116,7 +147,27 @@ export default function PipelinePage() {
     if (!profile) return;
     setLoading(true);
     try {
-      const { data } = await api.post('/pipeline/import-plan', { source_id: profile.source_id, domain: 'pet_food' });
+      const body = { source_id: profile.source_id, domain: 'pet_food' };
+      // Apply mapping overrides for custom CSV
+      if (sourceMode === 'custom' && mappings && Object.keys(mappingOverrides).length > 0) {
+        const ignored = new Set();
+        const objMappingGroups = {};
+        // Start from auto-suggested mappings
+        for (const fs of (mappings.field_suggestions || [])) {
+          const override = mappingOverrides[fs.source_column];
+          if (override === 'ignore') { ignored.add(fs.source_column); continue; }
+          const objType = override?.objectType || fs.suggested_object_type;
+          const prop = override?.property || fs.suggested_property;
+          if (!objType) continue;
+          if (!objMappingGroups[objType]) objMappingGroups[objType] = { object_type: objType, id_column: '', field_mappings: [] };
+          if (prop === 'product_id' || prop === 'ingredient_id' || prop === 'brand_id' || prop === 'rule_id' || prop.endsWith('_id')) {
+            objMappingGroups[objType].id_column = fs.source_column;
+          }
+          objMappingGroups[objType].field_mappings.push({ source_column: fs.source_column, target_object_type: objType, target_property: prop, confidence: override ? 1.0 : fs.confidence, mapping_type: override ? 'manual' : fs.mapping_type });
+        }
+        body.object_mappings = Object.values(objMappingGroups);
+      }
+      const { data } = await api.post('/pipeline/import-plan', body);
       setImportPlan(data);
       setStep(4);
       loadRecentPlans();
@@ -188,7 +239,12 @@ export default function PipelinePage() {
       title: t('pipeline.source'),
       key: 'source',
       width: 130,
-      render: (_, r) => r.source_profile?.source_name || '—',
+      render: (_, r) => {
+        const st = r.metadata?.source_type || r.source_profile?.source_type;
+        const color = st === 'custom_csv' ? 'orange' : st === 'sample' ? 'blue' : 'default';
+        const label = SOURCE_TYPE_LABELS[st] ? t(SOURCE_TYPE_LABELS[st]) : (r.source_profile?.source_name || '—');
+        return <><Tag color={color} style={{ fontSize: 10 }}>{label}</Tag> {r.source_profile?.source_name || ''}</>;
+      },
     },
     {
       title: t('common.status'),
@@ -285,10 +341,44 @@ export default function PipelinePage() {
 
   const mappingColumns = [
     { title: t('pipeline.sourceColumn'), dataIndex: 'source_column', key: 'src', render: v => <Text code>{v}</Text> },
-    { title: t('pipeline.targetType'), dataIndex: 'suggested_object_type', key: 'type', render: v => v ? <Tag color="blue">{v}</Tag> : <Tag>—</Tag> },
-    { title: t('pipeline.targetProperty'), dataIndex: 'suggested_property', key: 'prop', render: v => v ? <Text code>{v}</Text> : '—' },
-    { title: t('pipeline.confidence'), dataIndex: 'confidence', key: 'conf', render: v => <Tag color={v >= 0.8 ? 'green' : v >= 0.5 ? 'orange' : 'red'}>{(v * 100).toFixed(0)}%</Tag> },
+    { title: t('pipeline.targetType'), dataIndex: 'suggested_object_type', key: 'type', render: (v, record) => {
+      const override = mappingOverrides[record.source_column];
+      if (override === 'ignore') return <Tag>—</Tag>;
+      if (override?.objectType) return <Tag color="blue">{override.objectType}</Tag>;
+      return v ? <Tag color="blue">{v}</Tag> : <Tag>—</Tag>;
+    }},
+    { title: t('pipeline.targetProperty'), dataIndex: 'suggested_property', key: 'prop', render: (v, record) => {
+      const override = mappingOverrides[record.source_column];
+      if (override === 'ignore') return <Text type="secondary">{t('pipeline.ignoreColumn')}</Text>;
+      if (override?.property) return <Text code>{override.property}</Text>;
+      return v ? <Text code>{v}</Text> : '—';
+    }},
+    { title: t('pipeline.confidence'), dataIndex: 'confidence', key: 'conf', render: (v, record) => {
+      if (mappingOverrides[record.source_column] && mappingOverrides[record.source_column] !== 'ignore') return <Tag color="green">100%</Tag>;
+      return <Tag color={v >= 0.8 ? 'green' : v >= 0.5 ? 'orange' : 'red'}>{(v * 100).toFixed(0)}%</Tag>;
+    }},
     { title: t('pipeline.reason'), dataIndex: 'reason', key: 'reason', ellipsis: true },
+    ...(sourceMode === 'custom' ? [{
+      title: t('pipeline.mappingOverride'),
+      key: 'override',
+      width: 160,
+      render: (_, record) => (
+        <Select size="small" style={{ width: '100%' }} placeholder={t('pipeline.overrideMapping')}
+          allowClear value={mappingOverrides[record.source_column] === 'ignore' ? 'ignore' : mappingOverrides[record.source_column]?.objectType || undefined}
+          onChange={(val) => {
+            setMappingOverrides(prev => {
+              const next = { ...prev };
+              if (val === 'ignore') { next[record.source_column] = 'ignore'; }
+              else if (val) { next[record.source_column] = { objectType: val, property: record.suggested_property }; }
+              else { delete next[record.source_column]; }
+              return next;
+            });
+          }}>
+          {TARGET_OBJECT_TYPES.map(ot => <Select.Option key={ot} value={ot}>{ot}</Select.Option>)}
+          <Select.Option value="ignore">{t('pipeline.ignoreColumn')}</Select.Option>
+        </Select>
+      ),
+    }] : []),
   ];
 
   const candidateObjColumns = [
@@ -417,41 +507,84 @@ export default function PipelinePage() {
       {/* ── Step 0: Select Source ─────────────────────────────────── */}
       <Card title={<><DatabaseOutlined /> {t('pipeline.s1')}</>}>
         <Space orientation="vertical" size={16} style={{ width: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text>{t('pipeline.selectSampleLabel')}</Text>
-            <Button size="small" icon={<ReloadOutlined />} onClick={loadSamples}>{t('common.refresh')}</Button>
+          {/* Source Mode Switch */}
+          <div>
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('pipeline.dataSourceMode')}</Text>
+            <Radio.Group value={sourceMode} onChange={e => { setSourceMode(e.target.value); setStep(-1); setProfile(null); setMappings(null); setImportPlan(null); setMappingOverrides({}); }}>
+              <Radio.Button value="sample"><DatabaseOutlined /> {t('pipeline.sampleData')}</Radio.Button>
+              <Radio.Button value="custom"><UploadOutlined /> {t('pipeline.customCSV')}</Radio.Button>
+            </Radio.Group>
           </div>
-          <Row gutter={[12, 12]}>
-            {samples.map(s => {
-              const info = SAMPLE_INFO[s.name] || {};
-              const selected = selectedSample === s.name;
-              return (
-                <Col xs={24} sm={12} md={6} key={s.name}>
-                  <Card
-                    size="small"
-                    hoverable
-                    onClick={() => setSelectedSample(s.name)}
-                    style={{ borderColor: selected ? '#1677ff' : undefined, cursor: 'pointer' }}
+
+          {/* Sample Data Mode */}
+          {sourceMode === 'sample' && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text>{t('pipeline.selectSampleLabel')}</Text>
+                <Button size="small" icon={<ReloadOutlined />} onClick={loadSamples}>{t('common.refresh')}</Button>
+              </div>
+              <Row gutter={[12, 12]}>
+                {samples.map(s => {
+                  const info = SAMPLE_INFO[s.name] || {};
+                  const selected = selectedSample === s.name;
+                  return (
+                    <Col xs={24} sm={12} md={6} key={s.name}>
+                      <Card
+                        size="small"
+                        hoverable
+                        onClick={() => setSelectedSample(s.name)}
+                        style={{ borderColor: selected ? '#1677ff' : undefined, cursor: 'pointer' }}
+                      >
+                        <div style={{ fontSize: 24, marginBottom: 8 }}>{info.icon || '📋'}</div>
+                        <Text strong style={{ display: 'block', fontSize: 13 }}>{s.name}</Text>
+                        <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>
+                          {isZh ? info.desc_zh : info.desc_en}
+                        </Text>
+                        <div style={{ marginTop: 8 }}>
+                          {info.objectType && <Tag color="blue" style={{ fontSize: 10 }}>{info.objectType}</Tag>}
+                          {info.linkType && <Tag color="green" style={{ fontSize: 10 }}>{info.linkType}</Tag>}
+                          <Tag style={{ fontSize: 9 }}>{t('common.demoData')}</Tag>
+                        </div>
+                      </Card>
+                    </Col>
+                  );
+                })}
+              </Row>
+              {selectedSample && (
+                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleProfile} loading={loading}>
+                  {t('pipeline.profileButton')}
+                </Button>
+              )}
+            </>
+          )}
+
+          {/* Custom CSV Mode */}
+          {sourceMode === 'custom' && (
+            <>
+              <Alert type="info" showIcon icon={<InfoCircleOutlined />} message={t('pipeline.customCSVNote')} style={{ fontSize: 12 }} />
+              <Card size="small" style={{ background: 'rgba(22,119,255,0.03)' }}>
+                <div style={{ textAlign: 'center', padding: '12px 0' }}>
+                  <Upload.Dragger
+                    accept=".csv"
+                    showUploadList={false}
+                    beforeUpload={handleCSVUpload}
+                    style={{ padding: '16px 0' }}
                   >
-                    <div style={{ fontSize: 24, marginBottom: 8 }}>{info.icon || '📋'}</div>
-                    <Text strong style={{ display: 'block', fontSize: 13 }}>{s.name}</Text>
-                    <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>
-                      {isZh ? info.desc_zh : info.desc_en}
-                    </Text>
-                    <div style={{ marginTop: 8 }}>
-                      {info.objectType && <Tag color="blue" style={{ fontSize: 10 }}>{info.objectType}</Tag>}
-                      {info.linkType && <Tag color="green" style={{ fontSize: 10 }}>{info.linkType}</Tag>}
-                      <Tag style={{ fontSize: 9 }}>{t('common.demoData')}</Tag>
-                    </div>
-                  </Card>
-                </Col>
-              );
-            })}
-          </Row>
-          {selectedSample && (
-            <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleProfile} loading={loading}>
-              {t('pipeline.profileButton')}
-            </Button>
+                    <p className="ant-upload-drag-icon"><CloudUploadOutlined style={{ fontSize: 40, color: '#1677ff' }} /></p>
+                    <p className="ant-upload-text" style={{ fontSize: 14 }}>{t('pipeline.dropCSV')}</p>
+                    <p className="ant-upload-hint" style={{ fontSize: 12 }}>{t('pipeline.csvUploadHint')}</p>
+                  </Upload.Dragger>
+                </div>
+              </Card>
+              <div>
+                <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('pipeline.targetObjectType')}</Text>
+                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t('pipeline.targetObjectTypeDesc')}</Text>
+                <Select style={{ width: 240 }} value={targetObjectType} onChange={setTargetObjectType}>
+                  {TARGET_OBJECT_TYPES.map(ot => <Select.Option key={ot} value={ot}>{ot}</Select.Option>)}
+                </Select>
+              </div>
+              <Alert type="warning" showIcon message={t('pipeline.csvPhaseNote')} style={{ fontSize: 11 }} />
+            </>
           )}
         </Space>
       </Card>

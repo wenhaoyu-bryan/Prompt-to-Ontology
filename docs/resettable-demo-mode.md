@@ -149,6 +149,16 @@ Set `AUTO_SEED_DEMO_DATA=false` to start with an empty graph on first launch (Cl
 
 ---
 
+## Rebuilding After Reset
+
+Clean Graph Build Mode can be used with either built-in sample data or custom CSV upload. After resetting:
+
+1. Open Data Pipeline
+2. Choose either "Demo Sample Data" (built-in) or "Upload Custom CSV" (your own data)
+3. Follow the pipeline workflow to rebuild graph instances
+
+See [Custom CSV Upload](custom-csv-upload.md) for details on the custom CSV path.
+
 ## Known limitations
 
 - Single-user demo (no multi-user auth)
