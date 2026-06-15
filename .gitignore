@@ -40,6 +40,7 @@ docs/*
 !docs/custom-csv-upload.md
 !docs/relationship-csv-upload.md
 !docs/graph-snapshot-diff-rollback.md
+!docs/rule-studio-simulation.md
 Phases/
 
 # Test data

@@ -1622,6 +1622,71 @@ def api_restore_snapshot(snapshot_id: str, body: dict):
         raise HTTPException(500, f"Failed to restore snapshot: {e}")
 
 
+# ── Rule Studio ──────────────────────────────────────────────────
+
+from rule_studio import (
+    list_rules as rs_list_rules,
+    get_rule_detail as rs_get_rule_detail,
+    get_evaluation_summary as rs_get_evaluation_summary,
+    get_product_rules as rs_get_product_rules,
+    simulate_rule as rs_simulate_rule,
+)
+from rule_studio.models import SimulationRequest
+
+@app.get("/api/rule-studio/rules")
+def api_rule_studio_list():
+    """List all rules."""
+    rules = rs_list_rules()
+    return {"rules": [r.model_dump() for r in rules]}
+
+@app.get("/api/rule-studio/rules/{rule_id}")
+def api_rule_studio_detail(rule_id: str):
+    """Get rule detail with explanation and examples."""
+    try:
+        detail = rs_get_rule_detail(rule_id)
+        return detail.model_dump()
+    except (KeyError, ValueError) as e:
+        raise HTTPException(404, str(e))
+
+@app.get("/api/rule-studio/evaluation-summary")
+def api_rule_studio_evaluation():
+    """Get rule evaluation coverage summary."""
+    try:
+        summary = rs_get_evaluation_summary()
+        return summary.model_dump()
+    except Exception as e:
+        raise HTTPException(500, f"Failed to evaluate rules: {e}")
+
+@app.get("/api/rule-studio/products/{product_id}/rules")
+def api_rule_studio_product_rules(product_id: str):
+    """Get all rule results for a specific product."""
+    try:
+        results = rs_get_product_rules(product_id)
+        return {"product_id": product_id, "results": results}
+    except Exception as e:
+        raise HTTPException(500, f"Failed to get product rules: {e}")
+
+@app.post("/api/rule-studio/simulate")
+def api_rule_studio_simulate(body: dict):
+    """Simulate a rule against custom input. Does NOT write to graph."""
+    rule_id = body.get("rule_id", "")
+    if not rule_id:
+        raise HTTPException(400, "rule_id is required")
+    try:
+        req = SimulationRequest(
+            rule_id=rule_id,
+            object_type=body.get("object_type", "PetFoodProduct"),
+            properties=body.get("properties", {}),
+            ingredient_names=body.get("ingredient_names", []),
+        )
+        result = rs_simulate_rule(req)
+        return result.model_dump()
+    except (KeyError, ValueError) as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"Simulation failed: {e}")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8765)
