@@ -1378,8 +1378,15 @@ def api_review_get_batch(batch_id: str):
 def api_review_apply_batch(batch_id: str):
     """Apply all approved items in a batch."""
     try:
-        results = apply_approved_batch(batch_id)
-        return {"results": [r.model_dump() for r in results]}
+        batch_result = apply_approved_batch(batch_id)
+        return {
+            "results": [r.model_dump() for r in batch_result["results"]],
+            "before_snapshot_id": batch_result.get("before_snapshot_id"),
+            "after_snapshot_id": batch_result.get("after_snapshot_id"),
+            "diff_id": batch_result.get("diff_id"),
+            "applied": sum(1 for r in batch_result["results"] if r.applied),
+            "failed": sum(1 for r in batch_result["results"] if not r.applied),
+        }
     except ValueError as e:
         raise HTTPException(400, str(e))
 
@@ -1530,6 +1537,89 @@ def api_submit_build_plan_to_review(plan_id: str):
         return svc.submit_to_review(plan_id)
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+# ── Graph Snapshot / Diff / Rollback ────────────────────────────
+
+from graph_snapshot import (
+    create_snapshot as gs_create_snapshot,
+    list_snapshots as gs_list_snapshots,
+    get_snapshot as gs_get_snapshot,
+    compare_snapshots as gs_compare_snapshots,
+    list_diffs as gs_list_diffs,
+    get_diff as gs_get_diff,
+    restore_snapshot as gs_restore_snapshot,
+    is_restore_enabled as gs_is_restore_enabled,
+)
+
+@app.get("/api/graph/snapshots")
+def api_list_snapshots():
+    """List graph snapshots."""
+    return {"snapshots": [s.model_dump() for s in gs_list_snapshots()]}
+
+@app.get("/api/graph/snapshots/{snapshot_id}")
+def api_get_snapshot(snapshot_id: str):
+    """Get a single snapshot."""
+    snap = gs_get_snapshot(snapshot_id)
+    if not snap:
+        raise HTTPException(404, f"Snapshot {snapshot_id} not found")
+    return snap.model_dump()
+
+@app.post("/api/graph/snapshots")
+def api_create_snapshot(body: dict):
+    """Create a manual graph snapshot."""
+    reason = body.get("reason", "manual")
+    title = body.get("title", "")
+    metadata = body.get("metadata", {})
+    try:
+        snap = gs_create_snapshot(reason=reason, title=title, metadata=metadata)
+        return snap.model_dump()
+    except Exception as e:
+        raise HTTPException(500, f"Failed to create snapshot: {e}")
+
+@app.post("/api/graph/snapshots/compare")
+def api_compare_snapshots(body: dict):
+    """Compare two snapshots."""
+    before_id = body.get("before_snapshot_id", "")
+    after_id = body.get("after_snapshot_id", "")
+    if not before_id or not after_id:
+        raise HTTPException(400, "before_snapshot_id and after_snapshot_id are required")
+    try:
+        diff = gs_compare_snapshots(before_id, after_id)
+        return diff.model_dump()
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"Failed to compare snapshots: {e}")
+
+@app.get("/api/graph/diffs")
+def api_list_diffs():
+    """List graph diffs."""
+    return {"diffs": [d.model_dump() for d in gs_list_diffs()]}
+
+@app.get("/api/graph/diffs/{diff_id}")
+def api_get_diff(diff_id: str):
+    """Get a single diff."""
+    diff = gs_get_diff(diff_id)
+    if not diff:
+        raise HTTPException(404, f"Diff {diff_id} not found")
+    return diff.model_dump()
+
+@app.post("/api/graph/snapshots/{snapshot_id}/restore")
+def api_restore_snapshot(snapshot_id: str, body: dict):
+    """Restore graph from a snapshot."""
+    if not gs_is_restore_enabled():
+        raise HTTPException(403, "Snapshot restore is disabled (SNAPSHOT_RESTORE_ENABLED=false)")
+    confirm = body.get("confirm", False)
+    if not confirm:
+        raise HTTPException(400, "confirm=true is required for restore")
+    try:
+        result = gs_restore_snapshot(snapshot_id, confirm=True)
+        return result.model_dump()
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"Failed to restore snapshot: {e}")
 
 
 if __name__ == "__main__":

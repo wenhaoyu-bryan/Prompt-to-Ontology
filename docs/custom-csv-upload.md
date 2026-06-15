@@ -99,3 +99,7 @@ custom_pf_001,Custom Indoor Cat Formula,ExampleBrand,Cat,Adult,34,18,0.7,1200
 custom_pf_002,Custom Senior Cat Formula,ExampleBrand,Cat,Senior,30,16,0.9,900
 custom_pf_003,Custom Kitten Formula,ExampleBrand,Cat,Kitten,38,20,0.6,1400
 ```
+
+## Graph Snapshots
+
+All graph mutations (including custom CSV applies) now generate before/after snapshots. See [Graph Snapshot, Diff & Rollback](graph-snapshot-diff-rollback.md) for details.

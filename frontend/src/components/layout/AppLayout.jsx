@@ -13,6 +13,7 @@ import {
   BulbOutlined,
   GlobalOutlined,
   ApiOutlined,
+  SafetyOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -61,6 +62,7 @@ export default function AppLayout() {
       label: !collapsed ? t('nav.groupOperate') : null,
       children: [
         { key: '/agent', icon: <RobotOutlined />, label: t('nav.agent') },
+        { key: '/graph-governance', icon: <SafetyOutlined />, label: t('nav.graphGovernance') },
       ],
     },
     {

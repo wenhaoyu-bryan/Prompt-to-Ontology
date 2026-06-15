@@ -39,6 +39,7 @@ docs/*
 !docs/full-build-scenario.md
 !docs/custom-csv-upload.md
 !docs/relationship-csv-upload.md
+!docs/graph-snapshot-diff-rollback.md
 Phases/
 
 # Test data

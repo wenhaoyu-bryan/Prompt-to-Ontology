@@ -149,8 +149,11 @@ def apply_review_item(item_id: str) -> ReviewApplyResult:
     return result
 
 
-def apply_approved_batch(batch_id: str) -> list[ReviewApplyResult]:
-    """Apply all approved items in a batch. Objects are applied before links."""
+def apply_approved_batch(batch_id: str) -> dict:
+    """Apply all approved items in a batch. Objects are applied before links.
+
+    Returns a dict with 'results' (list of ReviewApplyResult) and snapshot/diff IDs.
+    """
     batch = get_batch(batch_id)
     if batch is None:
         raise ValueError(f"Review batch '{batch_id}' not found")
@@ -167,6 +170,21 @@ def apply_approved_batch(batch_id: str) -> list[ReviewApplyResult]:
         (i.metadata or {}).get("_stage_order", 99),
     ))
 
+    # Create before snapshot
+    before_snapshot_id = None
+    after_snapshot_id = None
+    diff_id = None
+    try:
+        from graph_snapshot import create_snapshot, compare_snapshots
+        before_snap = create_snapshot(
+            reason="before_batch_apply",
+            title=f"Before applying batch {batch_id}",
+            metadata={"review_batch_id": batch_id},
+        )
+        before_snapshot_id = before_snap.snapshot_id
+    except Exception:
+        pass
+
     results = []
     for item in items:
         result = apply_review_item(item.id)
@@ -179,7 +197,29 @@ def apply_approved_batch(batch_id: str) -> list[ReviewApplyResult]:
     except Exception:
         pass
 
-    return results
+    # Create after snapshot and diff
+    try:
+        from graph_snapshot import create_snapshot, compare_snapshots
+        after_snap = create_snapshot(
+            reason="after_batch_apply",
+            title=f"After applying batch {batch_id}",
+            metadata={"review_batch_id": batch_id},
+        )
+        after_snapshot_id = after_snap.snapshot_id
+        if before_snapshot_id:
+            diff = compare_snapshots(before_snapshot_id, after_snapshot_id)
+            diff.metadata["review_batch_id"] = batch_id
+            diff.metadata["operation"] = "batch_apply"
+            diff_id = diff.diff_id
+    except Exception:
+        pass
+
+    return {
+        "results": results,
+        "before_snapshot_id": before_snapshot_id,
+        "after_snapshot_id": after_snapshot_id,
+        "diff_id": diff_id,
+    }
 
 
 def get_review_summary() -> ReviewQueueSummary:
