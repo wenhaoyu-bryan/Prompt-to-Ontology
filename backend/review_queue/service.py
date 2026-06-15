@@ -200,6 +200,7 @@ def apply_approved_batch(batch_id: str) -> dict:
     # Create after snapshot and diff
     try:
         from graph_snapshot import create_snapshot, compare_snapshots
+        from graph_snapshot.storage import update_diff
         after_snap = create_snapshot(
             reason="after_batch_apply",
             title=f"After applying batch {batch_id}",
@@ -210,6 +211,7 @@ def apply_approved_batch(batch_id: str) -> dict:
             diff = compare_snapshots(before_snapshot_id, after_snapshot_id)
             diff.metadata["review_batch_id"] = batch_id
             diff.metadata["operation"] = "batch_apply"
+            update_diff(diff)
             diff_id = diff.diff_id
     except Exception:
         pass

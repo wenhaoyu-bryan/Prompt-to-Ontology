@@ -62,3 +62,19 @@ def load_diffs() -> list[GraphDiff]:
         return [GraphDiff(**item) for item in raw]
     except (json.JSONDecodeError, Exception):
         return []
+
+
+def update_diff(diff: GraphDiff) -> None:
+    """Update a single diff in the persisted JSON file.
+
+    Loads all diffs, replaces the one matching ``diff.diff_id``,
+    and writes the list back.  If the diff is not found it is appended.
+    """
+    diffs = load_diffs()
+    for i, d in enumerate(diffs):
+        if d.diff_id == diff.diff_id:
+            diffs[i] = diff
+            break
+    else:
+        diffs.append(diff)
+    save_diffs(diffs)

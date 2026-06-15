@@ -123,7 +123,7 @@ export default function GraphGovernancePage() {
       okType: 'danger',
       onOk: async () => {
         try {
-          await api.post(`/graph/snapshots/${record.id}/restore`, { confirm: true });
+          await api.post(`/graph/snapshots/${record.snapshot_id}/restore`, { confirm: true });
           message.success(t('graphGovernance.restoreSuccess'));
           await loadAll();
         } catch {
@@ -204,8 +204,8 @@ export default function GraphGovernancePage() {
   const snapshotColumns = [
     {
       title: t('graphGovernance.snapshotId'),
-      dataIndex: 'id',
-      key: 'id',
+      dataIndex: 'snapshot_id',
+      key: 'snapshot_id',
       width: 120,
       render: (v) => <Text code style={{ fontSize: 12 }}>{v}</Text>,
     },
@@ -265,7 +265,7 @@ export default function GraphGovernancePage() {
             size="small"
             icon={<SwapOutlined />}
             onClick={() => {
-              setBeforeId(record.id);
+              setBeforeId(record.snapshot_id);
               scrollToDiffSection();
             }}
           >
@@ -289,17 +289,16 @@ export default function GraphGovernancePage() {
 
   const nodeDiffColumns = [
     { title: t('graphGovernance.nodeId'), dataIndex: 'id', key: 'id', width: 160, render: (v) => <Text code style={{ fontSize: 11 }}>{v}</Text> },
-    { title: t('graphGovernance.name'), dataIndex: 'name', key: 'name', ellipsis: true },
-    { title: t('graphGovernance.type'), dataIndex: 'type', key: 'type', width: 120, render: (v) => v ? <Tag>{v}</Tag> : '-' },
-    { title: t('graphGovernance.detail'), dataIndex: 'detail', key: 'detail', ellipsis: true },
+    { title: t('graphGovernance.name'), key: 'name', ellipsis: true, render: (_, record) => record.properties?.name || record.id || '-' },
+    { title: t('graphGovernance.type'), key: 'type', width: 120, render: (_, record) => record.labels?.join(', ') ? <Tag>{record.labels.join(', ')}</Tag> : '-' },
+    { title: t('graphGovernance.detail'), key: 'detail', ellipsis: true, render: (_, record) => Object.keys(record.properties || {}).join(', ') || '-' },
   ];
 
   const relDiffColumns = [
-    { title: t('graphGovernance.relId'), dataIndex: 'id', key: 'id', width: 120, render: (v) => <Text code style={{ fontSize: 11 }}>{v}</Text> },
-    { title: t('graphGovernance.linkType'), dataIndex: 'linkType', key: 'linkType', width: 120, render: (v) => <Tag color="blue">{v}</Tag> },
-    { title: t('graphGovernance.source'), dataIndex: 'source', key: 'source', ellipsis: true },
-    { title: t('graphGovernance.target'), dataIndex: 'target', key: 'target', ellipsis: true },
-    { title: t('graphGovernance.detail'), dataIndex: 'detail', key: 'detail', ellipsis: true },
+    { title: t('graphGovernance.linkType'), dataIndex: 'type', key: 'type', width: 120, render: (v) => <Tag color="blue">{v}</Tag> },
+    { title: t('graphGovernance.source'), dataIndex: 'source_id', key: 'source_id', ellipsis: true },
+    { title: t('graphGovernance.target'), dataIndex: 'target_id', key: 'target_id', ellipsis: true },
+    { title: t('graphGovernance.detail'), key: 'detail', ellipsis: true, render: (_, record) => Object.keys(record.properties || {}).join(', ') || '-' },
   ];
 
   /* ───────────────────── Recent Diffs Columns ───────────────────── */
@@ -307,8 +306,8 @@ export default function GraphGovernancePage() {
   const diffHistoryColumns = [
     {
       title: t('graphGovernance.diffId'),
-      dataIndex: 'id',
-      key: 'id',
+      dataIndex: 'diff_id',
+      key: 'diff_id',
       width: 120,
       render: (v) => <Text code style={{ fontSize: 12 }}>{v}</Text>,
     },
@@ -331,8 +330,8 @@ export default function GraphGovernancePage() {
       key: 'nodes_delta',
       width: 100,
       render: (_, record) => {
-        const added = record.nodes_added || 0;
-        const removed = record.nodes_removed || 0;
+        const added = record.summary?.nodes_added || 0;
+        const removed = record.summary?.nodes_removed || 0;
         return (
           <Space size={4}>
             {added > 0 && <Text style={{ color: '#52c41a', fontSize: 12 }}>+{added}</Text>}
@@ -347,8 +346,8 @@ export default function GraphGovernancePage() {
       key: 'rels_delta',
       width: 100,
       render: (_, record) => {
-        const added = record.rels_added || 0;
-        const removed = record.rels_removed || 0;
+        const added = record.summary?.relationships_added || 0;
+        const removed = record.summary?.relationships_removed || 0;
         return (
           <Space size={4}>
             {added > 0 && <Text style={{ color: '#52c41a', fontSize: 12 }}>+{added}</Text>}
@@ -455,7 +454,7 @@ export default function GraphGovernancePage() {
         <Table
           dataSource={snapshots}
           columns={snapshotColumns}
-          rowKey="id"
+          rowKey="snapshot_id"
           size="small"
           pagination={{ pageSize: 10, showSizeChanger: false }}
           locale={{ emptyText: t('graphGovernance.noSnapshots') }}
@@ -475,7 +474,7 @@ export default function GraphGovernancePage() {
             <Row gutter={[16, 8]}>
               <Col span={12}>
                 <Text type="secondary">{t('graphGovernance.snapshotId')}</Text>
-                <div><Text code>{detailSnapshot.id}</Text></div>
+                <div><Text code>{detailSnapshot.snapshot_id}</Text></div>
               </Col>
               <Col span={12}>
                 <Text type="secondary">{t('graphGovernance.reason')}</Text>
@@ -524,8 +523,8 @@ export default function GraphGovernancePage() {
                   showSearch
                   optionFilterProp="label"
                   options={snapshots.map((s) => ({
-                    value: s.id,
-                    label: `${s.id} - ${s.reason || ''} ${s.title ? `(${s.title})` : ''}`,
+                    value: s.snapshot_id,
+                    label: `${s.snapshot_id} - ${s.reason || ''} ${s.title ? `(${s.title})` : ''}`,
                   }))}
                 />
               </Col>
@@ -542,8 +541,8 @@ export default function GraphGovernancePage() {
                   showSearch
                   optionFilterProp="label"
                   options={snapshots.map((s) => ({
-                    value: s.id,
-                    label: `${s.id} - ${s.reason || ''} ${s.title ? `(${s.title})` : ''}`,
+                    value: s.snapshot_id,
+                    label: `${s.snapshot_id} - ${s.reason || ''} ${s.title ? `(${s.title})` : ''}`,
                   }))}
                 />
               </Col>
@@ -599,7 +598,7 @@ export default function GraphGovernancePage() {
                     <Card size="small">
                       <Statistic
                         title={t('graphGovernance.relsAdded')}
-                        value={diffResult.summary?.rels_added ?? 0}
+                        value={diffResult.summary?.relationships_added ?? 0}
                         valueStyle={{ color: '#52c41a', fontSize: 18 }}
                         prefix={<PlusOutlined />}
                       />
@@ -609,7 +608,7 @@ export default function GraphGovernancePage() {
                     <Card size="small">
                       <Statistic
                         title={t('graphGovernance.relsRemoved')}
-                        value={diffResult.summary?.rels_removed ?? 0}
+                        value={diffResult.summary?.relationships_removed ?? 0}
                         valueStyle={{ color: '#ff4d4f', fontSize: 18 }}
                         prefix={<MinusOutlined />}
                       />
@@ -619,7 +618,7 @@ export default function GraphGovernancePage() {
                     <Card size="small">
                       <Statistic
                         title={t('graphGovernance.relsChanged')}
-                        value={diffResult.summary?.rels_changed ?? 0}
+                        value={diffResult.summary?.relationships_changed ?? 0}
                         valueStyle={{ color: '#fa8c16', fontSize: 18 }}
                         prefix={<EditOutlined />}
                       />
@@ -675,10 +674,10 @@ export default function GraphGovernancePage() {
                     },
                     {
                       key: 'relsAdded',
-                      label: `${t('graphGovernance.relsAdded')} (${(diffResult.rels_added || []).length})`,
+                      label: `${t('graphGovernance.relsAdded')} (${(diffResult.relationships_added || []).length})`,
                       children: (
                         <Table
-                          dataSource={diffResult.rels_added || []}
+                          dataSource={diffResult.relationships_added || []}
                           columns={relDiffColumns}
                           rowKey={(r, i) => r.id || i}
                           size="small"
@@ -689,10 +688,10 @@ export default function GraphGovernancePage() {
                     },
                     {
                       key: 'relsRemoved',
-                      label: `${t('graphGovernance.relsRemoved')} (${(diffResult.rels_removed || []).length})`,
+                      label: `${t('graphGovernance.relsRemoved')} (${(diffResult.relationships_removed || []).length})`,
                       children: (
                         <Table
-                          dataSource={diffResult.rels_removed || []}
+                          dataSource={diffResult.relationships_removed || []}
                           columns={relDiffColumns}
                           rowKey={(r, i) => r.id || i}
                           size="small"
@@ -703,10 +702,10 @@ export default function GraphGovernancePage() {
                     },
                     {
                       key: 'relsChanged',
-                      label: `${t('graphGovernance.relsChanged')} (${(diffResult.rels_changed || []).length})`,
+                      label: `${t('graphGovernance.relsChanged')} (${(diffResult.relationships_changed || []).length})`,
                       children: (
                         <Table
-                          dataSource={diffResult.rels_changed || []}
+                          dataSource={diffResult.relationships_changed || []}
                           columns={relDiffColumns}
                           rowKey={(r, i) => r.id || i}
                           size="small"
@@ -731,7 +730,7 @@ export default function GraphGovernancePage() {
         <Table
           dataSource={diffs}
           columns={diffHistoryColumns}
-          rowKey="id"
+          rowKey="diff_id"
           size="small"
           pagination={{ pageSize: 10, showSizeChanger: false }}
           locale={{ emptyText: t('graphGovernance.noDiffs') }}
