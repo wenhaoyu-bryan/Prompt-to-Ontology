@@ -16,6 +16,7 @@ class DemoAdminService:
     def __init__(self, driver, pipeline_service=None):
         self.driver = driver
         self.pipeline_service = pipeline_service
+        self._last_reset_at: str | None = None
 
     # ---------- safety guard ----------
 
@@ -42,6 +43,7 @@ class DemoAdminService:
             review_queue=review,
             pipeline=pipeline,
             agent=agent,
+            last_reset_at=self._last_reset_at,
             warnings=warnings,
         )
 
@@ -59,6 +61,7 @@ class DemoAdminService:
         if mode == "seeded":
             self._seed_pet_food()
 
+        self._last_reset_at = datetime.now(timezone.utc).isoformat()
         return self.get_state()
 
     # ---------- seed ----------
@@ -74,6 +77,7 @@ class DemoAdminService:
         self._refresh_graph()
         self._clear_review_queue()
         self._clear_pipeline()
+        self._last_reset_at = datetime.now(timezone.utc).isoformat()
         return self.get_state()
 
     # ---------- internal helpers ----------
@@ -150,8 +154,11 @@ class DemoAdminService:
         return "unknown"
 
     def _clear_graph(self):
-        with self.driver.session() as session:
-            session.run("MATCH (n) DETACH DELETE n")
+        try:
+            with self.driver.session() as session:
+                session.run("MATCH (n) DETACH DELETE n")
+        except Exception as e:
+            raise RuntimeError(f"Failed to clear graph: {e}")
 
     @staticmethod
     def _refresh_graph():

@@ -63,6 +63,11 @@ def create_review_batch_from_import_plan(import_plan: ImportPlan) -> ReviewBatch
             "source_type": "custom_csv",
             "filename": import_plan.metadata.get("filename", ""),
         }
+        # Include relationship-specific metadata when present
+        for key in ("import_type", "link_type", "source_object_type", "target_object_type"):
+            val = import_plan.metadata.get(key)
+            if val:
+                source_meta[key] = val
 
     # ── Candidate objects → review items ───────────────────────────────
     for idx, obj in enumerate(import_plan.candidate_objects):
@@ -88,7 +93,8 @@ def create_review_batch_from_import_plan(import_plan: ImportPlan) -> ReviewBatch
         items.append(ri)
 
     # ── Candidate links → review items ─────────────────────────────────
-    for link in import_plan.candidate_links:
+    for idx, link in enumerate(import_plan.candidate_links):
+        link_meta = {**source_meta, "source_row_index": link.source_row if link.source_row >= 0 else idx}
         ri = ReviewItem(
             id=f"ri-{uuid.uuid4().hex[:12]}",
             batch_id=batch_id,
@@ -104,8 +110,8 @@ def create_review_batch_from_import_plan(import_plan: ImportPlan) -> ReviewBatch
             created_at=now,
             updated_at=now,
         )
-        if source_meta:
-            ri.metadata = source_meta
+        if link_meta:
+            ri.metadata = link_meta
         items.append(ri)
 
     # ── Validation warnings → review items ─────────────────────────────

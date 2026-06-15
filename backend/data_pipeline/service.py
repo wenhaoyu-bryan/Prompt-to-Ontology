@@ -18,7 +18,7 @@ from ontology_kernel.models import OntologySchema
 
 from .import_plan import create_import_plan
 from .mapper import suggest_field_mappings, suggest_object_mappings
-from .models import DataSourceProfile, ImportPlan, MappingSuggestion, ObjectMapping, FieldMapping, LinkMapping
+from .models import CandidateLink, DataSourceProfile, ImportPlan, ImportPlanSummary, MappingSuggestion, ObjectMapping, FieldMapping, LinkMapping, PlanStatus
 from .profiler import profile_csv, profile_rows
 
 # Sample data paths
@@ -204,6 +204,178 @@ class PipelineService:
 
     def get_import_plan(self, plan_id: str) -> ImportPlan | None:
         return self._plans.get(plan_id)
+
+    def create_relationship_import_plan(
+        self,
+        source_id: str,
+        domain: str,
+        link_type: str,
+        source_id_column: str,
+        target_id_column: str,
+        source_object_type: str = "",
+        target_object_type: str = "",
+        property_columns: list[str] | None = None,
+    ) -> ImportPlan:
+        """Create an import plan for a relationship CSV upload.
+
+        Generates candidate links from CSV rows, validates endpoints against Neo4j,
+        and creates an Import Plan with only candidate_links (no candidate_objects).
+        """
+        profile = self._profiles.get(source_id)
+        if not profile:
+            raise ValueError(f"Profile not found: {source_id}")
+
+        rows = self._rows.get(source_id, [])
+        schema = self._load_schema(domain)
+        plan_id = f"plan-{uuid.uuid4().hex[:8]}"
+
+        # Resolve source/target types from schema if not provided
+        lt_def = schema.link_types.get(link_type)
+        if lt_def:
+            if not source_object_type:
+                source_object_type = lt_def.source_type
+            if not target_object_type:
+                target_object_type = lt_def.target_type
+
+        # Generate candidate links from rows
+        prop_cols = property_columns or []
+        candidate_links: list[CandidateLink] = []
+        validation_issues: list[dict[str, Any]] = []
+        seen_links: set[tuple[str, str, str]] = set()
+
+        for row_idx, row in enumerate(rows):
+            src_id = str(row.get(source_id_column, "")).strip()
+            tgt_id = str(row.get(target_id_column, "")).strip()
+
+            if not src_id:
+                validation_issues.append({
+                    "level": "error", "code": "MISSING_SOURCE_ID",
+                    "message": f"Row {row_idx}: source ID column '{source_id_column}' is empty",
+                    "object_id": "", "link_id": "", "field": source_id_column,
+                })
+                continue
+            if not tgt_id:
+                validation_issues.append({
+                    "level": "error", "code": "MISSING_TARGET_ID",
+                    "message": f"Row {row_idx}: target ID column '{target_id_column}' is empty",
+                    "object_id": "", "link_id": "", "field": target_id_column,
+                })
+                continue
+
+            # Collect optional properties
+            props: dict[str, Any] = {}
+            for col in prop_cols:
+                val = row.get(col)
+                if val is not None and str(val).strip():
+                    props[col] = val
+
+            # Duplicate check
+            link_key = (src_id, tgt_id, link_type)
+            if link_key in seen_links:
+                validation_issues.append({
+                    "level": "warning", "code": "DUPLICATE_RELATIONSHIP",
+                    "message": f"Row {row_idx}: duplicate {link_type} from {src_id} to {tgt_id}",
+                    "object_id": src_id, "link_id": f"{src_id}-[{link_type}]->{tgt_id}", "field": "",
+                })
+                continue
+            seen_links.add(link_key)
+
+            candidate_links.append(CandidateLink(
+                source_id=src_id,
+                target_id=tgt_id,
+                type=link_type,
+                properties=props,
+                source_row=row_idx,
+                confidence=1.0,
+            ))
+
+        # Validate endpoints against Neo4j
+        endpoint_errors = 0
+        try:
+            from neo4j_connector import get_driver
+            drv = get_driver()
+            with drv.session() as session:
+                for cl in candidate_links:
+                    check = session.run(
+                        "MATCH (a {id: $sid}), (b {id: $tid}) RETURN labels(a) AS a_labels, labels(b) AS b_labels",
+                        sid=cl.source_id, tid=cl.target_id,
+                    ).single()
+                    if not check:
+                        validation_issues.append({
+                            "level": "error", "code": "MISSING_ENDPOINT",
+                            "message": f"Source ({cl.source_id}) or target ({cl.target_id}) node not found in graph",
+                            "object_id": cl.source_id, "link_id": "", "field": "",
+                        })
+                        endpoint_errors += 1
+                    else:
+                        a_labels = check["a_labels"] or []
+                        b_labels = check["b_labels"] or []
+                        if source_object_type and source_object_type not in a_labels:
+                            validation_issues.append({
+                                "level": "error", "code": "WRONG_SOURCE_TYPE",
+                                "message": f"Source {cl.source_id} has labels {a_labels}, expected {source_object_type}",
+                                "object_id": cl.source_id, "link_id": "", "field": "",
+                            })
+                            endpoint_errors += 1
+                        if target_object_type and target_object_type not in b_labels:
+                            validation_issues.append({
+                                "level": "error", "code": "WRONG_TARGET_TYPE",
+                                "message": f"Target {cl.target_id} has labels {b_labels}, expected {target_object_type}",
+                                "object_id": cl.target_id, "link_id": "", "field": "",
+                            })
+                            endpoint_errors += 1
+        except Exception as e:
+            validation_issues.append({
+                "level": "warning", "code": "ENDPOINT_CHECK_FAILED",
+                "message": f"Could not validate endpoints: {e}",
+                "object_id": "", "link_id": "", "field": "",
+            })
+
+        # Determine status
+        has_error = any(i["level"] in ("critical", "error") for i in validation_issues)
+        has_warning = any(i["level"] == "warning" for i in validation_issues)
+
+        if has_error:
+            status = PlanStatus.HAS_ERRORS
+        elif has_warning:
+            status = PlanStatus.READY_FOR_REVIEW
+        elif candidate_links:
+            status = PlanStatus.VALIDATED
+        else:
+            status = PlanStatus.DRAFT
+
+        # Build summary
+        confidences = [cl.confidence for cl in candidate_links]
+        avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
+        summary = ImportPlanSummary(
+            new_links=len(candidate_links),
+            validation_errors=sum(1 for i in validation_issues if i["level"] in ("error", "critical")),
+            validation_warnings=sum(1 for i in validation_issues if i["level"] == "warning"),
+            confidence_avg=round(avg_conf, 3),
+        )
+
+        plan = ImportPlan(
+            plan_id=plan_id,
+            domain=domain,
+            source_profile=profile,
+            candidate_links=candidate_links,
+            validation_issues=validation_issues,
+            summary=summary,
+            status=status,
+            metadata={
+                "source_type": "custom_csv",
+                "import_type": "relationship",
+                "filename": profile.source_name,
+                "link_type": link_type,
+                "source_object_type": source_object_type,
+                "target_object_type": target_object_type,
+                "uploaded_at": profile.created_at.isoformat() if profile.created_at else "",
+            },
+        )
+
+        self._plans[plan.plan_id] = plan
+        self._save_plans_to_disk()
+        return plan
 
     def list_import_plans(self) -> list[ImportPlan]:
         return sorted(self._plans.values(), key=lambda p: p.created_at, reverse=True)
