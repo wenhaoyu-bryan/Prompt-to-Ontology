@@ -7,7 +7,10 @@ as backend/data_pipeline/service.py.
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from .models import GraphDiff, GraphSnapshot
 
@@ -36,7 +39,11 @@ def load_snapshots() -> list[GraphSnapshot]:
         with open(_SNAPSHOTS_FILE, "r", encoding="utf-8") as f:
             raw = json.load(f)
         return [GraphSnapshot(**item) for item in raw]
-    except (json.JSONDecodeError, Exception):
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.warning("Failed to load snapshots from %s: %s", _SNAPSHOTS_FILE, e)
+        return []
+    except OSError as e:
+        logger.warning("Cannot read snapshots file %s: %s", _SNAPSHOTS_FILE, e)
         return []
 
 
@@ -60,7 +67,11 @@ def load_diffs() -> list[GraphDiff]:
         with open(_DIFFS_FILE, "r", encoding="utf-8") as f:
             raw = json.load(f)
         return [GraphDiff(**item) for item in raw]
-    except (json.JSONDecodeError, Exception):
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.warning("Failed to load diffs from %s: %s", _DIFFS_FILE, e)
+        return []
+    except OSError as e:
+        logger.warning("Cannot read diffs file %s: %s", _DIFFS_FILE, e)
         return []
 
 

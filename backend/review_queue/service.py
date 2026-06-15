@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 from .graph_writer import apply_review_item_to_graph
 from .import_plan_adapter import create_review_batch_from_import_plan
@@ -182,8 +185,8 @@ def apply_approved_batch(batch_id: str) -> dict:
             metadata={"review_batch_id": batch_id},
         )
         before_snapshot_id = before_snap.snapshot_id
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to create before-snapshot for batch %s: %s", batch_id, e)
 
     results = []
     for item in items:
@@ -194,8 +197,8 @@ def apply_approved_batch(batch_id: str) -> dict:
     try:
         from ontology import refresh_graph
         refresh_graph()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to refresh graph after batch apply: %s", e)
 
     # Create after snapshot and diff
     try:
@@ -213,8 +216,8 @@ def apply_approved_batch(batch_id: str) -> dict:
             diff.metadata["operation"] = "batch_apply"
             update_diff(diff)
             diff_id = diff.diff_id
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to create after-snapshot/diff for batch %s: %s", batch_id, e)
 
     return {
         "results": results,

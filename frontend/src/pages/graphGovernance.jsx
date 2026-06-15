@@ -265,7 +265,12 @@ export default function GraphGovernancePage() {
             size="small"
             icon={<SwapOutlined />}
             onClick={() => {
-              setBeforeId(record.snapshot_id);
+              // Clicked snapshot is the "after" (result), auto-select older one as "before"
+              setAfterId(record.snapshot_id);
+              const idx = snapshots.findIndex(s => s.snapshot_id === record.snapshot_id);
+              if (idx >= 0 && idx < snapshots.length - 1) {
+                setBeforeId(snapshots[idx + 1].snapshot_id);
+              }
               scrollToDiffSection();
             }}
           >
@@ -289,9 +294,23 @@ export default function GraphGovernancePage() {
 
   const nodeDiffColumns = [
     { title: t('graphGovernance.nodeId'), dataIndex: 'id', key: 'id', width: 160, render: (v) => <Text code style={{ fontSize: 11 }}>{v}</Text> },
-    { title: t('graphGovernance.name'), key: 'name', ellipsis: true, render: (_, record) => record.properties?.name || record.id || '-' },
-    { title: t('graphGovernance.type'), key: 'type', width: 120, render: (_, record) => record.labels?.join(', ') ? <Tag>{record.labels.join(', ')}</Tag> : '-' },
-    { title: t('graphGovernance.detail'), key: 'detail', ellipsis: true, render: (_, record) => Object.keys(record.properties || {}).join(', ') || '-' },
+    { title: t('graphGovernance.name'), key: 'name', ellipsis: true, render: (_, record) => {
+      if (record.properties?.name) return record.properties.name;
+      if (record.changed_fields?.length) return record.changed_fields.join(', ');
+      return record.id || '-';
+    }},
+    { title: t('graphGovernance.type'), key: 'type', width: 120, render: (_, record) => {
+      if (record.labels?.length) return <Tag>{record.labels.join(', ')}</Tag>;
+      if (record.changed_fields?.length) return <Tag color="orange">{record.changed_fields.length} changed</Tag>;
+      return '-';
+    }},
+    { title: t('graphGovernance.detail'), key: 'detail', ellipsis: true, render: (_, record) => {
+      if (record.properties) return Object.keys(record.properties).join(', ') || '-';
+      if (record.before && record.after) {
+        return record.changed_fields?.map(f => `${f}: ${record.before[f]} → ${record.after[f]}`).join(', ') || '-';
+      }
+      return '-';
+    }},
   ];
 
   const relDiffColumns = [
@@ -384,7 +403,7 @@ export default function GraphGovernancePage() {
   /* ───────────────────── Render ───────────────────── */
 
   return (
-    <Space orientation="vertical" size={20} style={{ width: '100%' }}>
+    <Space direction="vertical" size={20} style={{ width: '100%' }}>
       {/* Page Title */}
       <Card size="small" style={{ background: 'linear-gradient(135deg, rgba(22,119,255,0.06) 0%, rgba(114,46,209,0.06) 100%)' }}>
         <Title level={3} style={{ margin: 0 }}>{t('graphGovernance.title')}</Title>
@@ -470,7 +489,7 @@ export default function GraphGovernancePage() {
         width={600}
       >
         {detailSnapshot && (
-          <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>
             <Row gutter={[16, 8]}>
               <Col span={12}>
                 <Text type="secondary">{t('graphGovernance.snapshotId')}</Text>
@@ -508,7 +527,7 @@ export default function GraphGovernancePage() {
           title={<><DiffOutlined /> {t('graphGovernance.diffViewer')}</>}
           size="small"
         >
-          <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Row gutter={16} align="bottom">
               <Col xs={24} sm={8}>
                 <div style={{ marginBottom: 4 }}>

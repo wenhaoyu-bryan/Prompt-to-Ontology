@@ -70,7 +70,8 @@ def create_snapshot(
             labels = record["lbls"]
             props = _sanitize_props(dict(node))
             # Remove internal id if present
-            node_id = props.pop("id", None) or str(node.element_id)
+            raw_id = props.pop("id", None)
+            node_id = raw_id if raw_id is not None else str(node.element_id)
             nodes.append(SnapshotNode(
                 id=node_id,
                 labels=labels,
@@ -84,8 +85,10 @@ def create_snapshot(
             "MATCH (a)-[r]->(b) RETURN a.id AS src, b.id AS tgt, type(r) AS rtype, properties(r) AS props"
         )
         for record in result:
-            src = record["src"] or ""
-            tgt = record["tgt"] or ""
+            src = record["src"]
+            tgt = record["tgt"]
+            if not src or not tgt:
+                continue
             rtype = record["rtype"]
             props = _sanitize_props(dict(record["props"]))
             rels.append(SnapshotRelationship(
@@ -272,25 +275,25 @@ def restore_snapshot(snapshot_id: str, confirm: bool = False) -> RestoreResult:
     with driver.session() as session:
         session.run("MATCH (n) DETACH DELETE n")
 
-    # 3. Recreate nodes
-    for snap_node in snapshot.nodes:
-        for label in snap_node.labels:
-            # Escape label for Cypher
-            safe_label = label.replace("`", "")
+    # 3. Recreate nodes (single MERGE with all labels)
+    with driver.session() as session:
+        for snap_node in snapshot.nodes:
+            if not snap_node.labels:
+                continue
+            label_clause = ":".join(f"`{l.replace('`', '')}`" for l in snap_node.labels)
             props = dict(snap_node.properties)
             props["id"] = snap_node.id
-            query = f"MERGE (n:`{safe_label}` {{id: $id}}) SET n += $props"
-            with driver.session() as session:
-                session.run(query, id=snap_node.id, props=_sanitize_props(props))
+            query = f"MERGE (n:{label_clause} {{id: $id}}) SET n += $props"
+            session.run(query, id=snap_node.id, props=_sanitize_props(props))
 
-    # 4. Recreate relationships
-    for snap_rel in snapshot.relationships:
-        safe_type = snap_rel.type.replace("`", "")
-        query = (
-            f"MATCH (a {{id: $src}}), (b {{id: $tgt}}) "
-            f"MERGE (a)-[r:`{safe_type}`]->(b) SET r += $props"
-        )
-        with driver.session() as session:
+    # 4. Recreate relationships (single session)
+    with driver.session() as session:
+        for snap_rel in snapshot.relationships:
+            safe_type = snap_rel.type.replace("`", "")
+            query = (
+                f"MATCH (a {{id: $src}}), (b {{id: $tgt}}) "
+                f"MERGE (a)-[r:`{safe_type}`]->(b) SET r += $props"
+            )
             session.run(
                 query,
                 src=snap_rel.source_id,
