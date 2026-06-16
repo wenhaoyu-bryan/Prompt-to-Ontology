@@ -19,7 +19,8 @@
     "groupOperate": "操作",
     "groupAdmin": "管理",
     "graphGovernance": "图谱治理",
-    "ruleStudio": "规则工作台"
+    "ruleStudio": "规则工作台",
+    "agentTrace": "智能体追踪"
   },
   "common": {
     "loading": "加载中...",
@@ -157,7 +158,18 @@
     "demoPathSeededDesc": "探索完整的宠物食品本体：对象、图谱、规则和智能体。",
     "demoPathClean": "空白图谱构建",
     "demoPathCleanDesc": "从空图谱开始，通过数据管道逐步构建本体。",
-    "startFullBuild": "开始完整构建"
+    "startFullBuild": "开始完整构建",
+    "ruleCoverage": "规则覆盖率",
+    "openRuleStudio": "打开规则工作台",
+    "triggered": "已触发",
+    "passed": "通过",
+    "notEvaluable": "无法评估",
+    "notApplicable": "不适用",
+    "graphGov": "图谱治理",
+    "openGov": "打开治理",
+    "snapshots": "快照",
+    "diffs": "差异",
+    "latestSnapshot": "最近快照"
   },
   "objects": {
     "title": "对象",
@@ -773,5 +785,47 @@
       "Species": "物种",
       "LifeStage": "生命阶段"
     }
+  },
+  "agentTrace": {
+    "title": "智能体追踪",
+    "subtitle": "追踪智能体推理过程、工具调用和评估得分",
+    "recentTraces": "最近追踪",
+    "traceId": "追踪 ID",
+    "question": "问题",
+    "answer": "回答",
+    "status": "状态",
+    "tools": "工具",
+    "objects": "对象",
+    "rules": "规则",
+    "suggestions": "建议",
+    "evaluation": "评估",
+    "createdAt": "创建时间",
+    "openTrace": "打开追踪",
+    "reevaluate": "重新评估",
+    "refreshReview": "刷新审核状态",
+    "traceDetail": "追踪详情",
+    "toolCalls": "工具调用",
+    "objectsReferenced": "引用对象",
+    "rulesReferenced": "引用规则",
+    "evidenceEdges": "证据边",
+    "evaluationScores": "评估得分",
+    "groundedness": "依据充分性",
+    "toolUsage": "工具使用",
+    "evidenceCoverage": "证据覆盖率",
+    "reviewSafety": "审核安全性",
+    "answerCompleteness": "回答完整性",
+    "issues": "问题",
+    "suggestionLifecycle": "建议生命周期",
+    "viewReview": "查看审核",
+    "noTraces": "暂无智能体追踪记录。请使用智能体操作员提问。",
+    "good": "良好",
+    "warning": "警告",
+    "failed": "失败",
+    "completed": "已完成",
+    "partial": "部分完成",
+    "generated": "已生成",
+    "submittedToReview": "已提交审核",
+    "applied": "已应用",
+    "rejected": "已拒绝"
   }
 }

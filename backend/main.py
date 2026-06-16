@@ -1123,6 +1123,27 @@ def api_pet_food_agent_chat(req: PetFoodChatRequest):
     result["can_submit_to_review"] = len(suggestions) > 0
     result["review_batch_id"] = None
     result["review_item_ids"] = []
+
+    # Phase 39: Create agent trace and evaluation
+    try:
+        from agent_trace import create_trace, evaluate_trace
+        from demo_admin.service import DemoAdminService
+        trace = create_trace(
+            question=req.question,
+            answer=result.get("answer", ""),
+            agent_run_id=agent_run_id,
+            result=result,
+            metadata={"mode": "runtime"},
+        )
+        result["trace_id"] = trace.trace_id
+        evaluation = evaluate_trace(trace.trace_id)
+        result["evaluation_id"] = evaluation.evaluation_id
+        result["evaluation_status"] = evaluation.overall_status
+    except Exception:
+        result["trace_id"] = None
+        result["evaluation_id"] = None
+        result["evaluation_status"] = None
+
     return result
 
 
@@ -1421,10 +1442,20 @@ def api_agent_submit_suggestions(body: dict):
             suggestions, agent_run_id=agent_run_id, user_message=user_message,
         )
         items = list_review_items(batch_id=batch.id)
+        item_ids = [i.id for i in items]
+
+        # Phase 39: Update trace with review info if trace_id provided
+        trace_id = body.get("trace_id")
+        if trace_id:
+            try:
+                at_update_review_info(trace_id, batch.id, item_ids)
+            except Exception:
+                pass
+
         return {
             "batch": {"id": batch.id, "item_count": len(items)},
             "items_created": len(items),
-            "item_ids": [i.id for i in items],
+            "item_ids": item_ids,
         }
     except ValueError as e:
         raise HTTPException(400, str(e))
@@ -1685,6 +1716,65 @@ def api_rule_studio_simulate(body: dict):
         raise HTTPException(400, str(e))
     except Exception as e:
         raise HTTPException(500, f"Simulation failed: {e}")
+
+
+# ── Agent Trace & Evaluation ────────────────────────────────────
+
+from agent_trace import (
+    create_trace as at_create_trace,
+    list_traces as at_list_traces,
+    get_trace as at_get_trace,
+    evaluate_trace as at_evaluate_trace,
+    get_evaluation as at_get_evaluation,
+    list_evaluations as at_list_evaluations,
+    update_trace_review_status as at_update_review_status,
+    update_trace_review_info as at_update_review_info,
+)
+
+@app.get("/api/agent/traces")
+def api_agent_traces(limit: int = 50, status: str = None):
+    """List agent traces."""
+    traces = at_list_traces(limit=limit, status=status)
+    return {"traces": [t.model_dump() for t in traces]}
+
+@app.get("/api/agent/traces/{trace_id}")
+def api_agent_trace_detail(trace_id: str):
+    """Get a single trace."""
+    trace = at_get_trace(trace_id)
+    if not trace:
+        raise HTTPException(404, f"Trace {trace_id} not found")
+    return trace.model_dump()
+
+@app.get("/api/agent/evaluations")
+def api_agent_evaluations(limit: int = 50):
+    """List evaluations."""
+    evals = at_list_evaluations(limit=limit)
+    return {"evaluations": [e.model_dump() for e in evals]}
+
+@app.get("/api/agent/evaluations/{evaluation_id}")
+def api_agent_evaluation_detail(evaluation_id: str):
+    """Get a single evaluation."""
+    ev = at_get_evaluation(evaluation_id)
+    if not ev:
+        raise HTTPException(404, f"Evaluation {evaluation_id} not found")
+    return ev.model_dump()
+
+@app.post("/api/agent/traces/{trace_id}/evaluate")
+def api_agent_trace_evaluate(trace_id: str):
+    """Re-run evaluation on a trace."""
+    try:
+        ev = at_evaluate_trace(trace_id)
+        return ev.model_dump()
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+
+@app.post("/api/agent/traces/{trace_id}/refresh-review-status")
+def api_agent_trace_refresh_review(trace_id: str):
+    """Refresh review status from Review Queue."""
+    trace = at_update_review_status(trace_id)
+    if not trace:
+        raise HTTPException(404, f"Trace {trace_id} not found")
+    return trace.model_dump()
 
 
 if __name__ == "__main__":

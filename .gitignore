@@ -41,6 +41,7 @@ docs/*
 !docs/relationship-csv-upload.md
 !docs/graph-snapshot-diff-rollback.md
 !docs/rule-studio-simulation.md
+!docs/agent-trace-evaluation.md
 Phases/
 
 # Test data

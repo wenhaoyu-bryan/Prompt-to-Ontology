@@ -65,6 +65,7 @@ export default function AppLayout() {
         { key: '/agent', icon: <RobotOutlined />, label: t('nav.agent') },
         { key: '/graph-governance', icon: <SafetyOutlined />, label: t('nav.graphGovernance') },
         { key: '/rule-studio', icon: <ExperimentOutlined />, label: t('nav.ruleStudio') },
+        { key: '/agent-traces', icon: <EyeOutlined />, label: t('nav.agentTrace') },
       ],
     },
     {

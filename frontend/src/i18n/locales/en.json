@@ -19,7 +19,8 @@
     "groupOperate": "Operate",
     "groupAdmin": "Admin",
     "graphGovernance": "Graph Governance",
-    "ruleStudio": "Rule Studio"
+    "ruleStudio": "Rule Studio",
+    "agentTrace": "Agent Traces"
   },
   "common": {
     "loading": "Loading...",
@@ -157,7 +158,18 @@
     "demoPathSeededDesc": "Explore the completed Pet Food ontology: objects, graph, rules, and agent.",
     "demoPathClean": "Clean Graph Build",
     "demoPathCleanDesc": "Start from an empty graph. Use Data Pipeline to build the ontology step by step.",
-    "startFullBuild": "Start Full Build"
+    "startFullBuild": "Start Full Build",
+    "ruleCoverage": "Rule Coverage",
+    "openRuleStudio": "Open Rule Studio",
+    "triggered": "Triggered",
+    "passed": "Passed",
+    "notEvaluable": "Not Evaluable",
+    "notApplicable": "Not Applicable",
+    "graphGov": "Graph Governance",
+    "openGov": "Open Governance",
+    "snapshots": "Snapshots",
+    "diffs": "Diffs",
+    "latestSnapshot": "Latest Snapshot"
   },
   "objects": {
     "title": "Objects",
@@ -773,5 +785,47 @@
       "Species": "Species",
       "LifeStage": "Life Stage"
     }
+  },
+  "agentTrace": {
+    "title": "Agent Traces",
+    "subtitle": "Trace agent reasoning, tool usage, and evaluation scores",
+    "recentTraces": "Recent Traces",
+    "traceId": "Trace ID",
+    "question": "Question",
+    "answer": "Answer",
+    "status": "Status",
+    "tools": "Tools",
+    "objects": "Objects",
+    "rules": "Rules",
+    "suggestions": "Suggestions",
+    "evaluation": "Evaluation",
+    "createdAt": "Created At",
+    "openTrace": "Open Trace",
+    "reevaluate": "Re-evaluate",
+    "refreshReview": "Refresh Review Status",
+    "traceDetail": "Trace Detail",
+    "toolCalls": "Tool Calls",
+    "objectsReferenced": "Objects Referenced",
+    "rulesReferenced": "Rules Referenced",
+    "evidenceEdges": "Evidence Edges",
+    "evaluationScores": "Evaluation Scores",
+    "groundedness": "Groundedness",
+    "toolUsage": "Tool Usage",
+    "evidenceCoverage": "Evidence Coverage",
+    "reviewSafety": "Review Safety",
+    "answerCompleteness": "Answer Completeness",
+    "issues": "Issues",
+    "suggestionLifecycle": "Suggestion Lifecycle",
+    "viewReview": "View Review",
+    "noTraces": "No agent traces yet. Use the Agent Operator to ask questions.",
+    "good": "Good",
+    "warning": "Warning",
+    "failed": "Failed",
+    "completed": "Completed",
+    "partial": "Partial",
+    "generated": "Generated",
+    "submittedToReview": "Submitted to Review",
+    "applied": "Applied",
+    "rejected": "Rejected"
   }
 }

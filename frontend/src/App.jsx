@@ -22,6 +22,7 @@ import SettingsPage from './pages/settings';
 import PipelinePage from './pages/pipeline';
 import GraphGovernancePage from './pages/graphGovernance';
 import RuleStudioPage from './pages/ruleStudio';
+import AgentTracePage from './pages/agentTrace';
 
 import './i18n';
 
@@ -69,6 +70,7 @@ function AppInner() {
           <Route path="/pipeline" element={<PipelinePage />} />
           <Route path="/graph-governance" element={<GraphGovernancePage />} />
           <Route path="/rule-studio" element={<RuleStudioPage />} />
+          <Route path="/agent-traces" element={<AgentTracePage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>
