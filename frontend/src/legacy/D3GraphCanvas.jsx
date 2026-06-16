@@ -134,7 +134,7 @@ function DatasetManager({ datasets, currentDataset, onDelete }) {
       <button
         onClick={() => setOpen(!open)}
         className="p-1.5 rounded-lg bg-neutral-900/90 border border-neutral-700 text-neutral-400 hover:text-white transition-colors"
-        title="数据集管理"
+        title="Dataset Manager"
       >
         <Settings className="w-3.5 h-3.5" />
       </button>
@@ -142,7 +142,7 @@ function DatasetManager({ datasets, currentDataset, onDelete }) {
       {open && (
         <div className="absolute top-0 left-10 z-50 w-64 bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-neutral-800">
-            <span className="text-xs font-semibold text-neutral-300">数据集管理</span>
+            <span className="text-xs font-semibold text-neutral-300">Dataset Manager</span>
             <button onClick={() => setOpen(false)} className="text-neutral-500 hover:text-white">
               <X className="w-3.5 h-3.5" />
             </button>
@@ -160,13 +160,13 @@ function DatasetManager({ datasets, currentDataset, onDelete }) {
                     {ds.label}
                   </p>
                   <p className="text-[9px] text-neutral-500">
-                    {ds.nodeCount} 节点 · {ds.relCount} 关系
+                    {ds.nodeCount} nodes · {ds.relCount} rels
                   </p>
                 </div>
                 <button
                   onClick={(e) => { e.stopPropagation(); onDelete?.(ds.name); }}
                   className="p-1 rounded text-neutral-600 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
-                  title={`删除 ${ds.label}`}
+                  title={`Delete ${ds.label}`}
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -226,7 +226,7 @@ export default function D3GraphCanvas({
       // 刷新图谱
       onRetry?.();
     } catch (e) {
-      setDemoResult({ error: e.message || '导入失败' });
+      setDemoResult({ error: e.message || 'Import failed' });
     } finally {
       setDemoLoading(false);
     }
@@ -512,10 +512,15 @@ export default function D3GraphCanvas({
         // 标签 (根据缩放级别显隐)
         if (gs > 0.4 && !isDimmed) {
           const fontSize = gs > 1.5 ? 12 : 10;
-          ctx.fillStyle = '#e5e5e5';
-          ctx.font = `${fontSize / gs}px "PingFang SC", "Microsoft YaHei", sans-serif`;
+          ctx.font = `bold ${fontSize / gs}px "PingFang SC", "Microsoft YaHei", sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'top';
+          // Black outline for readability
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 3 / gs;
+          ctx.lineJoin = 'round';
+          ctx.strokeText(label, node.x, node.y + s + 5);
+          ctx.fillStyle = '#ffffff';
           ctx.fillText(label, node.x, node.y + s + 5);
 
           // 指标副标签 (缩放 > 0.8x 时显示)
@@ -532,16 +537,20 @@ export default function D3GraphCanvas({
             } else if (objType === 'Factory' && node.capacityUtilization != null) {
               metric = `${(node.capacityUtilization * 100).toFixed(0)}%`;
             } else if (objType === 'PetFoodProduct' && node.target_species) {
-              const species = { cat: '猫', dog: '狗', cat_or_dog: '猫/狗' }[node.target_species] || '';
-              const stage = { kitten: '幼猫', puppy: '幼犬', adult: '成年', senior: '老年' }[node.life_stage] || '';
+              const species = { cat: 'Cat', dog: 'Dog', cat_or_dog: 'Cat/Dog' }[node.target_species] || '';
+              const stage = { kitten: 'Kitten', puppy: 'Puppy', adult: 'Adult', senior: 'Senior' }[node.life_stage] || '';
               metric = [species, stage].filter(Boolean).join(' ');
             } else if (objType === 'RiskRule' && node.severity) {
               metric = node.severity;
             }
             if (metric) {
               ctx.fillStyle = metric.startsWith('H') ? '#ef4444' :
-                metric.endsWith('d') && parseFloat(metric) < 3 ? '#ef4444' : '#737373';
+                metric.endsWith('d') && parseFloat(metric) < 3 ? '#ef4444' : '#a3a3a3';
               ctx.font = `${8 / gs}px "PingFang SC", "Microsoft YaHei", sans-serif`;
+              ctx.strokeStyle = '#000000';
+              ctx.lineWidth = 2 / gs;
+              ctx.lineJoin = 'round';
+              ctx.strokeText(metric, node.x, node.y + s + 14);
               ctx.fillText(metric, node.x, node.y + s + 14);
             }
           }
@@ -664,7 +673,7 @@ export default function D3GraphCanvas({
           .attr('x', d => (d.source.x + d.target.x) / 2)
           .attr('y', d => (d.source.y + d.target.y) / 2 - 6)
           .attr('text-anchor', 'middle')
-          .attr('fill', '#52525b')
+          .attr('fill', '#a3a3a3')
           .attr('font-size', '9')
           .attr('font-family', '"PingFang SC", "Microsoft YaHei", sans-serif')
           .text(d => d.label || '');
@@ -810,7 +819,7 @@ export default function D3GraphCanvas({
         const ids = result.path.map(p => p.node_id);
         onNodeClick?.(graphData.nodes.find(n => n.id === ids[ids.length-1]) || graphData.nodes[0]);
       }
-    } catch { setPathResult({ error: '查询失败' }); }
+    } catch { setPathResult({ error: 'Query failed' }); }
   };
 
   // ---- Esc 关闭搜索 ----
@@ -863,10 +872,10 @@ export default function D3GraphCanvas({
                        text-xs text-neutral-300 outline-none focus:border-cyan-500/50
                        backdrop-blur-sm cursor-pointer"
           >
-            <option value="all">全部数据集</option>
+            <option value="all">All Datasets</option>
             {datasets.map((ds) => (
               <option key={ds.name} value={ds.name}>
-                {ds.label} ({ds.nodeCount} 节点)
+                {ds.label} ({ds.nodeCount} nodes)
               </option>
             ))}
           </select>
@@ -874,7 +883,7 @@ export default function D3GraphCanvas({
             datasets={datasets}
             currentDataset={currentDataset}
             onDelete={(dsName) => {
-              if (confirm(`确定删除数据集「${dsName}」？此操作不可撤销。`)) {
+              if (confirm(`Delete dataset "${dsName}"? This cannot be undone.`)) {
                 import('../api').then(({ clearDataset }) =>
                   clearDataset(dsName).then(() => onDatasetChange?.('all'))
                 );
@@ -888,18 +897,18 @@ export default function D3GraphCanvas({
       <div className="absolute top-3 right-3 z-40 flex items-center gap-1">
         <button onClick={() => setShowSearch(!showSearch)}
           className="p-1.5 rounded-lg bg-neutral-900/85 border border-neutral-700 text-neutral-400 hover:text-white transition-colors"
-          title="搜索 (Esc 关闭)">
+          title="Search (Esc to close)">
           <Search className="w-3.5 h-3.5" />
         </button>
         <button onClick={() => setShowPathFinder(!showPathFinder)}
           className={`p-1.5 rounded-lg border transition-colors ${showPathFinder ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'bg-neutral-900/85 border-neutral-700 text-neutral-400 hover:text-white'}`}
-          title="最短路径">
+          title="Shortest Path">
           <Route className="w-3.5 h-3.5" />
         </button>
         {hasPetFood && (
           <button onClick={() => setShowFilters(!showFilters)}
             className={`p-1.5 rounded-lg border transition-colors ${nodeFilter ? 'bg-pink-500/20 border-pink-500/30 text-pink-400' : 'bg-neutral-900/85 border-neutral-700 text-neutral-400 hover:text-white'}`}
-            title="Pet Food 筛选">
+            title="Pet Food Filter">
             <Filter className="w-3.5 h-3.5" />
           </button>
         )}
@@ -911,17 +920,17 @@ export default function D3GraphCanvas({
         <div className="w-px h-5 bg-neutral-700" />
         <button onClick={() => handleZoom(1.3)}
           className="p-1.5 rounded-lg bg-neutral-900/85 border border-neutral-700 text-neutral-400 hover:text-white transition-colors"
-          title="放大">
+          title="Zoom In">
           <ZoomIn className="w-3.5 h-3.5" />
         </button>
         <button onClick={() => handleZoom(0.75)}
           className="p-1.5 rounded-lg bg-neutral-900/85 border border-neutral-700 text-neutral-400 hover:text-white transition-colors"
-          title="缩小">
+          title="Zoom Out">
           <ZoomOut className="w-3.5 h-3.5" />
         </button>
         <button onClick={handleZoomToFit}
           className="p-1.5 rounded-lg bg-neutral-900/85 border border-neutral-700 text-neutral-400 hover:text-white transition-colors"
-          title="适应视图">
+          title="Fit View">
           <Maximize2 className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -930,14 +939,14 @@ export default function D3GraphCanvas({
       {showFilters && (
         <div className="absolute top-12 right-3 z-40 w-52 bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl overflow-hidden">
           <div className="px-3 py-2 border-b border-neutral-800">
-            <span className="text-xs font-semibold text-neutral-300">Pet Food 筛选</span>
+            <span className="text-xs font-semibold text-neutral-300">Pet Food Filter</span>
           </div>
           {[
-            { key: null, label: '显示全部' },
-            { key: 'high_risk', label: '仅高风险产品' },
-            { key: 'chicken', label: '含 Chicken 产品' },
-            { key: 'cat', label: '仅猫粮' },
-            { key: 'dog', label: '仅狗粮' },
+            { key: null, label: 'Show All' },
+            { key: 'high_risk', label: 'High Risk Only' },
+            { key: 'chicken', label: 'Contains Chicken' },
+            { key: 'cat', label: 'Cat Food Only' },
+            { key: 'dog', label: 'Dog Food Only' },
           ].map(({ key, label }) => (
             <button
               key={key || 'all'}
@@ -957,18 +966,18 @@ export default function D3GraphCanvas({
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-40 bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl px-4 py-3 max-w-md">
           {demoResult.error ? (
             <div className="flex items-center gap-2">
-              <span className="text-red-400 text-xs">导入失败: {demoResult.error}</span>
+              <span className="text-red-400 text-xs">Import failed: {demoResult.error}</span>
               <button onClick={() => setDemoResult(null)} className="text-neutral-500 hover:text-white ml-2"><X className="w-3 h-3" /></button>
             </div>
           ) : (
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-green-400" />
-                <span className="text-xs font-semibold text-white">Pet Food Demo 导入成功</span>
+                <span className="text-xs font-semibold text-white">Pet Food Demo Imported</span>
                 <button onClick={() => setDemoResult(null)} className="text-neutral-500 hover:text-white ml-auto"><X className="w-3 h-3" /></button>
               </div>
               <div className="text-[10px] text-neutral-400">
-                {demoResult.nodes_created_or_merged} 节点 · {demoResult.edges_created_or_merged} 边 · {demoResult.triggered_risk_count} 风险触发
+                {demoResult.nodes_created_or_merged} nodes · {demoResult.edges_created_or_merged} edges · {demoResult.triggered_risk_count} risks
               </div>
             </div>
           )}
@@ -981,7 +990,7 @@ export default function D3GraphCanvas({
           <input
             type="text" value={searchText}
             onChange={e => setSearchText(e.target.value)}
-            placeholder="搜索节点..."
+            placeholder="Search nodes..."
             autoFocus
             className="w-full bg-transparent text-xs text-white px-3 py-2.5 outline-none placeholder-neutral-600 border-b border-neutral-800"
           />
@@ -999,7 +1008,7 @@ export default function D3GraphCanvas({
             </div>
           )}
           {searchText && searchResults.length === 0 && (
-            <p className="text-[10px] text-neutral-600 text-center py-3">无匹配节点</p>
+            <p className="text-[10px] text-neutral-600 text-center py-3">No matches</p>
           )}
         </div>
       )}
@@ -1007,20 +1016,20 @@ export default function D3GraphCanvas({
       {/* --- 路径查找面板 --- */}
       {showPathFinder && (
         <div className="absolute top-12 right-3 z-40 w-64 bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl p-3">
-          <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2">最短路径</p>
+          <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2">Shortest Path</p>
           <input type="text" value={pathFrom} onChange={e => setPathFrom(e.target.value)}
-            placeholder="起始节点 ID (如 RM-301)"
+            placeholder="Source node ID"
             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg text-xs text-white px-2.5 py-1.5 mb-2 outline-none focus:border-green-500/50 placeholder-neutral-600" />
           <input type="text" value={pathTo} onChange={e => setPathTo(e.target.value)}
-            placeholder="目标节点 ID (如 FP-301)"
+            placeholder="Target node ID"
             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg text-xs text-white px-2.5 py-1.5 mb-2 outline-none focus:border-green-500/50 placeholder-neutral-600" />
           <button onClick={handleFindPath}
             className="w-full py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-white text-xs font-medium transition-colors mb-2">
-            查找路径
+            Find Path
           </button>
           {pathResult && !pathResult.error && pathResult.path && (
             <div className="text-[10px] text-neutral-400 space-y-0.5 max-h-32 overflow-y-auto">
-              <p className="text-green-400">路径长度: {pathResult.path_length} 步</p>
+              <p className="text-green-400">Path length: {pathResult.path_length} steps</p>
               {pathResult.path.map((p, i) => (
                 <div key={i} className="flex items-center gap-1.5">
                   <span className="text-neutral-600 w-4">{p.step}.</span>
@@ -1053,26 +1062,26 @@ export default function D3GraphCanvas({
           {graphLoading && (
             <>
               <Loader2 className="w-8 h-8 text-blue-400 animate-spin mb-3" />
-              <p className="text-sm text-neutral-300 font-medium">正在加载图谱...</p>
+              <p className="text-sm text-neutral-300 font-medium">Loading graph...</p>
             </>
           )}
           {!graphLoading && graphError && (
             <>
               <WifiOff className="w-10 h-10 text-red-400 mb-3" />
-              <p className="text-sm text-red-300 font-medium mb-1">后端服务未连接</p>
+              <p className="text-sm text-red-300 font-medium mb-1">Backend not connected</p>
               <button onClick={onRetry}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg">
-                <RefreshCw className="w-3.5 h-3.5" /> 重新连接
+                <RefreshCw className="w-3.5 h-3.5" /> Reconnect
               </button>
             </>
           )}
           {!graphLoading && !graphError && graphData.nodes.length === 0 && (
             <>
               <WifiOff className="w-10 h-10 text-amber-400 mb-3" />
-              <p className="text-sm text-amber-300 font-medium">图谱数据为空</p>
+              <p className="text-sm text-amber-300 font-medium">Graph data is empty</p>
               <button onClick={onRetry}
                 className="mt-4 flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-lg">
-                <RefreshCw className="w-3.5 h-3.5" /> 重新加载
+                <RefreshCw className="w-3.5 h-3.5" /> Reload
               </button>
             </>
           )}
@@ -1098,7 +1107,7 @@ export default function D3GraphCanvas({
 
       {/* --- 节点统计 --- */}
       <div className="absolute bottom-4 right-4 text-[10px] text-neutral-600 bg-neutral-900/85 backdrop-blur px-2.5 py-1.5 rounded-lg border border-neutral-800 z-40">
-        {graphData.nodes.length} 节点 · {graphData.links.length} 链路
+        {graphData.nodes.length} nodes · {graphData.links.length} edges
       </div>
       </div> {/* 关闭图谱画布 */}
     </div>

@@ -25,11 +25,11 @@ import {
   SettingOutlined,
   PlayCircleOutlined,
   RocketOutlined,
+  SafetyOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../providers/dataProvider';
-import { MOCK_AGENT_RUNS } from '../mocks/agentRuns';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -86,6 +86,10 @@ export default function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [reviewSummary, setReviewSummary] = useState(null);
   const [demoState, setDemoState] = useState(null);
+  const [ruleCoverage, setRuleCoverage] = useState(null);
+  const [snapshotCount, setSnapshotCount] = useState(0);
+  const [diffCount, setDiffCount] = useState(0);
+  const [latestSnapshotTime, setLatestSnapshotTime] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -122,6 +126,10 @@ export default function DashboardPage() {
       });
       if (reviewRes?.data) setReviewSummary(reviewRes.data);
       if (demoRes?.data) setDemoState(demoRes.data);
+
+      api.get('/rule-studio/evaluation-summary').then(r => setRuleCoverage(r.data?.summary)).catch(() => {});
+      api.get('/graph/snapshots').then(r => { const snaps = r.data?.snapshots || []; setSnapshotCount(snaps.length); if (snaps.length > 0) setLatestSnapshotTime(new Date(snaps[0].created_at).toLocaleString()); }).catch(() => {});
+      api.get('/graph/diffs').then(r => setDiffCount((r.data?.diffs || []).length)).catch(() => {});
     } catch {
       setError(true);
     } finally {
@@ -152,10 +160,9 @@ export default function DashboardPage() {
   const pendingCount = reviewSummary?.pending || 0;
   const appliedCount = reviewSummary?.applied || 0;
   const failedCount = reviewSummary?.failed || 0;
-  const recentRuns = MOCK_AGENT_RUNS.slice(0, 4);
 
   return (
-    <Space orientation="vertical" size={20} style={{ width: '100%' }}>
+    <Space direction="vertical" size={20} style={{ width: '100%' }}>
       {/* Hero */}
       <Card size="small" style={{ background: 'linear-gradient(135deg, rgba(22,119,255,0.06) 0%, rgba(114,46,209,0.06) 100%)' }}>
         <Title level={3} style={{ margin: 0 }}>{t('dashboard.title')}</Title>
@@ -255,46 +262,16 @@ export default function DashboardPage() {
 
         {/* Recent Agent Runs — row 2, col 1 */}
             <Card
-              title={<><RobotOutlined /> {t('dashboard.recentAgentRuns')} {demoState?.mode !== 'clean' && <Tag style={{ fontSize: 10, marginLeft: 4 }}>{t('common.demoData')}</Tag>}</>}
+              title={<><RobotOutlined /> {t('dashboard.recentAgentRuns')}</>}
               size="small"
-              extra={demoState?.mode !== 'clean' && <Button type="link" size="small" onClick={() => navigate('/agent')}>{t('dashboard.viewAll')} <RightOutlined /></Button>}
             >
               {demoState?.mode === 'clean' && (demoState?.graph?.node_count || 0) === 0 ? (
                 <Text type="secondary" style={{ fontSize: 13 }}>{t('dashboard.noAgentRuns')}</Text>
               ) : (
-              <Table
-                dataSource={recentRuns}
-                rowKey="run_id"
-                size="small"
-                pagination={false}
-                columns={[
-                  {
-                    title: t('dashboard.prompt'),
-                    dataIndex: 'prompt',
-                    key: 'prompt',
-                    ellipsis: true,
-                    render: (text) => <Text style={{ fontSize: 13 }}>{text}</Text>,
-                  },
-                  {
-                    title: t('common.status'),
-                    dataIndex: 'status',
-                    key: 'status',
-                    width: 100,
-                    render: (s) => (
-                      <Tag color={STATUS_COLORS[s]} icon={s === 'running' ? <ClockCircleOutlined /> : <CheckCircleOutlined />}>
-                        {t(`common.statusLabels.${s}`, s)}
-                      </Tag>
-                    ),
-                  },
-                  {
-                    title: t('dashboard.issues'),
-                    dataIndex: 'issues_found',
-                    key: 'issues',
-                    width: 70,
-                    render: (v) => v > 0 ? <Tag color="red">{v}</Tag> : <Text type="secondary">0</Text>,
-                  },
-                ]}
-              />
+                <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                  <Text type="secondary" style={{ fontSize: 13 }}>Agent runs are available in the Agent Operator page</Text>
+                  <Button size="small" type="primary" onClick={() => navigate('/agent')}>{t('dashboard.journeyAgent')} <RightOutlined /></Button>
+                </Space>
               )}
             </Card>
 
@@ -338,7 +315,7 @@ export default function DashboardPage() {
             extra={<Button type="link" size="small" onClick={() => navigate('/review')}>{t('dashboard.viewAll')} <RightOutlined /></Button>}
           >
               {reviewSummary ? (
-                <Space orientation="vertical" size={8} style={{ width: '100%' }}>
+                <Space direction="vertical" size={8} style={{ width: '100%' }}>
                   <Row gutter={8}>
                     <Col span={8}><Statistic title={t('review.pending')} value={pendingCount} valueStyle={{ fontSize: 18, color: '#fa8c16' }} /></Col>
                     <Col span={8}><Statistic title={t('review.applied') || 'Applied'} value={appliedCount} valueStyle={{ fontSize: 18, color: '#1677ff' }} /></Col>
@@ -365,7 +342,7 @@ export default function DashboardPage() {
             size="small"
             extra={<Button type="link" size="small" onClick={() => navigate('/settings')}>{t('dashboard.demoSettings')} <RightOutlined /></Button>}
           >
-            <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+            <Space direction="vertical" size={12} style={{ width: '100%' }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <Tag color={
                   demoState.mode === 'seeded' ? 'green' :
@@ -392,6 +369,37 @@ export default function DashboardPage() {
                 <Col span={6}><Statistic title={t('pipeline.newObjects')} value={demoState.pipeline?.import_plan_count || 0} valueStyle={{ fontSize: 16 }} /></Col>
               </Row>
             </Space>
+          </Card>
+        )}
+
+        {/* Rule Coverage — row 4, col 1 */}
+        {demoState && stats?.nodes > 0 && (
+          <Card
+            title={<><SafetyCertificateOutlined /> {t('dashboard.ruleCoverage')}</>}
+            size="small"
+            extra={<Button type="link" size="small" onClick={() => navigate('/rule-studio')}>{t('dashboard.openRuleStudio')} <RightOutlined /></Button>}
+          >
+            <Row gutter={8}>
+              <Col span={6}><Statistic title={t('dashboard.triggered')} value={ruleCoverage?.triggered || 0} valueStyle={{ fontSize: 16, color: '#ff4d4f' }} /></Col>
+              <Col span={6}><Statistic title={t('dashboard.passed')} value={ruleCoverage?.passed || 0} valueStyle={{ fontSize: 16, color: '#52c41a' }} /></Col>
+              <Col span={6}><Statistic title={t('dashboard.notEvaluable')} value={ruleCoverage?.not_evaluable || 0} valueStyle={{ fontSize: 16, color: '#fa8c16' }} /></Col>
+              <Col span={6}><Statistic title={t('dashboard.notApplicable')} value={ruleCoverage?.not_applicable || 0} valueStyle={{ fontSize: 16 }} /></Col>
+            </Row>
+          </Card>
+        )}
+
+        {/* Graph Governance — row 4, col 2 */}
+        {demoState && (
+          <Card
+            title={<><SafetyOutlined /> {t('dashboard.graphGov')}</>}
+            size="small"
+            extra={<Button type="link" size="small" onClick={() => navigate('/graph-governance')}>{t('dashboard.openGov')} <RightOutlined /></Button>}
+          >
+            <Row gutter={8}>
+              <Col span={8}><Statistic title={t('dashboard.snapshots')} value={snapshotCount || 0} valueStyle={{ fontSize: 16 }} /></Col>
+              <Col span={8}><Statistic title={t('dashboard.diffs')} value={diffCount || 0} valueStyle={{ fontSize: 16 }} /></Col>
+              <Col span={8}><Statistic title={t('dashboard.latestSnapshot')} value={latestSnapshotTime || '—'} valueStyle={{ fontSize: 12 }} /></Col>
+            </Row>
           </Card>
         )}
 

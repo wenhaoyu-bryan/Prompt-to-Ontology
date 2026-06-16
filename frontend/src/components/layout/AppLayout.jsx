@@ -15,6 +15,7 @@ import {
   ApiOutlined,
   SafetyOutlined,
   ExperimentOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -65,6 +66,7 @@ export default function AppLayout() {
         { key: '/agent', icon: <RobotOutlined />, label: t('nav.agent') },
         { key: '/graph-governance', icon: <SafetyOutlined />, label: t('nav.graphGovernance') },
         { key: '/rule-studio', icon: <ExperimentOutlined />, label: t('nav.ruleStudio') },
+        { key: '/agent-traces', icon: <EyeOutlined />, label: t('nav.agentTrace') },
       ],
     },
     {

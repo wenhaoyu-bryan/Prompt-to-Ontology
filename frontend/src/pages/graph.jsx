@@ -303,7 +303,7 @@ export default function GraphPage() {
       {/* Entity Inspector drawer */}
       <Drawer
         open={drawerOpen}
-        onClose={() => { setDrawerOpen(false); setSelectedNode(null); setNodeDetail(null); }}
+        onClose={() => { setDrawerOpen(false); setNodeDetail(null); }}
         size={520}
         styles={{ body: { padding: 0 } }}
         closable={false}

@@ -129,7 +129,9 @@ export default function RuleStudioPage() {
       title: t('ruleStudio.columns.ruleName'),
       dataIndex: 'name',
       key: 'name',
-      render: (text) => <Text strong>{text}</Text>,
+      width: 180,
+      ellipsis: true,
+      render: (text) => <Text strong ellipsis style={{ maxWidth: 160 }}>{text}</Text>,
     },
     {
       title: t('ruleStudio.columns.severity'),
@@ -154,9 +156,10 @@ export default function RuleStudioPage() {
       dataIndex: 'condition_type',
       key: 'condition_type',
       width: 140,
+      ellipsis: true,
       render: (text, record) => (
         <Tooltip title={record.condition_desc}>
-          <Text style={{ fontSize: 13 }}>{text}</Text>
+          <Text style={{ fontSize: 13 }} ellipsis>{text}</Text>
         </Tooltip>
       ),
     },
@@ -170,7 +173,7 @@ export default function RuleStudioPage() {
     {
       title: t('ruleStudio.columns.coverage'),
       key: 'coverage',
-      width: 180,
+      width: 140,
       render: (_, record) => {
         const cov = coverageByRuleId[record.id];
         if (!cov) return <Text type="secondary">-</Text>;
@@ -189,14 +192,15 @@ export default function RuleStudioPage() {
     {
       title: t('ruleStudio.columns.actions'),
       key: 'actions',
-      width: 200,
+      width: 160,
       render: (_, record) => (
-        <Space size={4}>
+        <Space size={2} wrap={false}>
           <Button
             size="small"
             type="link"
             icon={<EyeOutlined />}
             onClick={() => openDetail(record.id)}
+            style={{ padding: '0 2px', fontSize: 11 }}
           >
             {t('ruleStudio.actions.viewDetail')}
           </Button>
@@ -207,11 +211,11 @@ export default function RuleStudioPage() {
             onClick={() => {
               setSimRuleId(record.id);
               setSimResult(null);
-              // scroll to simulation section
               setTimeout(() => {
                 document.getElementById('rule-sim-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }, 100);
             }}
+            style={{ padding: '0 2px', fontSize: 11 }}
           >
             {t('ruleStudio.actions.simulate')}
           </Button>
@@ -427,7 +431,7 @@ export default function RuleStudioPage() {
           rowKey="id"
           size="small"
           pagination={{ pageSize: 10, showSizeChanger: true }}
-          scroll={{ x: 900 }}
+          scroll={{ x: 1050 }}
         />
       </Card>
 
@@ -490,6 +494,7 @@ export default function RuleStudioPage() {
             rowKey="rule_id"
             size="small"
             pagination={false}
+            scroll={{ x: 700 }}
             columns={[
               {
                 title: t('ruleStudio.columns.ruleName'),
