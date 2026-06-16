@@ -21,6 +21,7 @@ import ReviewQueuePage from './pages/review';
 import SettingsPage from './pages/settings';
 import PipelinePage from './pages/pipeline';
 import GraphGovernancePage from './pages/graphGovernance';
+import RuleStudioPage from './pages/ruleStudio';
 
 import './i18n';
 
@@ -67,6 +68,7 @@ function AppInner() {
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/pipeline" element={<PipelinePage />} />
           <Route path="/graph-governance" element={<GraphGovernancePage />} />
+          <Route path="/rule-studio" element={<RuleStudioPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>
