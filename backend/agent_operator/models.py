@@ -40,6 +40,10 @@ class AgentSuggestedAction(BaseModel):
     confidence: float = 0.8
     reason: str = ""
     evidence: str = ""
+    missing_field: str = ""
+    why_it_matters: str = ""
+    related_rule_id: str = ""
+    related_rule_name: str = ""
     source_agent_run_id: str = ""
     created_at: datetime = Field(default_factory=datetime.utcnow)
     metadata: dict[str, Any] = Field(default_factory=dict)

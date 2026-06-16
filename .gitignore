@@ -42,6 +42,7 @@ docs/*
 !docs/graph-snapshot-diff-rollback.md
 !docs/rule-studio-simulation.md
 !docs/agent-trace-evaluation.md
+!docs/golden-demo-script.md
 Phases/
 
 # Test data

@@ -36,3 +36,25 @@ generated → submitted_to_review → approved/applied/rejected
 - Evaluation is rule-based, not LLM-based
 - Tool output is summarized, not full
 - Traces are JSON-persisted, not database-backed
+
+## Agent Suggestion Quality Rules (Phase 40)
+
+### Rule 1: No UNKNOWN_RULE
+Every rule-based suggestion must have a resolved `rule_id` and `rule_name`. If the rule ID cannot be resolved, the suggestion is suppressed.
+
+### Rule 2: Field-Specific Data Quality
+Data quality suggestions must name a concrete field (e.g., `taurine_mg_kg`, `phosphorus_100g`). Generic "data_quality" suggestions are not allowed.
+
+### Rule 3: Intent-Gated Suggestions
+Suggestions are only generated when relevant to the detected user intent:
+- Informational questions: no suggestions unless severe data issue
+- Recommendation questions: only if data gaps block recommendation
+- Risk analysis: rule suggestions OK
+- Data quality questions: field-specific suggestions OK
+- Update requests: property/link suggestions OK
+
+### Rule 4: Evaluation Flags
+Agent Trace evaluation flags:
+- `UNKNOWN_RULE_SUGGESTION` — if a suggestion contains UNKNOWN_RULE
+- `GENERIC_DATA_QUALITY_SUGGESTION` — if a data quality suggestion lacks a specific field
+- `LOW_RELEVANCE_SUGGESTION` — if suggestions are generated for informational questions

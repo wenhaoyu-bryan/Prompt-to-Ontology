@@ -1136,6 +1136,11 @@ def api_pet_food_agent_chat(req: PetFoodChatRequest):
             metadata={"mode": "runtime"},
         )
         result["trace_id"] = trace.trace_id
+        # Link trace_id to suggestions so it flows through to Review Queue
+        if trace:
+            for s in result.get("suggestions", []):
+                if isinstance(s, dict):
+                    s.setdefault("metadata", {})["trace_id"] = trace.trace_id
         evaluation = evaluate_trace(trace.trace_id)
         result["evaluation_id"] = evaluation.evaluation_id
         result["evaluation_status"] = evaluation.overall_status

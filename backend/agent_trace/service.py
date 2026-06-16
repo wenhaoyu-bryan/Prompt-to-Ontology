@@ -458,6 +458,37 @@ def evaluate_trace(trace_id: str) -> AgentEvaluation:
             message="No risk rules were referenced in this agent run.",
         ))
 
+    # Check for UNKNOWN_RULE in suggestions
+    for sug in trace.suggestions:
+        if "UNKNOWN_RULE" in (sug.type or "") or "UNKNOWN_RULE" in str(getattr(sug, 'metadata', {})):
+            issues.append(EvaluationIssue(
+                level="warning",
+                code="UNKNOWN_RULE_SUGGESTION",
+                message="Trace contains a suggestion with UNKNOWN_RULE — this should be resolved.",
+            ))
+            break
+
+    # Check for generic data_quality suggestions
+    for sug in trace.suggestions:
+        if sug.type == "FLAG_DATA_QUALITY_ISSUE" and not getattr(sug, 'metadata', {}).get("missing_field"):
+            issues.append(EvaluationIssue(
+                level="warning",
+                code="GENERIC_DATA_QUALITY_SUGGESTION",
+                message="Trace contains a generic data quality suggestion without a specific missing field.",
+            ))
+            break
+
+    # Check for low relevance (suggestions when question is informational)
+    # This is a heuristic: if there are suggestions but the question seems informational
+    question_lower = trace.question.lower()
+    info_markers = ("what is", "tell me", "explain", "什么是", "是什么", "告诉我")
+    if trace.suggestions and any(m in question_lower for m in info_markers):
+        issues.append(EvaluationIssue(
+            level="info",
+            code="LOW_RELEVANCE_SUGGESTION",
+            message="Suggestions generated for an informational question — verify relevance.",
+        ))
+
     # -- Labels & overall status -----------------------------------
     labels: dict[str, bool] = {
         "has_tool_calls": len(trace.tool_calls) > 0,

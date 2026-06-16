@@ -38,3 +38,13 @@ Triggered rules generate TRIGGERS_RISK edges in the graph. These are the output 
 7. Run simulation with missing fat_100g -> should be not_evaluable
 8. Check Rule Coverage shows correct counts
 9. Open Object Explorer for PF001 -> should show rule results
+
+## Integration with Agent Suggestions (Phase 40)
+
+When the Agent generates data quality suggestions, they reference specific rules and fields from the Rule Studio:
+
+- `related_rule_id` — links to a rule in Rule Studio
+- `missing_field` — the specific product field that is missing
+- `why_it_matters` — explains which rule evaluation is blocked
+
+This ensures traceability from Agent suggestions back to rule definitions.
