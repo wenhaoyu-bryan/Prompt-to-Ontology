@@ -15,6 +15,7 @@ import {
   ApiOutlined,
   SafetyOutlined,
   ExperimentOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';

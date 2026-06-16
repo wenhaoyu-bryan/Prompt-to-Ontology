@@ -368,8 +368,9 @@ export default function AgentTracePage() {
       title: t('agentTrace.question'),
       dataIndex: 'question',
       key: 'question',
+      width: 200,
       ellipsis: true,
-      render: (v) => <Text style={{ fontSize: 12 }}>{truncate(v, 60)}</Text>,
+      render: (v) => <Text style={{ fontSize: 11 }} ellipsis>{truncate(v, 50)}</Text>,
     },
     {
       title: t('common.status'),
@@ -433,37 +434,35 @@ export default function AgentTracePage() {
     {
       title: t('agentTrace.evaluation'),
       dataIndex: 'evaluation_id',
-      key: 'evaluation_id',
-      width: 100,
+      key: 'evaluation',
+      width: 90,
       align: 'center',
       render: (v) => v ? (
-        <Tag icon={<ExperimentOutlined />} color="purple" style={{ fontSize: 11 }}>
-          {t('agentTrace.evaluated')}
-        </Tag>
+        <Tag color="purple" style={{ fontSize: 10, margin: 0 }}>✓</Tag>
       ) : (
-        <Tag color="default" style={{ fontSize: 11 }}>{t('agentTrace.notEvaluated')}</Tag>
+        <Tag color="default" style={{ fontSize: 10, margin: 0 }}>—</Tag>
       ),
     },
     {
       title: t('agentTrace.createdAt'),
       dataIndex: 'started_at',
       key: 'started_at',
-      width: 160,
-      render: (v) => <Text type="secondary" style={{ fontSize: 11 }}>{formatTime(v)}</Text>,
+      width: 150,
+      render: (v) => <Text type="secondary" style={{ fontSize: 10 }}>{formatTime(v)}</Text>,
     },
     {
       title: t('common.actions'),
       key: 'actions',
-      width: 260,
+      width: 240,
       fixed: 'right',
       render: (_, record) => (
-        <Space size={4}>
+        <Space size={2} wrap={false}>
           <Button
             type="link"
             size="small"
             icon={<EyeOutlined />}
             onClick={() => openTraceDetail(record.trace_id)}
-            style={{ padding: '0 4px', fontSize: 12 }}
+            style={{ padding: '0 2px', fontSize: 11 }}
           >
             {t('agentTrace.openTrace')}
           </Button>
@@ -473,7 +472,7 @@ export default function AgentTracePage() {
             icon={<ExperimentOutlined />}
             loading={actionLoading[record.trace_id] === 'evaluate'}
             onClick={() => handleReEvaluate(record.trace_id)}
-            style={{ padding: '0 4px', fontSize: 12 }}
+            style={{ padding: '0 2px', fontSize: 11 }}
           >
             {t('agentTrace.reEvaluate')}
           </Button>
@@ -483,7 +482,7 @@ export default function AgentTracePage() {
             icon={<SyncOutlined />}
             loading={actionLoading[record.trace_id] === 'refresh'}
             onClick={() => handleRefreshReview(record.trace_id)}
-            style={{ padding: '0 4px', fontSize: 12 }}
+            style={{ padding: '0 2px', fontSize: 11 }}
           >
             {t('agentTrace.refreshReview')}
           </Button>

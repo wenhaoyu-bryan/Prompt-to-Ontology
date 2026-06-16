@@ -30,6 +30,7 @@ import { useNavigate } from 'react-router-dom';
 import { useThemeContext } from '../providers/ThemeProvider';
 import { api } from '../providers/dataProvider';
 import { MOCK_AGENT_RUNS } from '../mocks/agentRuns';
+import ReactMarkdown from 'react-markdown';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -272,8 +273,27 @@ export default function AgentPage() {
                       ))}
                     </div>
                   )}
-                  <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.6 }}>
-                    {msg.content}
+                  <div style={{ fontSize: 13, lineHeight: 1.7, color: 'inherit' }}>
+                    <ReactMarkdown
+                      components={{
+                        h1: ({children}) => <h4 style={{margin: '12px 0 4px', fontWeight: 700}}>{children}</h4>,
+                        h2: ({children}) => <h5 style={{margin: '10px 0 4px', fontWeight: 700}}>{children}</h5>,
+                        h3: ({children}) => <h6 style={{margin: '8px 0 4px', fontWeight: 700}}>{children}</h6>,
+                        p: ({children}) => <p style={{margin: '4px 0'}}>{children}</p>,
+                        ul: ({children}) => <ul style={{margin: '4px 0', paddingLeft: 20}}>{children}</ul>,
+                        ol: ({children}) => <ol style={{margin: '4px 0', paddingLeft: 20}}>{children}</ol>,
+                        li: ({children}) => <li style={{margin: '2px 0'}}>{children}</li>,
+                        code: ({children, className}) => className
+                          ? <pre style={{background: 'rgba(0,0,0,0.15)', padding: 8, borderRadius: 4, fontSize: 12, overflow: 'auto', margin: '6px 0'}}><code>{children}</code></pre>
+                          : <code style={{background: 'rgba(0,0,0,0.15)', padding: '1px 4px', borderRadius: 3, fontSize: 12}}>{children}</code>,
+                        strong: ({children}) => <strong style={{fontWeight: 600}}>{children}</strong>,
+                        table: ({children}) => <table style={{borderCollapse: 'collapse', margin: '6px 0', fontSize: 12, width: '100%'}}>{children}</table>,
+                        th: ({children}) => <th style={{border: '1px solid rgba(128,128,128,0.3)', padding: '4px 8px', textAlign: 'left', fontWeight: 600}}>{children}</th>,
+                        td: ({children}) => <td style={{border: '1px solid rgba(128,128,128,0.3)', padding: '4px 8px'}}>{children}</td>,
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
                   </div>
 
                   {/* Phase 30: Show agent suggestions */}

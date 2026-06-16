@@ -700,9 +700,24 @@ def chat(question: str, context: dict = None) -> dict:
     logs.append({"step": step, "type": "thought", "icon": "📌", "color": "blue",
                  "message": "This answer is based only on the current ontology data and rules. It is not veterinary diagnosis.", "timestamp": ts()})
 
-    # Ensure disclaimer is in the answer
-    if "not veterinary diagnosis" not in answer.lower():
-        answer += "\n\n---\n*This answer is based only on the current ontology data and rules. It is not veterinary diagnosis.*"
+    # Ensure disclaimer is in the answer, in the correct language
+    zh = _is_chinese(question)
+    has_en_disclaimer = "not veterinary diagnosis" in answer.lower()
+    has_zh_disclaimer = "不做兽医诊断" in answer
+    if zh:
+        # Remove any English disclaimer variants
+        for phrase in [
+            "*This answer is based only on the current ontology data and rules. It is not veterinary diagnosis.*",
+            "This answer is based only on the current ontology data and rules. It is not veterinary diagnosis.",
+            "It is not veterinary diagnosis.",
+        ]:
+            answer = answer.replace(phrase, "").rstrip()
+        # Add Chinese disclaimer if missing
+        if not has_zh_disclaimer:
+            answer += "\n\n---\n*本回答仅基于当前本体数据和规则，不做兽医诊断。*"
+    else:
+        if not has_en_disclaimer:
+            answer += "\n\n---\n*This answer is based only on the current ontology data and rules. It is not veterinary diagnosis.*"
 
     return {
         "logs": logs,
@@ -712,9 +727,16 @@ def chat(question: str, context: dict = None) -> dict:
     }
 
 
+def _is_chinese(text: str) -> bool:
+    """Check if text contains Chinese characters."""
+    return any('一' <= ch <= '鿿' for ch in text)
+
+
 def _template_answer(question: str, tool_results: list[dict]) -> str:
     """Template-based answer generation (deterministic fallback)."""
-    lines = ["## Conclusion\n"]
+    zh = _is_chinese(question)
+
+    lines = ["## 结论\n"] if zh else ["## Conclusion\n"]
 
     for result in tool_results:
         tool = result.get("tool_name", "")
@@ -727,28 +749,44 @@ def _template_answer(question: str, tool_results: list[dict]) -> str:
             not_evaluable = data.get("not_evaluable", [])
 
             if risks:
-                lines.append(f"Product **{p.get('product_name')}** triggered {len(risks)} risk rule(s).\n")
-                lines.append("## Graph Evidence\n")
-                lines.append(f"- Brand: {brand.get('brand_name', 'Unknown')} | Species: {p.get('target_species')} | Life stage: {p.get('life_stage')}")
-                lines.append(f"- Protein: {p.get('protein_100g')}g | Fat: {p.get('fat_100g')}g | Phosphorus: {p.get('phosphorus_100g')}g")
-                lines.append("\n## Rule Evaluation\n")
+                if zh:
+                    lines.append(f"产品 **{p.get('product_name')}** 触发了 {len(risks)} 条风险规则。\n")
+                    lines.append("## 图谱证据\n")
+                    lines.append(f"- 品牌: {brand.get('brand_name', '未知')} | 物种: {p.get('target_species')} | 生命阶段: {p.get('life_stage')}")
+                    lines.append(f"- 蛋白质: {p.get('protein_100g')}g | 脂肪: {p.get('fat_100g')}g | 磷: {p.get('phosphorus_100g')}g")
+                    lines.append("\n## 规则评估\n")
+                else:
+                    lines.append(f"Product **{p.get('product_name')}** triggered {len(risks)} risk rule(s).\n")
+                    lines.append("## Graph Evidence\n")
+                    lines.append(f"- Brand: {brand.get('brand_name', 'Unknown')} | Species: {p.get('target_species')} | Life stage: {p.get('life_stage')}")
+                    lines.append(f"- Protein: {p.get('protein_100g')}g | Fat: {p.get('fat_100g')}g | Phosphorus: {p.get('phosphorus_100g')}g")
+                    lines.append("\n## Rule Evaluation\n")
                 for r in risks:
                     lines.append(f"- **{r.get('rule_name', r.get('name'))}** ({r.get('sev', r.get('severity'))}): {r.get('ev', r.get('evidence', ''))}")
             else:
-                lines.append(f"Product **{p.get('product_name')}** did not trigger any risk rules.\n")
+                if zh:
+                    lines.append(f"产品 **{p.get('product_name')}** 未触发任何风险规则。\n")
+                else:
+                    lines.append(f"Product **{p.get('product_name')}** did not trigger any risk rules.\n")
 
             if not_evaluable:
-                lines.append("\n## Data Limitations\n")
-                for ne in not_evaluable:
-                    lines.append(f"- **{ne['rule_id']}**: {ne['evidence']}")
-                lines.append("\nThese rules were not triggered due to insufficient data — this does not mean the product is safe.")
+                if zh:
+                    lines.append("\n## 数据不足\n")
+                    for ne in not_evaluable:
+                        lines.append(f"- **{ne['rule_id']}**: {ne['evidence']}")
+                    lines.append("\n以下规则因数据缺失无法评估——未触发不代表产品安全。")
+                else:
+                    lines.append("\n## Data Limitations\n")
+                    for ne in not_evaluable:
+                        lines.append(f"- **{ne['rule_id']}**: {ne['evidence']}")
+                    lines.append("\nThese rules were not triggered due to insufficient data — this does not mean the product is safe.")
 
         elif isinstance(data, list):
             if not data:
-                lines.append("No matching products found.\n")
+                lines.append("未找到匹配的产品。\n" if zh else "No matching products found.\n")
             else:
-                lines.append(f"Found **{len(data)}** result(s):\n")
-                lines.append("## Graph Evidence\n")
+                lines.append(f"找到 **{len(data)}** 个结果：\n" if zh else f"Found **{len(data)}** result(s):\n")
+                lines.append("## 图谱证据\n" if zh else "## Graph Evidence\n")
                 for item in data[:10]:
                     name = item.get("name", item.get("product_name", item.get("id", "")))
                     extra = ""
@@ -760,18 +798,22 @@ def _template_answer(question: str, tool_results: list[dict]) -> str:
 
         elif isinstance(data, dict) and "product_a" in data:
             pa, pb = data["product_a"], data["product_b"]
-            lines.append(f"Comparing {pa['product'].get('product_name')} and {pb['product'].get('product_name')}\n")
-            lines.append("## Graph Evidence\n")
-            lines.append(f"| Metric | {pa['product'].get('product_name')} | {pb['product'].get('product_name')} |")
+            if zh:
+                lines.append(f"对比 {pa['product'].get('product_name')} 和 {pb['product'].get('product_name')}\n")
+                lines.append("## 图谱证据\n")
+            else:
+                lines.append(f"Comparing {pa['product'].get('product_name')} and {pb['product'].get('product_name')}\n")
+                lines.append("## Graph Evidence\n")
+            lines.append(f"| {'指标' if zh else 'Metric'} | {pa['product'].get('product_name')} | {pb['product'].get('product_name')} |")
             lines.append("|--------|------|------|")
-            lines.append(f"| Risk rules | {len(pa.get('risks', []))} | {len(pb.get('risks', []))} |")
-            lines.append(f"| Not evaluable | {len(pa.get('not_evaluable', []))} | {len(pb.get('not_evaluable', []))} |")
+            lines.append(f"| {'风险规则' if zh else 'Risk rules'} | {len(pa.get('risks', []))} | {len(pb.get('risks', []))} |")
+            lines.append(f"| {'无法评估' if zh else 'Not evaluable'} | {len(pa.get('not_evaluable', []))} | {len(pb.get('not_evaluable', []))} |")
 
         elif result.get("status") != "success":
-            lines.append(f"Query failed: {result.get('message', 'unknown error')}\n")
+            lines.append(f"查询失败: {result.get('message', '未知错误')}\n" if zh else f"Query failed: {result.get('message', 'unknown error')}\n")
 
     if not tool_results:
-        lines.append("Could not process this question. Please try a more specific query.\n")
+        lines.append("无法处理此问题，请尝试更具体的查询。\n" if zh else "Could not process this question. Please try a more specific query.\n")
 
     # Tools used
     lines.append("\n## Tools Used\n")
