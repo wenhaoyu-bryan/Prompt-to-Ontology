@@ -1782,6 +1782,107 @@ def api_agent_trace_refresh_review(trace_id: str):
     return trace.model_dump()
 
 
+# ── Scenario Run API (Phase 41) ────────────────────────────────────────────
+
+from scenario_run import (
+    list_predefined_scenarios,
+    create_run as create_scenario_run,
+    list_runs as list_scenario_runs,
+    get_run as get_scenario_run,
+    start_step,
+    complete_step,
+    skip_step,
+    attach_artifact,
+    complete_run,
+    get_demo_health,
+)
+
+@app.get("/api/scenario-runs/scenarios")
+def api_list_scenarios():
+    """List predefined demo scenarios."""
+    return {"scenarios": [s.model_dump() for s in list_predefined_scenarios()]}
+
+@app.post("/api/scenario-runs")
+def api_create_scenario_run(body: dict):
+    """Create a new scenario run."""
+    scenario_id = body.get("scenario_id", "")
+    if not scenario_id:
+        raise HTTPException(400, "scenario_id required")
+    try:
+        run = create_scenario_run(scenario_id)
+        return run.model_dump()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+@app.get("/api/scenario-runs")
+def api_list_scenario_runs():
+    """List recent scenario runs."""
+    return {"runs": [r.model_dump() for r in list_scenario_runs()]}
+
+@app.get("/api/scenario-runs/{run_id}")
+def api_get_scenario_run(run_id: str):
+    """Get a specific scenario run."""
+    run = get_scenario_run(run_id)
+    if not run:
+        raise HTTPException(404, "Run not found")
+    return run.model_dump()
+
+@app.post("/api/scenario-runs/{run_id}/steps/{step_id}/start")
+def api_start_step(run_id: str, step_id: str):
+    """Start a scenario step."""
+    try:
+        run = start_step(run_id, step_id)
+        return run.model_dump()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+@app.post("/api/scenario-runs/{run_id}/steps/{step_id}/complete")
+def api_complete_step(run_id: str, step_id: str, body: dict = None):
+    """Complete a scenario step."""
+    try:
+        result_summary = (body or {}).get("result_summary", "")
+        run = complete_step(run_id, step_id, result_summary)
+        return run.model_dump()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+@app.post("/api/scenario-runs/{run_id}/steps/{step_id}/skip")
+def api_skip_step(run_id: str, step_id: str):
+    """Skip a scenario step."""
+    try:
+        run = skip_step(run_id, step_id)
+        return run.model_dump()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+@app.post("/api/scenario-runs/{run_id}/attach-artifact")
+def api_attach_artifact(run_id: str, body: dict):
+    """Attach an artifact to a scenario run."""
+    artifact_type = body.get("artifact_type", "")
+    artifact_id = body.get("artifact_id", "")
+    if not artifact_type or not artifact_id:
+        raise HTTPException(400, "artifact_type and artifact_id required")
+    try:
+        run = attach_artifact(run_id, artifact_type, artifact_id)
+        return run.model_dump()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+@app.post("/api/scenario-runs/{run_id}/complete")
+def api_complete_scenario_run(run_id: str):
+    """Mark a scenario run as completed."""
+    try:
+        run = complete_run(run_id)
+        return run.model_dump()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+@app.get("/api/demo/health")
+def api_demo_health():
+    """Check demo readiness."""
+    return get_demo_health()
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8765)

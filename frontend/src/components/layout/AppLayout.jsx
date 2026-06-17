@@ -16,6 +16,7 @@ import {
   SafetyOutlined,
   ExperimentOutlined,
   EyeOutlined,
+  RocketOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +38,7 @@ export default function AppLayout() {
       label: !collapsed ? t('nav.groupHome') : null,
       children: [
         { key: '/dashboard', icon: <DashboardOutlined />, label: t('nav.dashboard') },
+        { key: '/demo-center', icon: <RocketOutlined />, label: t('nav.demoCenter') },
       ],
     },
     {
