@@ -40,6 +40,7 @@ class SuggestionTrace(BaseModel):
     type: str = ""
     target_id: str = ""
     status: str = "generated"  # generated | submitted_to_review | applied | rejected | failed
+    metadata: dict = Field(default_factory=dict)
 
 
 class AgentTrace(BaseModel):

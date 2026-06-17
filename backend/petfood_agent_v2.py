@@ -691,9 +691,15 @@ def chat(question: str, context: dict = None) -> dict:
             step += 1
 
     if not answer:
-        answer = _template_answer(question, tool_results)
-        logs.append({"step": step, "type": "thought", "icon": "📝", "color": "amber",
-                     "message": "Using template to generate answer", "timestamp": ts()})
+        zh = _is_chinese(question)
+        if _is_recommendation_question(question):
+            answer = _recommendation_template(question, tool_results, zh)
+            logs.append({"step": step, "type": "thought", "icon": "📝", "color": "amber",
+                         "message": "Using recommendation template to generate answer", "timestamp": ts()})
+        else:
+            answer = _template_answer(question, tool_results)
+            logs.append({"step": step, "type": "thought", "icon": "📝", "color": "amber",
+                         "message": "Using template to generate answer", "timestamp": ts()})
         step += 1
 
     # 4. Disclaimer
@@ -730,6 +736,15 @@ def chat(question: str, context: dict = None) -> dict:
 def _is_chinese(text: str) -> bool:
     """Check if text contains Chinese characters."""
     return any('一' <= ch <= '鿿' for ch in text)
+
+
+def _is_recommendation_question(question: str) -> bool:
+    """Detect whether the user is asking for a product recommendation."""
+    q = question.lower()
+    return bool(re.search(
+        r"推荐|recommend|should I feed|我应该喂|suggest.*food|alternative|替代|which.*food.*best|哪个.*最好|哪个.*适合",
+        q,
+    ))
 
 
 def _template_answer(question: str, tool_results: list[dict]) -> str:
@@ -804,10 +819,12 @@ def _template_answer(question: str, tool_results: list[dict]) -> str:
             else:
                 lines.append(f"Comparing {pa['product'].get('product_name')} and {pb['product'].get('product_name')}\n")
                 lines.append("## Graph Evidence\n")
+            lines.append("")
             lines.append(f"| {'指标' if zh else 'Metric'} | {pa['product'].get('product_name')} | {pb['product'].get('product_name')} |")
-            lines.append("|--------|------|------|")
+            lines.append("|---|---|---|")
             lines.append(f"| {'风险规则' if zh else 'Risk rules'} | {len(pa.get('risks', []))} | {len(pb.get('risks', []))} |")
             lines.append(f"| {'无法评估' if zh else 'Not evaluable'} | {len(pa.get('not_evaluable', []))} | {len(pb.get('not_evaluable', []))} |")
+            lines.append("")
 
         elif result.get("status") != "success":
             lines.append(f"查询失败: {result.get('message', '未知错误')}\n" if zh else f"Query failed: {result.get('message', 'unknown error')}\n")
@@ -822,5 +839,194 @@ def _template_answer(question: str, tool_results: list[dict]) -> str:
 
     lines.append("\n## Note\n")
     lines.append("This answer is based only on the current ontology data and rules. It is not veterinary diagnosis.")
+
+    return "\n".join(lines)
+
+
+def _recommendation_template(question: str, tool_results: list[dict], zh: bool) -> str:
+    """Structured recommendation template with safety tables."""
+    lines: list[str] = []
+
+    # ── Collect products from tool results ───────────────────────────────
+    all_products: list[dict] = []
+    risk_products: list[dict] = []
+    safe_products: list[dict] = []
+    data_gaps: list[str] = []
+    used_tools: list[str] = []
+
+    for result in tool_results:
+        tool = result.get("tool_name", "unknown")
+        used_tools.append(tool)
+        data = result.get("data")
+
+        if isinstance(data, dict) and "product" in data:
+            # Single product risk explanation
+            p = data["product"]
+            risks = data.get("risks", [])
+            not_evaluable = data.get("not_evaluable", [])
+            entry = {
+                "id": p.get("id", ""),
+                "name": p.get("product_name", ""),
+                "species": p.get("target_species", ""),
+                "stage": p.get("life_stage", ""),
+                "risks": risks,
+                "not_evaluable": not_evaluable,
+            }
+            all_products.append(entry)
+            if risks:
+                risk_products.append(entry)
+            else:
+                safe_products.append(entry)
+            for ne in not_evaluable:
+                data_gaps.append(f"{ne.get('rule_id', '?')}: {ne.get('evidence', '')}")
+
+        elif isinstance(data, dict) and "alternatives" in data:
+            # Recommendation alternatives
+            current = data.get("current_product", {})
+            avoid = data.get("avoid_ingredient", "")
+            for alt in data.get("alternatives", []):
+                safe_products.append({
+                    "id": alt.get("id", ""),
+                    "name": alt.get("name", ""),
+                    "species": alt.get("species", ""),
+                    "stage": alt.get("stage", ""),
+                    "risks": [],
+                    "not_evaluable": [],
+                })
+            if current:
+                data_gaps.append(f"Alternatives avoid: {avoid}")
+
+        elif isinstance(data, list):
+            for item in data:
+                if isinstance(item, dict):
+                    entry = {
+                        "id": item.get("id", item.get("product_id", "")),
+                        "name": item.get("name", item.get("product_name", "")),
+                        "species": item.get("species", ""),
+                        "stage": item.get("stage", ""),
+                        "risks": [],
+                        "not_evaluable": [],
+                        "rule": item.get("rule", item.get("rule_id", "")),
+                        "severity": item.get("severity", ""),
+                    }
+                    if item.get("rule") or item.get("severity"):
+                        risk_products.append(entry)
+                    all_products.append(entry)
+                    if "rules" in item:
+                        for rule in item["rules"]:
+                            not_eval_data = {
+                                "rule_id": rule.get("rule_id", ""),
+                                "product_id": item.get("product_id", ""),
+                                "evidence": rule.get("evidence", ""),
+                            }
+                            entry["not_evaluable"].append(not_eval_data)
+                            data_gaps.append(f"{not_eval_data['rule_id']}: {not_eval_data['evidence']}")
+
+        elif result.get("status") != "success":
+            data_gaps.append(f"Tool failed: {tool} — {result.get('message', 'unknown error')}")
+
+    # ── Short Answer ─────────────────────────────────────────────────────
+    if zh:
+        lines.append("## 简要回答\n")
+    else:
+        lines.append("## Short Answer\n")
+
+    if safe_products and not risk_products:
+        if zh:
+            lines.append(f"当前数据中有 {len(safe_products)} 个候选产品未触发已知风险规则。\n")
+        else:
+            lines.append(f"{len(safe_products)} candidate product(s) found in current data with no triggered risk rules.\n")
+    elif risk_products and safe_products:
+        if zh:
+            lines.append(f"当前数据中有 {len(safe_products)} 个候选产品和 {len(risk_products)} 个需要避免或复核的产品。\n")
+        else:
+            lines.append(f"{len(safe_products)} candidate product(s) and {len(risk_products)} product(s) to avoid or review.\n")
+    elif risk_products:
+        if zh:
+            lines.append(f"当前数据中所有匹配的产品均触发了风险规则，请优先复核。\n")
+        else:
+            lines.append(f"All matching products in current data triggered risk rules — review before use.\n")
+    else:
+        if zh:
+            lines.append("未找到明确的推荐结果，请提供更多上下文。\n")
+        else:
+            lines.append("No clear recommendation found from current data. Please provide more context.\n")
+
+    # ── Safer Options ────────────────────────────────────────────────────
+    if zh:
+        lines.append("\n## 当前数据中较安全的选择\n")
+        lines.append("| 场景 | 候选产品 | 说明 |")
+    else:
+        lines.append("\n## Safer Options from Current Data\n")
+        lines.append("| Situation | Candidate Products | Notes |")
+    lines.append("|---|---|---|")
+
+    if safe_products:
+        # Group by species + stage
+        groups: dict[str, list[str]] = {}
+        for sp in safe_products:
+            key = f"{sp.get('species', '?')} / {sp.get('stage', '?')}"
+            groups.setdefault(key, []).append(sp["name"])
+        for group_key, names in groups.items():
+            lines.append(f"| {group_key} | {', '.join(names[:5])} | {'OK' if not zh else '无已知风险'} |")
+    else:
+        if zh:
+            lines.append("| — | 当前数据中无候选 | 需要更多产品数据 |")
+        else:
+            lines.append("| — | No candidates in current data | More product data needed |")
+
+    # ── Products to Avoid or Review ──────────────────────────────────────
+    if zh:
+        lines.append("\n## 需要避免或复核的产品\n")
+        lines.append("| 产品 | 原因 | 规则证据 |")
+    else:
+        lines.append("\n## Products to Avoid or Review\n")
+        lines.append("| Product | Reason | Rule Evidence |")
+    lines.append("|---|---|---|")
+
+    if risk_products:
+        for rp in risk_products[:10]:
+            reasons = []
+            evidence_parts = []
+            for r in rp.get("risks", []):
+                rule_name = r.get("rule_name", r.get("name", ""))
+                reasons.append(rule_name)
+                evidence_parts.append(r.get("ev", r.get("evidence", "")))
+            if rp.get("rule"):
+                reasons.append(rp["rule"])
+                evidence_parts.append(rp.get("severity", ""))
+            reason_str = "; ".join(reasons) if reasons else ("未知风险" if zh else "Unknown risk")
+            ev_str = "; ".join(evidence_parts) if evidence_parts else "—"
+            lines.append(f"| {rp['name']} | {reason_str} | {ev_str} |")
+    else:
+        if zh:
+            lines.append("| — | 无 | — |")
+        else:
+            lines.append("| — | None | — |")
+
+    # ── Data Gaps ────────────────────────────────────────────────────────
+    if data_gaps:
+        if zh:
+            lines.append("\n## 数据缺口\n")
+        else:
+            lines.append("\n## Data Gaps\n")
+        for gap in data_gaps[:8]:
+            lines.append(f"- {gap}")
+
+    # ── Tools Used ───────────────────────────────────────────────────────
+    if zh:
+        lines.append("\n## 使用的工具\n")
+    else:
+        lines.append("\n## Tools Used\n")
+    for t in used_tools:
+        lines.append(f"- {t}")
+
+    # ── Safety Note ──────────────────────────────────────────────────────
+    if zh:
+        lines.append("\n## 安全提示\n")
+        lines.append("本回答仅基于当前本体数据和规则，不做兽医诊断。")
+    else:
+        lines.append("\n## Safety Note\n")
+        lines.append("This answer is based only on the current ontology data and rules. It is not veterinary diagnosis.")
 
     return "\n".join(lines)

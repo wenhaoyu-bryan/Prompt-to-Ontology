@@ -78,14 +78,20 @@ def create_review_items_from_agent_suggestions(
             created_at=now,
             updated_at=now,
             metadata={
+                "source_type": "agent_suggestion",
                 "agent_action_type": sug.type.value,
                 "agent_run_id": agent_run_id,
-                "user_message": user_message,
-                "target_object_id": sug.target_object_id,
-                "property_update": sug.property_update,
-                "rule_id": sug.rule_id,
+                "trace_id": sug.metadata.get("trace_id", ""),
+                "suggestion_type": sug.type.value,
+                "target_id": sug.target_object_id,
+                "target_object_id": sug.target_object_id,  # backward compat
+                "related_rule_id": sug.rule_id or sug.metadata.get("related_rule_id", ""),
+                "related_rule_name": sug.metadata.get("related_rule_name", ""),
+                "missing_field": sug.metadata.get("missing_field", ""),
                 "reason": sug.reason,
-                **sug.metadata,
+                "user_message": user_message,
+                "property_update": sug.property_update,
+                **sug.metadata,  # forward any extra metadata keys
             },
         )
         items.append(item)

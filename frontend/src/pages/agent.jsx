@@ -287,9 +287,13 @@ export default function AgentPage() {
                           ? <pre style={{background: 'rgba(0,0,0,0.15)', padding: 8, borderRadius: 4, fontSize: 12, overflow: 'auto', margin: '6px 0'}}><code>{children}</code></pre>
                           : <code style={{background: 'rgba(0,0,0,0.15)', padding: '1px 4px', borderRadius: 3, fontSize: 12}}>{children}</code>,
                         strong: ({children}) => <strong style={{fontWeight: 600}}>{children}</strong>,
-                        table: ({children}) => <table style={{borderCollapse: 'collapse', margin: '6px 0', fontSize: 12, width: '100%'}}>{children}</table>,
-                        th: ({children}) => <th style={{border: '1px solid rgba(128,128,128,0.3)', padding: '4px 8px', textAlign: 'left', fontWeight: 600}}>{children}</th>,
-                        td: ({children}) => <td style={{border: '1px solid rgba(128,128,128,0.3)', padding: '4px 8px'}}>{children}</td>,
+                        table: ({children}) => (
+                          <div style={{overflowX: 'auto', margin: '6px 0'}}>
+                            <table style={{borderCollapse: 'collapse', fontSize: 12, minWidth: '100%'}}>{children}</table>
+                          </div>
+                        ),
+                        th: ({children}) => <th style={{border: '1px solid rgba(128,128,128,0.3)', padding: '4px 8px', textAlign: 'left', fontWeight: 600, wordBreak: 'break-word'}}>{children}</th>,
+                        td: ({children}) => <td style={{border: '1px solid rgba(128,128,128,0.3)', padding: '4px 8px', wordBreak: 'break-word'}}>{children}</td>,
                       }}
                     >
                       {msg.content}
@@ -302,12 +306,25 @@ export default function AgentPage() {
                       <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
                         {t('agent.proposedUpdates')} ({msg.suggestions.length})
                       </Text>
-                      {msg.suggestions.map((sug, j) => (
+                      {msg.suggestions.map((sug, j) => {
+                        const showRule = sug.related_rule_id && sug.related_rule_id !== 'UNKNOWN_RULE';
+                        const showMissingField = sug.missing_field && sug.missing_field !== 'data_quality';
+                        return (
                         <div key={j} style={{ fontSize: 11, marginBottom: 6, padding: '6px 8px', background: 'rgba(255,255,255,0.5)', borderRadius: 4 }}>
                           <div style={{ marginBottom: 3 }}>
                             <Tag color="purple" style={{ fontSize: 10 }}>{sug.type?.replace(/_/g, ' ')}</Tag>
-                            {sug.confidence && (
+                            {sug.confidence != null && (
                               <Text type="secondary" style={{ fontSize: 10 }}>({(sug.confidence * 100).toFixed(0)}%)</Text>
+                            )}
+                            {showRule && (
+                              <Tag color="orange" style={{ fontSize: 10, marginLeft: 4 }}>
+                                {t('agent.ruleLabel', 'Rule')}: {sug.related_rule_id}{sug.related_rule_name ? ` ${sug.related_rule_name}` : ''}
+                              </Tag>
+                            )}
+                            {showMissingField && (
+                              <Tag color="geekblue" style={{ fontSize: 10, marginLeft: 4 }}>
+                                {t('agent.missingFieldLabel', 'Missing Field')}: {sug.missing_field}
+                              </Tag>
                             )}
                           </div>
                           <Text style={{ fontSize: 11, display: 'block' }}>{sug.title}</Text>
@@ -324,11 +341,18 @@ export default function AgentPage() {
                               {sug.candidate_link.source_id} → {sug.candidate_link.type} → {sug.candidate_link.target_id}
                             </Text>
                           )}
+                          {sug.why_it_matters && (
+                            <Text type="secondary" italic style={{ fontSize: 10, display: 'block', marginTop: 3 }}>{sug.why_it_matters}</Text>
+                          )}
                           {sug.reason && (
                             <Text type="secondary" style={{ fontSize: 10, display: 'block', marginTop: 2 }}>{sug.reason}</Text>
                           )}
+                          {sug.evidence && (
+                            <Text type="secondary" style={{ fontSize: 10, display: 'block', marginTop: 2 }}>{sug.evidence}</Text>
+                          )}
                         </div>
-                      ))}
+                        );
+                      })}
                       {msg.suggestionsSubmitted ? (
                         <div style={{ marginTop: 8 }}>
                           <Tag color="success"><CheckCircleOutlined /> {t('agent.suggestionsSubmitted')}</Tag>
