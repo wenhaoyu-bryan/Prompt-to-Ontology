@@ -137,7 +137,7 @@ def test_09_analyze_missing_data():
 
 
 def test_10_analyze_risk_triggered():
-    result = {"answer": "PF001 triggered R001 high fat risk rule.", "logs": []}
+    result = {"answer": "PF001 triggered RR001 high fat risk rule.", "logs": []}
     suggestions = analyze_agent_answer_for_suggestions(
         "Which products are high risk?", result, agent_run_id="run-3",
     )

@@ -115,6 +115,7 @@ def create_trace(
             type=s.get("type", ""),
             target_id=s.get("target_object_id", ""),
             status="generated",
+            metadata={k: v for k, v in s.items() if k not in ("id", "type", "target_object_id")},
         ))
 
     # -- Review info -----------------------------------------------

@@ -912,6 +912,15 @@ def _recommendation_template(question: str, tool_results: list[dict], zh: bool) 
                     if item.get("rule") or item.get("severity"):
                         risk_products.append(entry)
                     all_products.append(entry)
+                    if "rules" in item:
+                        for rule in item["rules"]:
+                            not_eval_data = {
+                                "rule_id": rule.get("rule_id", ""),
+                                "product_id": item.get("product_id", ""),
+                                "evidence": rule.get("evidence", ""),
+                            }
+                            entry["not_evaluable"].append(not_eval_data)
+                            data_gaps.append(f"{not_eval_data['rule_id']}: {not_eval_data['evidence']}")
 
         elif result.get("status") != "success":
             data_gaps.append(f"Tool failed: {tool} — {result.get('message', 'unknown error')}")

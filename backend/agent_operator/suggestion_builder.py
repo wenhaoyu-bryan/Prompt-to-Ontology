@@ -125,12 +125,17 @@ def build_rule_action_suggestion(
         description=description or f"Review action needed for rule '{rule_id}' on object '{target_object_id}'.",
         target_object_id=target_object_id,
         rule_id=rule_id,
+        related_rule_id=rule_id,
         severity=severity,
         confidence=confidence,
         reason=reason or "Rule triggered requiring review",
         evidence=evidence,
         source_agent_run_id=agent_run_id,
         created_at=datetime.utcnow(),
+        metadata={
+            "related_rule_id": rule_id,
+            "related_rule_name": "",
+        },
     )
 
 
@@ -165,7 +170,13 @@ def build_data_quality_issue_suggestion(
         evidence=evidence,
         source_agent_run_id=agent_run_id,
         created_at=datetime.utcnow(),
-        metadata={"missing_fields": missing_fields or []},
+        metadata={
+            "missing_fields": missing_fields or [],
+            "missing_field": missing_fields[0] if missing_fields else "",
+            "related_rule_id": related_rule_id or "",
+            "related_rule_name": related_rule_name or "",
+            "why_it_matters": why_it_matters or "",
+        },
         missing_field=missing_field,
         why_it_matters=why_it_matters,
         related_rule_id=related_rule_id,
@@ -200,7 +211,7 @@ def build_field_specific_data_quality_suggestion(
         evidence=evidence,
         source_agent_run_id=agent_run_id,
         created_at=datetime.utcnow(),
-        metadata={"missing_fields": [missing_field], "missing_field": missing_field, "related_rule_id": related_rule_id, "related_rule_name": related_rule_name},
+        metadata={"missing_fields": [missing_field], "missing_field": missing_field, "related_rule_id": related_rule_id, "related_rule_name": related_rule_name, "why_it_matters": why_it_matters or ""},
         missing_field=missing_field,
         why_it_matters=why_it_matters,
         related_rule_id=related_rule_id,

@@ -66,7 +66,7 @@ def detect_user_intent(question: str) -> str:
         return "data_quality_question"
 
     # Recommendation
-    if re.search(r"推荐|recommend|should I feed|我应该喂|suggest|alternative|替代", q):
+    if re.search(r"推荐|recommend|should I feed|我应该喂|suggest.*food|alternative|替代|哪个.*最好|哪个.*适合|which.*food.*best", q):
         return "recommendation_question"
 
     # Risk analysis
@@ -92,7 +92,7 @@ def _resolve_rule_id(rule_id: str) -> dict | None:
     """
     info = RULE_FIELD_REQUIREMENTS.get(rule_id)
     if info is None:
-        logger.warning("Skipping suggestion for unknown rule_id: %s", rule_id)
+        logger.warning("Unknown rule_id detected: %s", rule_id)
     return info
 
 
@@ -128,11 +128,10 @@ def analyze_agent_answer_for_suggestions(
             if field_suggestions:
                 suggestions.extend(field_suggestions)
             else:
-                # Fallback: generic per-product data quality (no ["data_quality"] placeholder)
+                # Fallback: field-specific per-product data quality
                 product_ids = re.findall(r'\b(PF\d+)\b', answer)
+                ne_rule_ids = set(re.findall(r'\b(RR\d+)\b', answer))
                 for pid in set(product_ids[:3]):
-                    # Try to find not_evaluable rule IDs in the answer
-                    ne_rule_ids = re.findall(r'\b(RR\d+)\b', answer)
                     for rid in ne_rule_ids:
                         rule_info = _resolve_rule_id(rid)
                         if rule_info:
@@ -148,7 +147,6 @@ def analyze_agent_answer_for_suggestions(
                                     evidence=answer[:200],
                                     agent_run_id=agent_run_id,
                                 ))
-                    # If no rule IDs found, still emit generic but with concrete field hint
                     if not ne_rule_ids:
                         suggestions.append(build_data_quality_issue_suggestion(
                             target_object_id=pid,
@@ -170,11 +168,8 @@ def analyze_agent_answer_for_suggestions(
                 for rid in set(rule_ids[:2]):
                     # Verify the rule exists
                     rule_info = _resolve_rule_id(rid)
-                    if rule_info is None and rid not in RULE_FIELD_REQUIREMENTS:
-                        # Not a known RR rule, but could be R001 etc from tests — accept it
-                        # Only skip truly unknown patterns
-                        if not rid.startswith("R"):
-                            continue
+                    if rule_info is None and rid not in RULE_FIELD_REQUIREMENTS and not rid.startswith("R"):
+                        continue
                     suggestions.append(build_rule_action_suggestion(
                         rule_id=rid,
                         target_object_id=pid,
@@ -186,7 +181,7 @@ def analyze_agent_answer_for_suggestions(
                     ))
 
     # ── 3. Property update intent ───────────────────────────────────────
-    if intent in ("update_request", "informational_question"):
+    if intent in ("update_request", "review_request"):
         for pattern in _PROPERTY_UPDATE_PATTERNS:
             match = re.search(pattern, question, re.IGNORECASE)
             if match:
@@ -204,7 +199,7 @@ def analyze_agent_answer_for_suggestions(
                 break
 
     # ── 4. Link creation intent ─────────────────────────────────────────
-    if intent in ("update_request", "informational_question"):
+    if intent in ("update_request", "review_request", "informational_question"):
         for pattern in _LINK_CREATE_PATTERNS:
             match = re.search(pattern, question, re.IGNORECASE)
             if match:
@@ -222,7 +217,7 @@ def analyze_agent_answer_for_suggestions(
                 break
 
     # ── 5. Object creation intent ───────────────────────────────────────
-    if intent in ("update_request", "informational_question"):
+    if intent in ("update_request", "review_request"):
         for pattern in _OBJECT_CREATE_PATTERNS:
             match = re.search(pattern, question, re.IGNORECASE)
             if match:
@@ -255,11 +250,8 @@ def _extract_field_specific_suggestions(
 
     for result in tool_results:
         data = result.get("data", {})
-        if not isinstance(data, dict):
-            continue
 
-        # Look for products with not_evaluable rules in tool output
-        # Case 1: find_products_with_not_evaluable_rules output
+        # Case 1: list of items (e.g., find_products_with_not_evaluable_rules)
         if isinstance(data, list):
             for entry in data:
                 if not isinstance(entry, dict):
@@ -282,6 +274,10 @@ def _extract_field_specific_suggestions(
                                 evidence=rule_info.get("evidence", ""),
                                 agent_run_id=agent_run_id,
                             ))
+            continue
+
+        if not isinstance(data, dict):
+            continue
 
         # Case 2: get_product_risk_explanation output (not_evaluable array)
         not_evaluable = data.get("not_evaluable", [])
