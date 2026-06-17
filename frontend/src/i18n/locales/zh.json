@@ -20,7 +20,8 @@
     "groupAdmin": "管理",
     "graphGovernance": "图谱治理",
     "ruleStudio": "规则工作台",
-    "agentTrace": "智能体追踪"
+    "agentTrace": "智能体追踪",
+    "demoCenter": "演示中心"
   },
   "common": {
     "loading": "加载中...",
@@ -169,7 +170,10 @@
     "openGov": "打开治理",
     "snapshots": "快照",
     "diffs": "差异",
-    "latestSnapshot": "最近快照"
+    "latestSnapshot": "最近快照",
+    "guidedDemo": "引导演示",
+    "guidedDemoDesc": "逐步引导的产品演示",
+    "startGoldenDemo": "开始 Golden Demo"
   },
   "objects": {
     "title": "对象",
@@ -827,5 +831,27 @@
     "submittedToReview": "已提交审核",
     "applied": "已应用",
     "rejected": "已拒绝"
+  },
+  "demoCenter": {
+    "title": "演示中心",
+    "subtitle": "引导式演示，逐步展示产品能力",
+    "availableScenarios": "可用场景",
+    "noScenarios": "暂无场景",
+    "steps": "步骤",
+    "startDemo": "开始演示",
+    "demoStarted": "演示已启动",
+    "demoCompleted": "演示已完成",
+    "stepTimeline": "步骤时间线",
+    "artifacts": "演示产物",
+    "agentTrace": "Agent 追踪",
+    "reviewQueue": "审核队列",
+    "graphGovernance": "图谱治理",
+    "completeDemo": "完成演示",
+    "openPage": "打开页面",
+    "start": "开始",
+    "complete": "完成",
+    "skip": "跳过",
+    "markComplete": "标记完成",
+    "expected": "预期结果"
   }
 }

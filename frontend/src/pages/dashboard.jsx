@@ -199,6 +199,26 @@ export default function DashboardPage() {
       {/* Workflow Pipeline */}
       <WorkflowPipeline t={t} />
 
+      {/* Guided Demo Card */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card
+            title={<><RocketOutlined /> {t('dashboard.guidedDemo')}</>}
+            size="small"
+            style={{ borderColor: 'rgba(82,196,26,0.3)' }}
+          >
+            <Space direction="vertical" size={8} style={{ width: '100%' }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {t('dashboard.guidedDemoDesc')}
+              </Text>
+              <Button type="primary" icon={<PlayCircleOutlined />} block onClick={() => navigate('/demo-center')}>
+                {t('dashboard.startGoldenDemo')}
+              </Button>
+            </Space>
+          </Card>
+        </Col>
+      </Row>
+
       {/* Primary Stats */}
       <Row gutter={[16, 16]}>
         {[

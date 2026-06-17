@@ -150,3 +150,28 @@
 ### 建议无法提交到 Review Queue
 - 检查后端 API 是否正常
 - 确认 agent_run_id 正确传递
+
+## 演示中心（Phase 41）
+
+项目现在内置了引导式演示中心，帮助演示者按步骤完成完整的产品演示。
+
+### 使用方式
+
+1. 打开 Dashboard
+2. 点击 "Start Golden Demo" 或导航到 /demo-center
+3. 选择 "Golden Demo: Pet Food Ontology Runtime"
+4. 按步骤完成演示，每步有推荐页面和预期结果
+5. 可以跳过不需要的步骤
+6. 完成后查看演示产物
+
+### 演示产物
+
+演示过程中可以附加以下产物：
+- Agent Trace — Agent 追踪记录
+- Review Batch — 审核批次
+- Graph Snapshot — 图谱快照
+- Graph Diff — 图谱差异
+
+### Demo Health Check
+
+通过 `GET /api/demo/health` 可以检查演示环境就绪状态。

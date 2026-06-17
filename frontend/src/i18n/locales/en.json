@@ -20,7 +20,8 @@
     "groupAdmin": "Admin",
     "graphGovernance": "Graph Governance",
     "ruleStudio": "Rule Studio",
-    "agentTrace": "Agent Traces"
+    "agentTrace": "Agent Traces",
+    "demoCenter": "Demo Center"
   },
   "common": {
     "loading": "Loading...",
@@ -169,7 +170,10 @@
     "openGov": "Open Governance",
     "snapshots": "Snapshots",
     "diffs": "Diffs",
-    "latestSnapshot": "Latest Snapshot"
+    "latestSnapshot": "Latest Snapshot",
+    "guidedDemo": "Guided Demo",
+    "guidedDemoDesc": "Step-by-step guided product demo",
+    "startGoldenDemo": "Start Golden Demo"
   },
   "objects": {
     "title": "Objects",
@@ -827,5 +831,27 @@
     "submittedToReview": "Submitted to Review",
     "applied": "Applied",
     "rejected": "Rejected"
+  },
+  "demoCenter": {
+    "title": "Demo Center",
+    "subtitle": "Guided demo experience, step by step",
+    "availableScenarios": "Available Scenarios",
+    "noScenarios": "No scenarios available",
+    "steps": "steps",
+    "startDemo": "Start Demo",
+    "demoStarted": "Demo started",
+    "demoCompleted": "Demo completed",
+    "stepTimeline": "Step Timeline",
+    "artifacts": "Demo Artifacts",
+    "agentTrace": "Agent Trace",
+    "reviewQueue": "Review Queue",
+    "graphGovernance": "Graph Governance",
+    "completeDemo": "Complete Demo",
+    "openPage": "Open Page",
+    "start": "Start",
+    "complete": "Complete",
+    "skip": "Skip",
+    "markComplete": "Mark Complete",
+    "expected": "Expected"
   }
 }
