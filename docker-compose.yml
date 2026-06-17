@@ -17,8 +17,8 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     ports:
       - "${BACKEND_PORT:-8765}:8765"
     environment:
@@ -42,6 +42,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "${FRONTEND_PORT:-5173}:5173"
+    environment:
+      VITE_API_TARGET: http://backend:8765
     depends_on:
       backend:
         condition: service_healthy

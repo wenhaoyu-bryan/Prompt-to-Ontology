@@ -28,13 +28,24 @@ docker compose up --build
 编辑 `.env` 文件，填写 LLM API Key：
 
 ```
-LLM_PROVIDER=openai
-LLM_API_KEY=sk-your-key-here
-LLM_MODEL=gpt-4o-mini
-LLM_BASE_URL=https://api.openai.com/v1
+# OpenAI
+LLM_BACKEND=openai
+OPENAI_API_KEY=sk-your-key-here
+OPENAI_MODEL=gpt-4o-mini
+OPENAI_BASE_URL=https://api.openai.com/v1
+
+# 或 Anthropic
+# LLM_BACKEND=anthropic
+# ANTHROPIC_API_KEY=sk-ant-your-key-here
+
+# 或 MiniMax
+# LLM_BACKEND=minimax
+# MINIMAX_API_KEY=your-key-here
+# MINIMAX_MODEL=MiniMax-M2.7
+# MINIMAX_BASE_URL=https://api.minimaxi.com/v1
 ```
 
-支持的 Provider: OpenAI, Anthropic, DeepSeek, Mimo, MiniMax
+支持的 Provider: OpenAI, Anthropic, MiniMax
 
 不配置 LLM 时，Agent 使用 deterministic fallback 模式。
 
@@ -78,7 +89,7 @@ docker compose ps
 
 ### 前端无法访问后端
 
-确认 vite.config.js 中 proxy 目标为 `http://localhost:8765`。
+确认 vite.config.js 中 proxy 目标正确。Docker 环境下使用 `http://backend:8765`（通过 `VITE_API_TARGET` 环境变量设置），本地开发默认 `http://localhost:8765`。
 
 ### Docker 缓存问题
 
