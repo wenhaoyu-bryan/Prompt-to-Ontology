@@ -88,7 +88,7 @@ export default function DemoCenterPage() {
       const { data } = await api.post(`/scenario-runs/${activeRun.run_id}/complete`);
       setActiveRun(data);
       message.success(isZh ? '演示已完成' : 'Demo completed');
-      loadRuns();
+      // Don't call loadRuns() — it would overwrite activeRun with null
     } catch (err) {
       message.error(err?.response?.data?.detail || t('common.error'));
     }

@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import datetime, timezone
 from .models import (
@@ -235,13 +236,13 @@ def _find_step(run: ScenarioRun, step_id: str) -> ScenarioStep | None:
 
 
 def _advance_step(run: ScenarioRun):
-    """Move current_step_id to the next pending step."""
+    """Move current_step_id to the next pending or running step."""
     found_current = False
     for s in run.steps:
         if s.step_id == run.current_step_id:
             found_current = True
             continue
-        if found_current and s.status == StepStatus.PENDING:
+        if found_current and s.status in (StepStatus.PENDING, StepStatus.RUNNING):
             run.current_step_id = s.step_id
             return
     # No more pending steps
@@ -273,6 +274,8 @@ def complete_step(run_id: str, step_id: str, result_summary: str = "") -> Scenar
     step = _find_step(run, step_id)
     if not step:
         raise ValueError("Step not found")
+    if step.status in (StepStatus.COMPLETED, StepStatus.SKIPPED):
+        return run  # already done, no-op
 
     step.status = StepStatus.COMPLETED
     step.completed_at = _now()
@@ -290,6 +293,8 @@ def skip_step(run_id: str, step_id: str) -> ScenarioRun:
     step = _find_step(run, step_id)
     if not step:
         raise ValueError("Step not found")
+    if step.status in (StepStatus.COMPLETED, StepStatus.SKIPPED):
+        return run  # already done, no-op
 
     step.status = StepStatus.SKIPPED
     step.completed_at = _now()
@@ -397,7 +402,11 @@ def get_demo_health() -> dict:
         has_env_key = False
         if env_path.exists():
             content = env_path.read_text()
-            has_env_key = "LLM_API_KEY" in content and "your-" not in content
+            _key_match = re.search(r'LLM_API_KEY\s*=\s*(.+)', content)
+            if _key_match:
+                key_val = _key_match.group(1).strip().strip('"').strip("'")
+                placeholders = ("your-", "sk-xxx", "your_api", "replace", "changeme", "TODO", "PLACEHOLDER")
+                has_env_key = bool(key_val) and not any(p in key_val.lower() for p in placeholders)
         has_runtime = False
         runtime_path = Path(__file__).parent.parent / ".runtime" / "llm_config.json"
         if runtime_path.exists():
