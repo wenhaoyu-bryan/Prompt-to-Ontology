@@ -43,6 +43,7 @@ docs/*
 !docs/rule-studio-simulation.md
 !docs/agent-trace-evaluation.md
 !docs/golden-demo-script.md
+!docs/README.md
 Phases/
 
 # Test data

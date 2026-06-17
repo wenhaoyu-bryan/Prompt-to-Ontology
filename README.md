@@ -1,172 +1,89 @@
-# Prompt-to-Ontology · Pet Food Ontology Demo
+# Prompt-to-Ontology
 
-> An operational ontology runtime that turns standardized data into structured objects, relationships, constraints, rules, evidence, and agent-assisted reasoning.
+> A domain-agnostic operational ontology runtime — load data, build graphs, evaluate rules, generate evidence, and operate with an AI agent. Pet Food demo included.
 
-**Current mainline:** Operational Ontology Runtime / Pet Food Ontology Demo
+**Status:** Active development · 9 releases · 364+ backend tests
 
 ---
 
 ## What This Is
 
-Prompt-to-Ontology is a domain-ontology runtime. It takes structured data and schema definitions, builds a graph of typed objects and relationships, evaluates rules against that graph, generates evidence edges, and supports agent-assisted Q&A with human-in-the-loop review.
+Prompt-to-Ontology is a domain-agnostic operational ontology runtime. It ingests structured data (CSV), builds a graph of typed objects and relationships, evaluates rules, generates evidence, and supports AI agent-assisted reasoning — all with human-in-the-loop review at every step.
 
-The **Pet Food Demo** validates the runtime using a real domain: pet food products, ingredients, brands, species, risk rules, and nutrition regulations.
-
-**Runtime pipeline:**
-```
-Ready Data → Object Extraction → Relation Mapping → Constraint Validation
-→ Rule Evaluation → Evidence Generation → Agent Reasoning → Human Review
-```
-
-This is **not** a pet food app. The same runtime can be extended to supply chain, food safety, compliance, or industrial operations.
+The Pet Food domain ships as a built-in demo to validate the full pipeline. The same runtime can be pointed at any domain schema — food safety, supply chain, compliance — without changing the engine.
 
 ---
 
-## What This Demo Proves
+## Product Architecture
 
-- Domain objects can be modeled as ontology object types
-- Relationships can be validated against link definitions
-- Rules can generate explainable risk edges (4-state evaluation)
-- Missing data is separated from safe results
-- Object views show evidence, not just properties
-- Agents can answer using graph-grounded tools (not hallucination)
-- The same runtime works across domains
+```mermaid
+flowchart LR
+    A[Ready Data / CSV] --> B[Data Pipeline]
+    B --> C[Import Plan]
+    C --> D[Review Queue]
+    D --> E[Graph Runtime]
+    E --> F[Object Explorer]
+    E --> G[Graph Explorer]
+    E --> H[Rule Studio]
+    E --> I[Agent Operator]
+    I --> J[Agent Trace]
+    J --> K[Reviewable Suggestions]
+    K --> D
+    E --> L[Graph Governance]
+    L --> M[Snapshot / Diff / Rollback]
+    N[Demo Center] -.-> A
+    N -.-> E
+    N -.-> I
+    N -.-> D
+```
+
+---
+
+## Feature Matrix
+
+| Feature | Status | Description |
+|---|---|---|
+| Data Pipeline | ✅ | Profile, map, validate, generate import plans |
+| Custom CSV Upload | ✅ | Upload object CSV with type inference |
+| Relationship CSV Upload | ✅ | Upload relationship CSV with validation |
+| Review Queue | ✅ | Human-in-the-loop approve / reject / apply |
+| Graph Runtime | ✅ | Neo4j graph with typed objects and relationships |
+| Graph Governance | ✅ | Snapshot, diff, rollback |
+| Rule Studio | ✅ | Rule definitions, coverage, simulation |
+| Agent Operator | ✅ | AI agent with tool-calling and deterministic fallback |
+| Agent Trace & Evaluation | ✅ | Structured traces, 5-score evaluation |
+| Demo Center | ✅ | Guided step-by-step demo experience |
 
 ---
 
 ## Demo
 
-### Video
+### Guided Demo
+
+Use the built-in Demo Center for a narrated walkthrough:
+
+**Dashboard -> Demo Center -> Start Golden Demo**
+
+### Quick Demo (8 Steps)
+
+1. **Reset** -- Clear all graph data and start fresh
+2. **Data Pipeline** -- Profile the sample CSV, review mappings, generate an import plan
+3. **Review Queue** -- Review candidates, approve or reject, apply to graph
+4. **Object Explorer** -- Browse products, inspect evidence and risk edges
+5. **Graph Explorer** -- Explore the local and global evidence network
+6. **Rule Studio** -- Review rule definitions, coverage, and run simulations
+7. **Agent Operator** -- Ask natural-language questions, propose reviewable updates
+8. **Graph Governance** -- Create a snapshot, view diff, test rollback
 
 <!-- TODO: Replace with actual demo video. Place the file at media/demo.mp4 -->
-<!-- For GitHub inline playback, keep video under 10MB. Use GitHub Releases for larger files. -->
-
-<!-- Option A: repo file (under 10MB) -->
 <!-- ![Demo Video](media/demo.mp4) -->
 
-<!-- Option B: GitHub Releases link (recommended for large videos) -->
-<!-- [Watch Demo Video](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.1.0-ontology-runtime/demo.mp4) -->
-
-### Screenshots
-
 <!-- TODO: Replace with actual screenshots. Place files in media/ folder. -->
-
 <!-- ![Dashboard](media/screenshot-dashboard.png) -->
 <!-- ![Data Pipeline](media/screenshot-pipeline.png) -->
 <!-- ![Review Queue](media/screenshot-review.png) -->
-<!-- ![Object Explorer](media/screenshot-objects.png) -->
 <!-- ![Graph Explorer](media/screenshot-graph.png) -->
 <!-- ![Agent Operator](media/screenshot-agent.png) -->
-
----
-
-## Product Workflow
-
-The app has two clear user paths:
-
-### Build Ontology
-
-```
-Data Pipeline → Ontology Manager → Review Queue → Graph Write
-```
-
-Converts ready data into reviewable ontology graph updates.
-
-### Explore / Operate Ontology
-
-```
-Object Explorer → Graph Explorer → Agent Operator → Review Actions
-```
-
-Inspect, reason over, and operate on ontology objects with human-in-the-loop review.
-
-See [docs/product-workflow.md](docs/product-workflow.md) for full documentation.
-
-## Demo Flow
-
-1. **Dashboard** — dual-path hero, ontology health, and quick navigation
-2. **Data Pipeline** — profile data, map to ontology, generate import plans (Build path start)
-3. **Ontology Manager** — inspect object types, link types, rules, and schema
-4. **Review Queue** — review candidates, approve/reject, apply to graph (trust boundary)
-5. **Object Explorer** — browse products, view evidence and risks
-6. **Graph Explorer** — explore global/local evidence network
-7. **Agent Operator** — ask questions, propose reviewable updates
-
-See [docs/demo-script.md](docs/demo-script.md) for a detailed walkthrough.
-
----
-
-## Tech Stack
-
-### Frontend
-
-| Layer | Technology |
-|---|---|
-| Framework | React 18 + Vite 6 |
-| Meta-framework | Refine |
-| UI Library | Ant Design 6 |
-| Routing | React Router v6 |
-| i18n | i18next (English + Chinese, 400+ keys) |
-| Graph | D3.js v7 |
-| HTTP | axios |
-
-### Backend
-
-| Layer | Technology |
-|---|---|
-| API | FastAPI (Python) |
-| Database | Neo4j |
-| Graph Algorithms | NetworkX |
-| Schema | YAML-based (object types, link types, rules, actions, constraints) |
-| Rule Engine | 4-state evaluation (triggered / passed / not_evaluable / not_applicable) |
-| Agent | LLM tool-calling with deterministic fallback |
-
----
-
-## Domain Schema
-
-### 6 Object Types
-
-| Type | Description |
-|---|---|
-| `PetFoodProduct` | Pet food product (name, category, species, life stage, nutrition) |
-| `Brand` | Pet food brand (name, country) |
-| `Ingredient` | Food ingredient (name, type, risk tag, allergen flag) |
-| `RiskRule` | Nutrition/ingredient risk rule (severity, condition) |
-| `Species` | Target species (Cat, Dog) |
-| `LifeStage` | Life stage (Kitten, Puppy, Adult, Senior) |
-
-### 6 Link Types
-
-| Link | From → To | Meaning |
-|---|---|---|
-| `MADE_BY` | Product → Brand | Manufacturer relationship |
-| `CONTAINS` | Product → Ingredient | Composition |
-| `TARGETS_SPECIES` | Product → Species | Target animal |
-| `SUITABLE_FOR` | Product → LifeStage | Age suitability |
-| `TRIGGERS_RISK` | Product → RiskRule | Evidence edge (generated by rule engine) |
-| `SIMILAR_TO` | Product → Product | Similarity |
-
-### 5 Risk Rules
-
-Each rule evaluates to one of: **triggered**, **passed**, **not_evaluable** (missing data), **not_applicable** (wrong species/stage).
-
-| Rule | Severity | Condition |
-|---|---|---|
-| High Fat Risk | high | fat > 20g/100g |
-| Missing Taurine | critical | Cat food without taurine |
-| Chicken Allergy Risk | medium | Contains chicken/chicken meal |
-| Senior Cat High Phosphorus | high | Senior cat + phosphorus > 0.8g |
-| Low Protein Kitten | high | Kitten food + protein < 30g |
-
----
-
-## Sample Data
-
-12 products across 3 brands (WhiskerPro, PurrfectHealth, TailWag):
-- Cat & dog food, dry/wet/treats, all life stages
-- 20 ingredients with allergen and risk tagging
-- Auto-seeded on first backend startup
 
 ---
 
@@ -187,6 +104,8 @@ docker run -d --name neo4j-ontology \
   neo4j:5
 ```
 
+Neo4j Browser: `http://localhost:7474`
+
 ### 2. Start Backend
 
 ```bash
@@ -195,7 +114,7 @@ pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8765 --reload
 ```
 
-Pet food sample data is auto-imported on first startup.
+Pet food sample data is auto-imported on first startup. Backend runs at `http://localhost:8765`.
 
 ### 3. Start Frontend
 
@@ -205,203 +124,116 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`
+Open `http://localhost:5173`.
 
----
+### Port Summary
 
-## API Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| GET | `/api/graph` | Full graph (nodes + links) |
-| GET | `/api/node/{id}` | Node detail with outgoing/incoming links |
-| GET | `/api/ontology/pet_food/schema` | Schema definition (types, links, rules, actions) |
-| GET | `/api/ontology/violations` | Rule violations from rule engine |
-| POST | `/api/pet-food/agent/chat` | Agent Q&A (LLM tool-calling + fallback) |
-| GET/POST | `/api/llm/config` | LLM configuration (runtime) |
-| POST | `/api/llm/test` | Test LLM connection |
-| GET | `/api/pipeline/samples` | List available sample datasets |
-| POST | `/api/pipeline/profile/sample` | Profile a sample dataset |
-| POST | `/api/pipeline/import-plan` | Create an import plan |
-| POST | `/api/review/from-import-plan/{plan_id}` | Submit import plan to review |
-| GET | `/api/review/items` | List review items |
-| POST | `/api/review/items/{id}/approve` | Approve review item |
-| POST | `/api/review/items/{id}/reject` | Reject review item |
-| POST | `/api/review/items/{id}/apply` | Apply approved item to graph |
-| POST | `/api/review/batches/{id}/apply-approved` | Apply all approved in batch |
-| GET | `/api/review/summary` | Review queue statistics |
-| POST | `/api/agent/suggestions/submit-review` | Submit agent suggestions to review |
-
----
-
-## Data Sources
-
-| Source | Type | Label in UI |
-|---|---|---|
-| Backend API (FastAPI :8765) | Real | "Ready Data / Demo Dataset" |
-| Review Queue (`backend/.runtime/`) | Real | JSON persistence, backend runtime |
-| Agent run history (`mocks/agentRuns.js`) | Mock | "Demo Data" |
-
----
-
-## Project Structure
-
-```
-Prompt-to-Ontology/
-├── backend/
-│   ├── main.py                    # FastAPI server
-│   ├── domain_config.py           # Domain registry
-│   ├── ontology_registry.py       # YAML schema loader
-│   ├── rule_engine.py             # 4-state rule evaluator
-│   ├── constraint_validator.py    # Pre-import validation
-│   ├── petfood_agent_v2.py        # LLM tool-calling agent (10 tools)
-│   ├── llm_config_manager.py      # Runtime LLM config
-│   ├── neo4j_connector.py         # Neo4j query layer
-│   ├── ontology_kernel/           # Domain-agnostic runtime kernel
-│   │   ├── models.py              # Typed Pydantic models
-│   │   ├── schema_loader.py       # YAML → OntologySchema
-│   │   ├── validator.py           # Graph payload validation
-│   │   ├── evidence.py            # Evidence metadata standardization
-│   │   ├── rule_result.py         # 4-state rule evaluation result
-│   │   ├── versioning.py          # Schema hash + version comparison
-│   │   └── introspection.py       # Schema summaries for API
-│   ├── data_pipeline/             # Ready Data Workbench
-│   │   ├── models.py              # Pipeline models
-│   │   ├── profiler.py            # CSV/data profiling
-│   │   ├── mapper.py              # Field mapping suggestions
-│   │   ├── transformer.py         # Candidate object/link generation
-│   │   ├── import_plan.py         # Import plan generator
-│   │   └── service.py             # In-memory pipeline service
-│   ├── review_queue/              # HITL review workflow
-│   │   ├── models.py              # ReviewItem, ReviewBatch, enums
-│   │   ├── storage.py             # JSON file persistence (.runtime/)
-│   │   ├── import_plan_adapter.py # ImportPlan → ReviewItems
-│   │   ├── graph_writer.py        # Write approved items to Neo4j
-│   │   └── service.py             # Approve/reject/apply logic
-│   ├── agent_operator/            # Agent as ontology operator
-│   │   ├── models.py              # Suggestion models & enums
-│   │   ├── suggestion_builder.py  # Deterministic suggestion builders
-│   │   ├── review_adapter.py      # Suggestions → Review Queue items
-│   │   └── service.py             # Analyze answers, submit to review
-│   └── domain/
-│       └── petfood_transformer.py # CSV → graph payload
-├── frontend/
-│   ├── index.html
-│   ├── vite.config.js
-│   └── src/
-│       ├── App.jsx                # Refine app shell + routing
-│       ├── main.jsx               # Entry point
-│       ├── index.css              # Global styles + responsive grid
-│       ├── pages/
-│       │   ├── dashboard.jsx      # Hero, pipeline, metrics, journey
-│       │   ├── objects.jsx        # Object table, filters, detail drawer
-│       │   ├── graph.jsx          # D3 graph, local/global, evidence network
-│       │   ├── schema.jsx         # Schema tabs with explanations
-│       │   ├── agent.jsx          # Chat, run history, LLM config
-│       │   ├── review.jsx         # HITL review queue
-│       │   ├── settings.jsx       # Theme, language, API, auth
-│       │   └── login.jsx          # Login page
-│       ├── providers/
-│       │   ├── ThemeProvider.jsx   # Theme + color mode
-│       │   ├── dataProvider.js     # API client (axios)
-│       │   ├── authProvider.js     # Mock auth
-│       │   └── accessControlProvider.js
-│       ├── components/
-│       │   └── layout/
-│       │       └── AppLayout.jsx   # Sidebar + header + content
-│       ├── i18n/
-│       │   ├── index.js            # i18next setup
-│       │   └── locales/
-│       │       ├── en.json         # English (400+ keys)
-│       │       └── zh.json         # Chinese (400+ keys)
-│       ├── legacy/                 # Original components (preserved)
-│       └── mocks/
-│           ├── agentRuns.js        # Mock agent run data
-│           └── reviewItems.js      # Mock review items
-├── ontology/
-│   └── pet_food/
-│       ├── object_types.yaml
-│       ├── link_types.yaml
-│       ├── rules.yaml
-│       ├── action_types.yaml
-│       └── constraints.yaml
-├── docs/
-│   ├── architecture.md
-│   ├── demo-script.md
-│   └── ...
-└── sample-data/
-    └── pet-food/
-        ├── pet_food_products.csv
-        ├── pet_food_ingredients.csv
-        └── product_ingredients.csv
-```
-
----
-
-## Ontology Kernel v2
-
-The backend includes a domain-agnostic `ontology_kernel` package that normalizes YAML schema definitions into typed Pydantic models, validates graph payloads, standardizes evidence metadata, and exposes schema versioning and introspection.
-
-| Module | Purpose |
+| Service | Port |
 |---|---|
-| `models.py` | Typed models: OntologySchema, ObjectTypeDef, LinkTypeDef, RuleDef, etc. |
-| `schema_loader.py` | Loads YAML into OntologySchema with backward compatibility |
-| `validator.py` | Validates graph payloads against schema, returns structured ValidationIssue |
-| `evidence.py` | Standardized evidence metadata for TRIGGERS_RISK edges |
-| `rule_result.py` | 4-state RuleEvaluationResult model |
-| `versioning.py` | Deterministic schema hash and version comparison |
-| `introspection.py` | Schema summaries for API/frontend |
-
-See [docs/ontology-kernel.md](docs/ontology-kernel.md) for full documentation.
+| Neo4j Browser | `:7474` |
+| Neo4j Bolt | `:7687` |
+| Backend API | `:8765` |
+| Frontend | `:5173` |
 
 ---
 
-## Data Pipeline
+## LLM Configuration
 
-The `data_pipeline` package implements a Ready Data Workbench: profile CSV/sample data, suggest field mappings to ontology types, generate candidate objects/links, validate against schema, and produce an import plan. The pipeline does NOT write to the graph — import plans are designed for future HITL review.
+The Agent Operator works in **deterministic fallback mode** by default -- no API key required.
 
-See [docs/data-pipeline.md](docs/data-pipeline.md) for full documentation.
+To enable LLM-powered reasoning:
 
----
+1. Copy `backend/.env.example` to `backend/.env` and set your API key, **or**
+2. Configure at runtime via the UI: **Settings -> LLM Config**
 
-## Review Queue
+**Supported providers:** OpenAI, Anthropic, DeepSeek, Mimo, MiniMax
 
-The Review Queue implements HITL (Human-in-the-Loop) workflow for ontology graph mutations. Import Plans from the Data Pipeline are converted into reviewable items. Humans approve or reject each item, then approved items are written to Neo4j using MERGE/upsert semantics. State persists in `backend/.runtime/` JSON files.
-
-See [docs/review-queue-runtime.md](docs/review-queue-runtime.md) for full documentation.
-
----
-
-## Agent Operator
-
-The Agent can propose reviewable ontology updates instead of directly mutating the graph. Suggestions (property updates, link creation, object creation, rule actions, data quality issues) are generated deterministically from agent answers and can be submitted to the Review Queue for human approval.
-
-See [docs/agent-operator.md](docs/agent-operator.md) for full documentation.
+> Never commit `.env` files. They are already in `.gitignore`.
 
 ---
 
-## Portfolio Value
+## Tech Stack
 
-- **Ontology-driven AI** — structured domain knowledge, not prompt engineering
-- **Graph reasoning** — BFS traversal, relationship mapping, impact analysis
-- **HITL workflow** — human review for low-confidence extractions and rule violations
-- **Enterprise UI** — Refine + Ant Design 6, bilingual i18n, dark/light theme, responsive layout
-- **Explainable AI** — every risk has evidence, every rule has a 4-state evaluation
-- **Domain-agnostic runtime** — same engine works for pet food, supply chain, or compliance
+### Frontend
+
+| Layer | Technology |
+|---|---|
+| Framework | React 18 + Vite 6 |
+| Meta-framework | Refine |
+| UI Library | Ant Design 6 |
+| Routing | React Router v6 |
+| i18n | i18next (English + Chinese, 400+ keys) |
+| Graph Visualization | D3.js v7 |
+
+### Backend
+
+| Layer | Technology |
+|---|---|
+| API | FastAPI (Python) |
+| Database | Neo4j 5 |
+| Graph Algorithms | NetworkX |
+| Schema | YAML-based (object types, link types, rules, actions, constraints) |
+| Rule Engine | 4-state evaluation (triggered / passed / not_evaluable / not_applicable) |
+| Agent | LLM tool-calling with deterministic fallback |
+
+---
+
+## Repository Navigation
+
+```
+backend/
+  ontology_kernel/     Domain-agnostic runtime
+  data_pipeline/       CSV profiling, mapping, import plans
+  review_queue/        HITL review workflow
+  graph_snapshot/      Snapshot, diff, rollback
+  rule_studio/         Rule definitions and simulation
+  agent_trace/         Trace and evaluation
+  scenario_run/        Guided demo orchestration
+frontend/
+  pages/               Dashboard, Graph, Agent, Rule Studio, Demo Center, ...
+  components/          Layout, navigation
+  i18n/                English + Chinese (400+ keys)
+docs/                  Product docs, architecture, demo scripts
+ontology/pet_food/     Pet Food domain schema (YAML)
+sample-data/           Demo CSV data
+```
+
+---
+
+## Test Coverage
+
+- Ontology Kernel · Data Pipeline · Review Queue · Agent Operator
+- Demo Admin · Build Scenario · Custom CSV · Relationship CSV
+- Graph Snapshot · Rule Studio · Agent Trace · Agent Suggestion Quality
+- Scenario Run
+
+---
+
+## Roadmap
+
+1. Docker Compose for one-command setup
+2. Demo video recording
+3. Additional domains (food safety, supply chain, compliance)
+4. Schema authoring UI
+5. Rule authoring with visual condition builder
+6. Agent evaluation benchmark
+
+---
+
+## GitHub About
+
+**Description:**
+```
+Domain-agnostic operational ontology runtime. Load data, build graphs, evaluate rules, generate evidence, operate with AI. Pet Food demo included.
+```
+
+**Topics:** `ontology` `knowledge-graph` `rule-engine` `ai-agent` `human-in-the-loop` `neo4j` `fastapi` `react`
 
 ---
 
 ## Disclaimer
 
 This demo does not provide veterinary diagnosis. Risk explanations are based only on the current ontology data and demo rules. If data is missing, the system reports that the rule cannot be evaluated rather than claiming the product is safe.
-
----
-
-## Archived Case: Supply Chain Prototype
-
-An earlier prototype explored a supply chain / industrial scenario (Supplier, Raw Material, Component, Final Product, Factory). That prototype validated the initial runtime design but has been archived.
-
-The current mainline is the Pet Food ontology demo. The pet food domain exercises the same generic ontology runtime — object types, link types, rules, evidence edges, HITL review, and agent reasoning — with enough complexity to validate real-world applicability.
 
 ---
 
