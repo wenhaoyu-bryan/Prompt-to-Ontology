@@ -137,7 +137,21 @@ class MultiNodeRequest(BaseModel):
 
 @app.get("/api/health")
 def api_health():
-    return {"status": "ok", "system": "Ontology OS v3.0 — 企业本体操作系统"}
+    neo4j_status = "disconnected"
+    try:
+        from neo4j_connector import get_driver
+        driver = get_driver()
+        with driver.session() as session:
+            session.run("RETURN 1").single()
+        neo4j_status = "connected"
+    except Exception:
+        pass
+    return {
+        "status": "ok",
+        "service": "backend",
+        "neo4j": neo4j_status,
+        "version": "v1.0",
+    }
 
 
 @app.get("/api/domains")

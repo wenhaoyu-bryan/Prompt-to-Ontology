@@ -23,6 +23,7 @@ neo4j-data/
 
 # Environment
 .env
+!.env.example
 venv/
 
 # Internal docs
@@ -44,6 +45,7 @@ docs/*
 !docs/agent-trace-evaluation.md
 !docs/golden-demo-script.md
 !docs/README.md
+!docs/local-docker-setup.md
 Phases/
 
 # Test data

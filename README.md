@@ -89,13 +89,26 @@ Use the built-in Demo Center for a narrated walkthrough:
 
 ## Quick Start
 
-### Prerequisites
+### Option A: Docker Compose (Recommended)
+
+```bash
+git clone https://github.com/wenhaoyu-bryan/Prompt-to-Ontology.git
+cd Prompt-to-Ontology
+cp .env.example .env
+docker compose up --build
+```
+
+Open http://localhost:5173
+
+### Option B: Manual Development
+
+#### Prerequisites
 
 - Docker (for Neo4j)
 - Python 3.10+
 - Node.js 18+
 
-### 1. Start Neo4j
+#### 1. Start Neo4j
 
 ```bash
 docker run -d --name neo4j-ontology \
@@ -106,7 +119,7 @@ docker run -d --name neo4j-ontology \
 
 Neo4j Browser: `http://localhost:7474`
 
-### 2. Start Backend
+#### 2. Start Backend
 
 ```bash
 cd backend
@@ -116,7 +129,7 @@ uvicorn main:app --host 0.0.0.0 --port 8765 --reload
 
 Pet food sample data is auto-imported on first startup. Backend runs at `http://localhost:8765`.
 
-### 3. Start Frontend
+#### 3. Start Frontend
 
 ```bash
 cd frontend
