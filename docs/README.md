@@ -34,4 +34,5 @@
 | [LLM Agent Setup](llm-agent-setup.md) | LLM configuration for Agent Operator |
 | [Pet Food Ontology](pet-food-ontology.md) | Pet Food domain schema documentation |
 | [Full Build Scenario](full-build-scenario.md) | Build ontology from empty graph |
+| [Local Docker Setup](local-docker-setup.md) | One-command local startup with Docker Compose |
 | [QA Checklist](qa-checklist.md) | Manual QA checklist |
