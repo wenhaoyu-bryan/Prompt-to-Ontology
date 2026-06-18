@@ -7,3 +7,4 @@ python-dotenv==1.0.0
 python-multipart==0.0.18
 anthropic>=0.40.0
 requests>=2.31.0
+PyYAML>=6.0
