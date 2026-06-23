@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Statistic, Typography, Space, Tag, Spin, Button, Table, Progress, Result, Alert, Collapse, Skeleton } from 'antd';
+import { Card, Row, Col, Statistic, Typography, Space, Tag, Spin, Button, Table, Progress, Result, Alert, Collapse, Skeleton, Grid, theme } from 'antd';
 import {
   AppstoreOutlined,
   NodeIndexOutlined,
@@ -27,6 +27,7 @@ import {
   RocketOutlined,
   SafetyOutlined,
   DownOutlined,
+  TagOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -54,25 +55,25 @@ const WORKFLOW_STEPS = [
   { key: 'review', icon: <EyeOutlined /> },
 ];
 
-function WorkflowPipeline({ t }) {
+function WorkflowPipeline({ t, token }) {
   return (
-    <Card size="small" style={{ background: 'rgba(255,255,255,0.02)' }}>
+    <Card size="small" style={{ background: 'rgba(0,0,0,0.02)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, overflowX: 'auto', padding: '4px 0' }}>
         {WORKFLOW_STEPS.map((step, i) => (
           <div key={step.key} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
             <div style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
               padding: '6px 10px', borderRadius: 6,
-              background: 'rgba(22,119,255,0.06)', border: '1px solid rgba(22,119,255,0.15)',
+              background: `${token.colorPrimary}0a`, border: `1px solid ${token.colorPrimary}26`,
               minWidth: 80,
             }}>
-              <span style={{ fontSize: 16, color: '#1677ff' }}>{step.icon}</span>
-              <Text style={{ fontSize: 10, textAlign: 'center', lineHeight: 1.2 }}>
+              <span style={{ fontSize: 16, color: token.colorPrimary }}>{step.icon}</span>
+              <Text style={{ fontSize: 12, textAlign: 'center', lineHeight: 1.2 }}>
                 {t(`dashboard.pipeline.${step.key}`)}
               </Text>
             </div>
             {i < WORKFLOW_STEPS.length - 1 && (
-              <span style={{ color: 'rgba(255,255,255,0.15)', margin: '0 2px', fontSize: 14 }}>→</span>
+              <span style={{ color: token.colorTextTertiary, margin: '0 2px', fontSize: 14 }}>→</span>
             )}
           </div>
         ))}
@@ -84,6 +85,8 @@ function WorkflowPipeline({ t }) {
 export default function DashboardPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { token } = theme.useToken();
+  const screens = Grid.useBreakpoint();
   const [stats, setStats] = useState(null);
   const [reviewSummary, setReviewSummary] = useState(null);
   const [demoState, setDemoState] = useState(null);
@@ -100,10 +103,10 @@ export default function DashboardPage() {
     setError(false);
     try {
       const [graphRes, schemaRes, reviewRes, demoRes] = await Promise.all([
-        api.get('/graph').catch(() => null),
-        api.get('/ontology/pet_food/schema').catch(() => null),
-        api.get('/review/summary').catch(() => null),
-        api.get('/demo/state').catch(() => null),
+        api.get('/graph').catch(err => { console.warn('[Dashboard] Failed to fetch graph:', err.message); return null; }),
+        api.get('/ontology/pet_food/schema').catch(err => { console.warn('[Dashboard] Failed to fetch schema:', err.message); return null; }),
+        api.get('/review/summary').catch(err => { console.warn('[Dashboard] Failed to fetch review summary:', err.message); return null; }),
+        api.get('/demo/state').catch(err => { console.warn('[Dashboard] Failed to fetch demo state:', err.message); return null; }),
       ]);
       if (!graphRes && !schemaRes) {
         setError(true);
@@ -129,9 +132,13 @@ export default function DashboardPage() {
       if (reviewRes?.data) setReviewSummary(reviewRes.data);
       if (demoRes?.data) setDemoState(demoRes.data);
 
-      api.get('/rule-studio/evaluation-summary').then(r => setRuleCoverage(r.data?.summary)).catch(() => {});
-      api.get('/graph/snapshots').then(r => { const snaps = r.data?.snapshots || []; setSnapshotCount(snaps.length); if (snaps.length > 0) setLatestSnapshotTime(new Date(snaps[0].created_at).toLocaleString()); }).catch(() => {});
-      api.get('/graph/diffs').then(r => setDiffCount((r.data?.diffs || []).length)).catch(() => {});
+      api.get('/rule-studio/evaluation-summary').then(r => setRuleCoverage(r.data?.summary)).catch(err => console.warn('[Dashboard] Failed to fetch rule coverage:', err.message));
+      api.get('/graph/snapshots').then(r => {
+        const snaps = r.data?.snapshots || [];
+        setSnapshotCount(snaps.length);
+        if (snaps.length > 0) setLatestSnapshotTime(new Date(snaps[0].created_at).toLocaleString());
+      }).catch(err => console.warn('[Dashboard] Failed to fetch snapshots:', err.message));
+      api.get('/graph/diffs').then(r => setDiffCount((r.data?.diffs || []).length)).catch(err => console.warn('[Dashboard] Failed to fetch diffs:', err.message));
     } catch {
       setError(true);
     } finally {
@@ -181,34 +188,37 @@ export default function DashboardPage() {
   return (
     <Space direction="vertical" size={20} style={{ width: '100%' }}>
       {/* Hero — integrated with Guided Demo CTA */}
-      <Card size="small" style={{ background: 'linear-gradient(135deg, rgba(22,119,255,0.06) 0%, rgba(114,46,209,0.06) 100%)' }}>
-        <Title level={3} style={{ margin: 0 }}>{t('dashboard.heroTitle')}</Title>
+      <Card size="small" style={{ background: `linear-gradient(135deg, ${token.colorPrimary}0f 0%, ${token.colorLink}0f 100%)` }}>
+        <Tag color="processing" icon={<TagOutlined />} style={{ marginBottom: 8 }}>
+          {t('dashboard.heroEyebrow', 'Operational Ontology')}
+        </Tag>
+        <Title level={3} style={{ margin: 0 }}>{t('dashboard.heroTitle', 'Operational Ontology Runtime')}</Title>
         <Paragraph type="secondary" style={{ margin: '8px 0 16px', fontSize: 14, lineHeight: 1.7 }}>
-          {t('dashboard.heroSubtitle')}
+          {t('dashboard.heroPipeline', 'Ingest raw data, build ontology, evaluate rules, and review — all in one pipeline.')}
         </Paragraph>
-        <Space wrap size={12}>
-          <Button type="primary" size="large" icon={<RocketOutlined />} onClick={() => navigate('/demo-center')}>
-            {t('dashboard.startGoldenDemo')}
+        <Space wrap size={12} direction={screens.md ? 'horizontal' : 'vertical'} style={{ width: screens.md ? undefined : '100%' }}>
+          <Button type="primary" size="large" icon={<RocketOutlined />} onClick={() => navigate('/demo-center')} style={!screens.md ? { width: '100%' } : undefined}>
+            {t('dashboard.startDemo', 'Start Golden Demo')}
           </Button>
-          <Button size="large" icon={<PlayCircleOutlined />} onClick={() => navigate('/pipeline')}>
-            {t('dashboard.buildFromData')}
+          <Button size="large" icon={<PlayCircleOutlined />} onClick={() => navigate('/pipeline')} style={!screens.md ? { width: '100%' } : undefined}>
+            {t('dashboard.buildData', 'Build from Data')}
           </Button>
-          <Button size="large" icon={<NodeIndexOutlined />} onClick={() => navigate('/graph')}>
-            {t('dashboard.exploreGraph')}
+          <Button size="large" type="text" icon={<NodeIndexOutlined />} onClick={() => navigate('/graph')} style={!screens.md ? { width: '100%' } : undefined}>
+            {t('dashboard.exploreGraph', 'Explore Graph')}
           </Button>
         </Space>
       </Card>
 
       {/* Workflow Pipeline */}
-      <WorkflowPipeline t={t} />
+      <WorkflowPipeline t={t} token={token} />
 
       {/* Core Metrics — 4 most important cards */}
       <Row gutter={[16, 16]}>
         {[
-          { title: t('dashboard.totalNodes'), value: stats?.nodes || 0, icon: <AppstoreOutlined />, color: '#1677ff', path: '/objects' },
-          { title: t('dashboard.totalEdges'), value: stats?.edges || 0, icon: <NodeIndexOutlined />, color: '#52c41a', path: '/graph' },
-          { title: t('dashboard.riskRules'), value: stats?.rules || 0, icon: <WarningOutlined />, color: '#fa8c16', path: '/schema?tab=rules' },
-          { title: t('dashboard.pendingReviews'), value: pendingCount, icon: <AuditOutlined />, color: pendingCount > 0 ? '#ff4d4f' : '#52c41a', path: '/review' },
+          { title: t('dashboard.totalNodes'), value: stats?.nodes || 0, icon: <AppstoreOutlined />, color: token.colorPrimary, path: '/objects' },
+          { title: t('dashboard.totalEdges'), value: stats?.edges || 0, icon: <NodeIndexOutlined />, color: token.colorSuccess, path: '/graph' },
+          { title: t('dashboard.riskRules'), value: stats?.rules || 0, icon: <WarningOutlined />, color: token.colorWarning, path: '/schema?tab=rules' },
+          { title: t('dashboard.pendingReviews'), value: pendingCount, icon: <AuditOutlined />, color: pendingCount > 0 ? token.colorError : token.colorSuccess, path: '/review' },
         ].map((m, i) => (
           <Col xs={12} sm={12} lg={6} key={i}>
             <Card
@@ -223,7 +233,7 @@ export default function DashboardPage() {
                   value={m.value}
                   prefix={React.cloneElement(m.icon, { style: { color: m.color } })}
                 />
-                <RightOutlined style={{ fontSize: 10, opacity: 0.3, marginTop: 4 }} />
+                <RightOutlined style={{ fontSize: 12, opacity: 0.3, marginTop: 4 }} />
               </div>
             </Card>
           </Col>
@@ -245,17 +255,17 @@ export default function DashboardPage() {
                 { v: stats?.evidenceEdges || 0 },
                 { v: snapshotCount },
                 { v: diffCount },
-              ].filter(m => m.v > 0).length} {t('common.active') || 'active'})
+              ].filter(m => m.v > 0).length} {t('dashboard.activeCount', 'active')})
             </Text>
           ),
           children: (
             <Row gutter={[16, 16]}>
               {[
-                { title: t('dashboard.objectTypes'), value: stats?.objectTypes || 0, icon: <ApartmentOutlined />, color: '#722ed1', path: '/schema?tab=objectTypes' },
-                { title: t('schema.linkTypes'), value: stats?.linkTypes || 0, icon: <LinkOutlined />, color: '#13c2c2', path: '/schema?tab=linkTypes' },
-                { title: t('dashboard.evidenceEdges'), value: stats?.evidenceEdges || 0, icon: <LinkOutlined />, color: '#ff4d4f', path: '/graph' },
-                { title: t('dashboard.snapshots'), value: snapshotCount, icon: <SafetyOutlined />, color: '#1677ff', path: '/graph-governance' },
-                { title: t('dashboard.diffs'), value: diffCount, icon: <EyeOutlined />, color: '#722ed1', path: '/graph-governance' },
+                { title: t('dashboard.objectTypes'), value: stats?.objectTypes || 0, icon: <ApartmentOutlined />, color: token.colorPrimary, path: '/schema?tab=objectTypes' },
+                { title: t('schema.linkTypes'), value: stats?.linkTypes || 0, icon: <LinkOutlined />, color: token.colorInfo, path: '/schema?tab=linkTypes' },
+                { title: t('dashboard.evidenceEdges'), value: stats?.evidenceEdges || 0, icon: <LinkOutlined />, color: token.colorError, path: '/graph' },
+                { title: t('dashboard.snapshots'), value: snapshotCount, icon: <SafetyOutlined />, color: token.colorPrimary, path: '/graph-governance' },
+                { title: t('dashboard.diffs'), value: diffCount, icon: <EyeOutlined />, color: token.colorPrimary, path: '/graph-governance' },
               ].map((m, i) => (
                 <Col xs={12} sm={8} key={i}>
                   <Card
@@ -285,7 +295,7 @@ export default function DashboardPage() {
             {/* Demo State */}
             <Col xs={24} sm={8}>
               <Space size={8} align="center">
-                <PlayCircleOutlined style={{ color: '#1677ff' }} />
+                <PlayCircleOutlined style={{ color: token.colorPrimary }} />
                 <Text type="secondary" style={{ fontSize: 12 }}>{t('dashboard.demoState')}</Text>
                 <Tag color={
                   demoState.mode === 'seeded' ? 'green' :
@@ -300,7 +310,7 @@ export default function DashboardPage() {
             {/* Graph Governance */}
             <Col xs={24} sm={8}>
               <Space size={8} align="center">
-                <SafetyOutlined style={{ color: '#52c41a' }} />
+                <SafetyOutlined style={{ color: token.colorSuccess }} />
                 <Text type="secondary" style={{ fontSize: 12 }}>{t('dashboard.snapshots')}: {snapshotCount}</Text>
                 <Text type="secondary" style={{ fontSize: 12 }}>| {t('dashboard.diffs')}: {diffCount}</Text>
               </Space>
@@ -310,11 +320,11 @@ export default function DashboardPage() {
             {ruleCoverage && (
               <Col xs={24} sm={8}>
                 <Space size={8} align="center">
-                  <SafetyCertificateOutlined style={{ color: '#fa8c16' }} />
+                  <SafetyCertificateOutlined style={{ color: token.colorWarning }} />
                   <Text type="secondary" style={{ fontSize: 12 }}>
-                    {t('dashboard.triggered')}: <Text style={{ color: '#ff4d4f', fontSize: 12 }}>{ruleCoverage.triggered || 0}</Text>
+                    {t('dashboard.triggered')}: <Text style={{ color: token.colorError, fontSize: 12 }}>{ruleCoverage.triggered || 0}</Text>
                     {' / '}
-                    {t('dashboard.passed')}: <Text style={{ color: '#52c41a', fontSize: 12 }}>{ruleCoverage.passed || 0}</Text>
+                    {t('dashboard.passed')}: <Text style={{ color: token.colorSuccess, fontSize: 12 }}>{ruleCoverage.passed || 0}</Text>
                   </Text>
                 </Space>
               </Col>
@@ -332,7 +342,7 @@ export default function DashboardPage() {
                   <div style={{ marginBottom: 4 }}>
                     <Text type="secondary" style={{ fontSize: 12 }}>{t('dashboard.totalNodes')}</Text>
                   </div>
-                  <Progress percent={100} size="small" format={() => stats?.nodes || 0} strokeColor="#1677ff" />
+                  <Progress percent={100} size="small" format={() => stats?.nodes || 0} strokeColor={token.colorPrimary} />
                 </Col>
                 <Col span={8}>
                   <div style={{ marginBottom: 4 }}>
@@ -342,14 +352,14 @@ export default function DashboardPage() {
                     percent={stats?.nodes ? Math.round((stats.highRisk / stats.nodes) * 100) : 0}
                     size="small"
                     format={() => stats?.highRisk || 0}
-                    strokeColor={stats?.highRisk > 0 ? '#ff4d4f' : '#52c41a'}
+                    strokeColor={stats?.highRisk > 0 ? token.colorError : token.colorSuccess}
                   />
                 </Col>
                 <Col span={8}>
                   <div style={{ marginBottom: 4 }}>
                     <Text type="secondary" style={{ fontSize: 12 }}>{t('dashboard.graphEdges')}</Text>
                   </div>
-                  <Progress percent={100} size="small" format={() => stats?.edges || 0} strokeColor="#13c2c2" />
+                  <Progress percent={100} size="small" format={() => stats?.edges || 0} strokeColor={token.colorInfo} />
                 </Col>
               </Row>
             </Card>
@@ -373,12 +383,12 @@ export default function DashboardPage() {
           <Card title={<><ThunderboltOutlined /> {t('dashboard.quickActions')}</>} size="small">
               <Row gutter={[8, 8]}>
                 {[
-                  { icon: <AppstoreOutlined />, label: t('dashboard.journeyObjects'), path: '/objects', color: '#1677ff' },
-                  { icon: <NodeIndexOutlined />, label: t('dashboard.journeyGraph'), path: '/graph', color: '#52c41a' },
-                  { icon: <ApartmentOutlined />, label: t('dashboard.journeySchema'), path: '/schema', color: '#722ed1' },
-                  { icon: <RobotOutlined />, label: t('dashboard.journeyAgent'), path: '/agent', color: '#13c2c2' },
-                  { icon: <AuditOutlined />, label: t('dashboard.journeyReview'), path: '/review', color: '#fa8c16' },
-                  { icon: <ApiOutlined />, label: t('pipeline.journeyPipeline'), path: '/pipeline', color: '#eb2f96' },
+                  { icon: <AppstoreOutlined />, label: t('dashboard.journeyObjects'), path: '/objects', color: token.colorPrimary },
+                  { icon: <NodeIndexOutlined />, label: t('dashboard.journeyGraph'), path: '/graph', color: token.colorSuccess },
+                  { icon: <ApartmentOutlined />, label: t('dashboard.journeySchema'), path: '/schema', color: token.colorPrimary },
+                  { icon: <RobotOutlined />, label: t('dashboard.journeyAgent'), path: '/agent', color: token.colorInfo },
+                  { icon: <AuditOutlined />, label: t('dashboard.journeyReview'), path: '/review', color: token.colorWarning },
+                  { icon: <ApiOutlined />, label: t('pipeline.journeyPipeline'), path: '/pipeline', color: token.colorPrimary },
                 ].map(action => (
                   <Col span={8} key={action.path}>
                     <div
@@ -388,11 +398,11 @@ export default function DashboardPage() {
                         padding: '12px 4px',
                         borderRadius: 8,
                         cursor: 'pointer',
-                        border: '1px solid rgba(255,255,255,0.08)',
+                        border: `1px solid ${token.colorBorderSecondary}`,
                         transition: 'all 0.2s',
                       }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = action.color; e.currentTarget.style.background = `${action.color}10`; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.background = 'transparent'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = token.colorBorderSecondary; e.currentTarget.style.background = 'transparent'; }}
                     >
                       <div style={{ fontSize: 22, color: action.color, marginBottom: 4 }}>{action.icon}</div>
                       <Text style={{ fontSize: 12 }}>{action.label}</Text>
@@ -411,9 +421,9 @@ export default function DashboardPage() {
               {reviewSummary ? (
                 <Space direction="vertical" size={8} style={{ width: '100%' }}>
                   <Row gutter={8}>
-                    <Col span={8}><Statistic title={t('review.pending')} value={pendingCount} valueStyle={{ fontSize: 18, color: '#fa8c16' }} /></Col>
-                    <Col span={8}><Statistic title={t('review.applied') || 'Applied'} value={appliedCount} valueStyle={{ fontSize: 18, color: '#1677ff' }} /></Col>
-                    <Col span={8}><Statistic title={t('review.failed') || 'Failed'} value={failedCount} valueStyle={{ fontSize: 18, color: failedCount > 0 ? '#ff4d4f' : undefined }} /></Col>
+                    <Col span={8}><Statistic title={t('review.pending')} value={pendingCount} valueStyle={{ fontSize: 18, color: token.colorWarning }} /></Col>
+                    <Col span={8}><Statistic title={t('review.applied')} value={appliedCount} valueStyle={{ fontSize: 18, color: token.colorPrimary }} /></Col>
+                    <Col span={8}><Statistic title={t('review.failed')} value={failedCount} valueStyle={{ fontSize: 18, color: failedCount > 0 ? token.colorError : undefined }} /></Col>
                   </Row>
                   {pendingCount > 0 && (
                     <Button type="primary" size="small" block onClick={() => navigate('/review')}>
