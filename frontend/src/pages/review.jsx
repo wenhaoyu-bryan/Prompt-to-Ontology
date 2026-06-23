@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card, Table, Tag, Space, Typography, Tabs, Button, message, Drawer,
-  Descriptions, Row, Col, Statistic, Alert, Timeline, Modal, Input,
+  Descriptions, Row, Col, Statistic, Alert, Timeline, Modal, Input, theme,
 } from 'antd';
 import {
   CheckCircleOutlined,
@@ -70,6 +70,7 @@ function formatTime(ts) {
 
 export default function ReviewQueuePage() {
   const { t } = useTranslation();
+  const { token } = theme.useToken();
   const [searchParams] = useSearchParams();
   const batchIdFilter = searchParams.get('batch_id');
 
@@ -102,7 +103,7 @@ export default function ReviewQueuePage() {
         try {
           const { data } = await api.get(`/review/batches/${batchIdFilter}`);
           setBatchDetail(data);
-        } catch { setBatchDetail(null); }
+        } catch (err) { console.warn('[Review] failed to load batch detail', err); setBatchDetail(null); }
       } else {
         setBatchDetail(null);
       }
@@ -221,7 +222,7 @@ export default function ReviewQueuePage() {
         <div>
           <Text strong>{t('review.timelineCreated')}</Text>
           <br />
-          <Text type="secondary" style={{ fontSize: 11 }}>{formatTime(item.created_at)}</Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>{formatTime(item.created_at)}</Text>
         </div>
       ),
     });
@@ -233,14 +234,14 @@ export default function ReviewQueuePage() {
           <div>
             <Text strong>{t('review.timelineApproved')}</Text>
             <br />
-            <Text type="secondary" style={{ fontSize: 11 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
               {formatTime(item.reviewed_at)}
               {item.reviewed_by && ` · ${item.reviewed_by}`}
             </Text>
             {item.decision_reason && (
               <>
                 <br />
-                <Text type="secondary" style={{ fontSize: 11 }}>"{item.decision_reason}"</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>"{item.decision_reason}"</Text>
               </>
             )}
           </div>
@@ -255,14 +256,14 @@ export default function ReviewQueuePage() {
           <div>
             <Text strong>{t('review.timelineRejected')}</Text>
             <br />
-            <Text type="secondary" style={{ fontSize: 11 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
               {formatTime(item.reviewed_at)}
               {item.reviewed_by && ` · ${item.reviewed_by}`}
             </Text>
             {item.decision_reason && (
               <>
                 <br />
-                <Text type="secondary" style={{ fontSize: 11 }}>"{item.decision_reason}"</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>"{item.decision_reason}"</Text>
               </>
             )}
           </div>
@@ -277,7 +278,7 @@ export default function ReviewQueuePage() {
           <div>
             <Text strong>{t('review.timelineApplied')}</Text>
             <br />
-            <Text type="secondary" style={{ fontSize: 11 }}>{formatTime(item.applied_at)}</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>{formatTime(item.applied_at)}</Text>
           </div>
         ),
       });
@@ -290,11 +291,11 @@ export default function ReviewQueuePage() {
           <div>
             <Text strong>{t('review.timelineFailed')}</Text>
             <br />
-            <Text type="secondary" style={{ fontSize: 11 }}>{formatTime(item.updated_at)}</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>{formatTime(item.updated_at)}</Text>
             {item.apply_error && (
               <>
                 <br />
-                <Text type="danger" style={{ fontSize: 11 }}>{item.apply_error}</Text>
+                <Text type="danger" style={{ fontSize: 12 }}>{item.apply_error}</Text>
               </>
             )}
           </div>
@@ -314,7 +315,7 @@ export default function ReviewQueuePage() {
       return (
         <Space size={4}>
           <Button size="small" type="text" icon={<CheckCircleOutlined />}
-            style={{ color: '#52c41a' }}
+            style={{ color: token.colorSuccess }}
             onClick={(e) => { e.stopPropagation(); openApproveModal(record.id); }}
           />
           <Button size="small" type="text" icon={<CloseCircleOutlined />} danger
@@ -364,7 +365,7 @@ export default function ReviewQueuePage() {
         <Space direction="vertical" size={2}>
           <Text style={{ fontSize: 13 }}>{text}</Text>
           {record.source_plan_id && (
-            <Text type="secondary" style={{ fontSize: 10 }}>plan: {record.source_plan_id}</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>{t('pipeline.planId', 'Plan ID')}: {record.source_plan_id}</Text>
           )}
         </Space>
       ),
@@ -374,14 +375,14 @@ export default function ReviewQueuePage() {
       dataIndex: 'type',
       key: 'type',
       width: 150,
-      render: (type) => <Tag>{type?.replace(/_/g, ' ') || '—'}</Tag>,
+      render: (type) => <Tag>{t('review.types.' + (type || ''), type?.replace(/_/g, ' ') || '—')}</Tag>,
     },
     {
       title: t('common.severity'),
       dataIndex: 'severity',
       key: 'severity',
       width: 80,
-      render: (s) => <Tag color={SEVERITY_COLORS[s] || 'default'}>{s || '—'}</Tag>,
+      render: (s) => <Tag color={SEVERITY_COLORS[s] || 'default'}>{t('ruleStudio.severity.' + s, s) || '—'}</Tag>,
     },
     {
       title: t('common.status'),
@@ -399,7 +400,7 @@ export default function ReviewQueuePage() {
       dataIndex: 'created_at',
       key: 'created_at',
       width: 150,
-      render: (ts) => <Text type="secondary" style={{ fontSize: 11 }}>{formatTime(ts)}</Text>,
+      render: (ts) => <Text type="secondary" style={{ fontSize: 12 }}>{formatTime(ts)}</Text>,
     },
     {
       title: t('common.actions'),
@@ -481,11 +482,11 @@ export default function ReviewQueuePage() {
             </Col>
             <Col>
               <Space size={16}>
-                <Statistic title={t('review.pending')} value={batchDetail.pending_count || 0} valueStyle={{ fontSize: 16, color: '#fa8c16' }} />
-                <Statistic title={t('review.approved')} value={batchDetail.approved_count || 0} valueStyle={{ fontSize: 16, color: '#52c41a' }} />
-                <Statistic title={t('review.rejected')} value={batchDetail.rejected_count || 0} valueStyle={{ fontSize: 16, color: '#ff4d4f' }} />
-                <Statistic title={t('review.applied')} value={batchDetail.applied_count || 0} valueStyle={{ fontSize: 16, color: '#1677ff' }} />
-                <Statistic title={t('review.failed')} value={batchDetail.failed_count || 0} valueStyle={{ fontSize: 16, color: batchDetail.failed_count > 0 ? '#ff4d4f' : undefined }} />
+                <Statistic title={t('review.pending')} value={batchDetail.pending_count || 0} valueStyle={{ fontSize: 16, color: token.colorWarning }} />
+                <Statistic title={t('review.approved')} value={batchDetail.approved_count || 0} valueStyle={{ fontSize: 16, color: token.colorSuccess }} />
+                <Statistic title={t('review.rejected')} value={batchDetail.rejected_count || 0} valueStyle={{ fontSize: 16, color: token.colorError }} />
+                <Statistic title={t('review.applied')} value={batchDetail.applied_count || 0} valueStyle={{ fontSize: 16, color: token.colorPrimary }} />
+                <Statistic title={t('review.failed')} value={batchDetail.failed_count || 0} valueStyle={{ fontSize: 16, color: batchDetail.failed_count > 0 ? token.colorError : undefined }} />
               </Space>
             </Col>
           </Row>
@@ -495,10 +496,10 @@ export default function ReviewQueuePage() {
       {/* Global summary stats */}
       <Row gutter={[12, 12]}>
         {[
-          { title: t('review.pending'), value: summary?.pending ?? pending.length, icon: <ClockCircleOutlined />, color: '#fa8c16' },
-          { title: t('review.approved'), value: summary?.approved ?? approved.length, icon: <CheckOutlined />, color: '#52c41a' },
-          { title: t('review.applied'), value: summary?.applied ?? applied.length, icon: <CheckCircleOutlined />, color: '#1677ff' },
-          { title: t('review.failed'), value: summary?.failed ?? failed.length, icon: <ExclamationCircleOutlined />, color: '#ff4d4f' },
+          { title: t('review.pending'), value: summary?.pending ?? pending.length, icon: <ClockCircleOutlined />, color: token.colorWarning },
+          { title: t('review.approved'), value: summary?.approved ?? approved.length, icon: <CheckOutlined />, color: token.colorSuccess },
+          { title: t('review.applied'), value: summary?.applied ?? applied.length, icon: <CheckCircleOutlined />, color: token.colorPrimary },
+          { title: t('review.failed'), value: summary?.failed ?? failed.length, icon: <ExclamationCircleOutlined />, color: token.colorError },
         ].map((s, i) => (
           <Col xs={12} sm={6} key={i}>
             <Card size="small" hoverable>
@@ -529,10 +530,10 @@ export default function ReviewQueuePage() {
             {/* Basic info */}
             <Descriptions column={1} size="small" bordered>
               <Descriptions.Item label={t('review.itemType')}>
-                <Tag>{selectedItem.type?.replace(/_/g, ' ')}</Tag>
+                <Tag>{t('review.types.' + (selectedItem.type || ''), selectedItem.type?.replace(/_/g, ' ') || '')}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label={t('common.severity')}>
-                <Tag color={SEVERITY_COLORS[selectedItem.severity]}>{selectedItem.severity}</Tag>
+                <Tag color={SEVERITY_COLORS[selectedItem.severity]}>{t('ruleStudio.severity.' + (selectedItem.severity || ''), selectedItem.severity || '—')}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label={t('common.status')}>
                 <Tag color={STATUS_COLORS[selectedItem.status]}>{t(`common.statusLabels.${selectedItem.status}`, selectedItem.status)}</Tag>
@@ -541,30 +542,30 @@ export default function ReviewQueuePage() {
                 <Tag>{selectedItem.source}</Tag>
               </Descriptions.Item>
               {selectedItem.source_plan_id && (
-                <Descriptions.Item label="Plan ID"><Text code>{selectedItem.source_plan_id}</Text></Descriptions.Item>
+                <Descriptions.Item label={t('pipeline.planId', 'Plan ID')}><Text code>{selectedItem.source_plan_id}</Text></Descriptions.Item>
               )}
               {selectedItem.metadata?.agent_run_id && (
-                <Descriptions.Item label={t('review.agentRunId') || 'Agent Run'}><Text code>{selectedItem.metadata.agent_run_id}</Text></Descriptions.Item>
+                <Descriptions.Item label={t('review.agentRunId')}><Text code>{selectedItem.metadata.agent_run_id}</Text></Descriptions.Item>
               )}
               {selectedItem.metadata?.user_message && (
-                <Descriptions.Item label={t('review.originalMessage') || 'User Message'}><Text style={{ fontSize: 12 }}>{selectedItem.metadata.user_message}</Text></Descriptions.Item>
+                <Descriptions.Item label={t('review.originalMessage')}><Text style={{ fontSize: 12 }}>{selectedItem.metadata.user_message}</Text></Descriptions.Item>
               )}
               {selectedItem.metadata?.agent_action_type && (
-                <Descriptions.Item label={t('review.agentActionType') || 'Action Type'}><Tag color="purple">{selectedItem.metadata.agent_action_type}</Tag></Descriptions.Item>
+                <Descriptions.Item label={t('review.agentActionType')}><Tag color="purple">{selectedItem.metadata.agent_action_type}</Tag></Descriptions.Item>
               )}
               {selectedItem.metadata?.reason && (
-                <Descriptions.Item label={t('review.agentReason') || 'Reason'}><Text style={{ fontSize: 12 }}>{selectedItem.metadata.reason}</Text></Descriptions.Item>
+                <Descriptions.Item label={t('review.agentReason')}><Text style={{ fontSize: 12 }}>{selectedItem.metadata.reason}</Text></Descriptions.Item>
               )}
             </Descriptions>
 
             {/* Agent property update details */}
             {selectedItem.metadata?.property_update && (
-              <Card size="small" title={t('review.propertyUpdate') || 'Property Update'} variant="inner">
+              <Card size="small" title={t('review.propertyUpdate')} variant="inner">
                 <Descriptions column={1} size="small">
                   <Descriptions.Item label={t('common.id')}><Text code>{selectedItem.metadata.property_update.object_id}</Text></Descriptions.Item>
-                  <Descriptions.Item label={t('review.property') || 'Property'}><Text code>{selectedItem.metadata.property_update.property}</Text></Descriptions.Item>
-                  <Descriptions.Item label={t('review.oldValue') || 'Old Value'}>{String(selectedItem.metadata.property_update.old_value ?? '—')}</Descriptions.Item>
-                  <Descriptions.Item label={t('review.newValue') || 'New Value'}><Text strong>{String(selectedItem.metadata.property_update.new_value)}</Text></Descriptions.Item>
+                  <Descriptions.Item label={t('review.property')}><Text code>{selectedItem.metadata.property_update.property}</Text></Descriptions.Item>
+                  <Descriptions.Item label={t('review.oldValue')}>{String(selectedItem.metadata.property_update.old_value ?? '—')}</Descriptions.Item>
+                  <Descriptions.Item label={t('review.newValue')}><Text strong>{String(selectedItem.metadata.property_update.new_value)}</Text></Descriptions.Item>
                 </Descriptions>
               </Card>
             )}
@@ -583,7 +584,7 @@ export default function ReviewQueuePage() {
             {selectedItem.candidate_object && (
               <Card size="small" title={t('review.candidateObject')} variant="inner">
                 <Descriptions column={1} size="small" style={{ marginBottom: 8 }}>
-                  <Descriptions.Item label="ID"><Text code>{selectedItem.candidate_object.id}</Text></Descriptions.Item>
+                  <Descriptions.Item label={t('common.id')}><Text code>{selectedItem.candidate_object.id}</Text></Descriptions.Item>
                   <Descriptions.Item label={t('common.type')}><Tag color="blue">{selectedItem.candidate_object.type}</Tag></Descriptions.Item>
                   <Descriptions.Item label={t('pipeline.confidence')}>
                     {((selectedItem.candidate_object.confidence || 0) * 100).toFixed(0)}%
@@ -593,9 +594,10 @@ export default function ReviewQueuePage() {
                   <Table
                     size="small"
                     pagination={false}
+                    scroll={{ x: 400 }}
                     dataSource={Object.entries(selectedItem.candidate_object.properties).map(([k, v]) => ({ key: k, value: typeof v === 'object' ? JSON.stringify(v) : String(v) }))}
                     columns={[
-                      { title: t('review.property'), dataIndex: 'key', key: 'key', width: 120, render: v => <Text code style={{ fontSize: 11 }}>{v}</Text> },
+                      { title: t('review.property'), dataIndex: 'key', key: 'key', width: 120, render: v => <Text code style={{ fontSize: 12 }}>{v}</Text> },
                       { title: t('common.detail'), dataIndex: 'value', key: 'value', ellipsis: true },
                     ]}
                   />
@@ -609,12 +611,12 @@ export default function ReviewQueuePage() {
             {/* Candidate Link with visual arrow */}
             {selectedItem.candidate_link && (
               <Card size="small" title={t('review.candidateLink')} variant="inner">
-                <div style={{ textAlign: 'center', padding: '12px 0', background: 'rgba(0,0,0,0.02)', borderRadius: 6, marginBottom: 12 }}>
+                <div style={{ textAlign: 'center', padding: '12px 0', background: token.colorBgLayout, borderRadius: 6, marginBottom: 12 }}>
                   <Space size={8} align="center">
                     <Tag color="blue" style={{ fontSize: 13, padding: '4px 12px' }}>{selectedItem.candidate_link.source_id}</Tag>
-                    <ArrowRightOutlined style={{ fontSize: 16, color: '#52c41a' }} />
+                    <ArrowRightOutlined style={{ fontSize: 16, color: token.colorSuccess }} />
                     <Tag color="green" style={{ fontSize: 13, padding: '4px 12px' }}>{selectedItem.candidate_link.type}</Tag>
-                    <ArrowRightOutlined style={{ fontSize: 16, color: '#52c41a' }} />
+                    <ArrowRightOutlined style={{ fontSize: 16, color: token.colorSuccess }} />
                     <Tag color="blue" style={{ fontSize: 13, padding: '4px 12px' }}>{selectedItem.candidate_link.target_id}</Tag>
                   </Space>
                 </div>
@@ -629,9 +631,10 @@ export default function ReviewQueuePage() {
                   <Table
                     size="small"
                     pagination={false}
+                    scroll={{ x: 400 }}
                     dataSource={Object.entries(selectedItem.candidate_link.properties).map(([k, v]) => ({ key: k, value: typeof v === 'object' ? JSON.stringify(v) : String(v) }))}
                     columns={[
-                      { title: t('review.property'), dataIndex: 'key', key: 'key', width: 120, render: v => <Text code style={{ fontSize: 11 }}>{v}</Text> },
+                      { title: t('review.property'), dataIndex: 'key', key: 'key', width: 120, render: v => <Text code style={{ fontSize: 12 }}>{v}</Text> },
                       { title: t('common.detail'), dataIndex: 'value', key: 'value', ellipsis: true },
                     ]}
                   />

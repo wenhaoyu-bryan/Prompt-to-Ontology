@@ -19,6 +19,7 @@ import {
   Descriptions,
   Result,
   Tooltip,
+  theme,
 } from 'antd';
 import {
   ReloadOutlined,
@@ -63,6 +64,7 @@ const STATUS_ICONS = {
 
 export default function RuleStudioPage() {
   const { t } = useTranslation();
+  const { token } = theme.useToken();
   const [rules, setRules] = useState([]);
   const [summary, setSummary] = useState(null);
   const [byRule, setByRule] = useState([]);
@@ -92,8 +94,8 @@ export default function RuleStudioPage() {
     setError(false);
     try {
       const [rulesRes, summaryRes] = await Promise.all([
-        api.get('/rule-studio/rules').catch(() => null),
-        api.get('/rule-studio/evaluation-summary').catch(() => null),
+        api.get('/rule-studio/rules').catch((err) => { console.warn('[RuleStudio] failed to load rules', err); return null; }),
+        api.get('/rule-studio/evaluation-summary').catch((err) => { console.warn('[RuleStudio] failed to load evaluation summary', err); return null; }),
       ]);
       if (!rulesRes) {
         setError(true);
@@ -168,7 +170,7 @@ export default function RuleStudioPage() {
       dataIndex: 'generated_link_type',
       key: 'generated_link_type',
       width: 150,
-      render: (text) => <Text code style={{ fontSize: 11 }}>{text || '-'}</Text>,
+      render: (text) => <Text code style={{ fontSize: 12 }}>{text || '-'}</Text>,
     },
     {
       title: t('ruleStudio.columns.coverage'),
@@ -180,11 +182,11 @@ export default function RuleStudioPage() {
         const total = (cov.triggered || 0) + (cov.passed || 0) + (cov.not_evaluable || 0) + (cov.not_applicable || 0);
         return (
           <Space size={4} wrap>
-            {cov.triggered > 0 && <Tag color="red" style={{ fontSize: 10 }}>{cov.triggered}</Tag>}
-            {cov.passed > 0 && <Tag color="green" style={{ fontSize: 10 }}>{cov.passed}</Tag>}
-            {cov.not_evaluable > 0 && <Tag color="orange" style={{ fontSize: 10 }}>{cov.not_evaluable}</Tag>}
-            {cov.not_applicable > 0 && <Tag style={{ fontSize: 10 }}>{cov.not_applicable}</Tag>}
-            {total === 0 && <Text type="secondary" style={{ fontSize: 11 }}>-</Text>}
+            {cov.triggered > 0 && <Tag color="red" style={{ fontSize: 12 }}>{cov.triggered}</Tag>}
+            {cov.passed > 0 && <Tag color="green" style={{ fontSize: 12 }}>{cov.passed}</Tag>}
+            {cov.not_evaluable > 0 && <Tag color="orange" style={{ fontSize: 12 }}>{cov.not_evaluable}</Tag>}
+            {cov.not_applicable > 0 && <Tag style={{ fontSize: 12 }}>{cov.not_applicable}</Tag>}
+            {total === 0 && <Text type="secondary" style={{ fontSize: 12 }}>-</Text>}
           </Space>
         );
       },
@@ -200,7 +202,7 @@ export default function RuleStudioPage() {
             type="link"
             icon={<EyeOutlined />}
             onClick={() => openDetail(record.id)}
-            style={{ padding: '0 2px', fontSize: 11 }}
+            style={{ padding: '0 2px', fontSize: 12 }}
           >
             {t('ruleStudio.actions.viewDetail')}
           </Button>
@@ -215,7 +217,7 @@ export default function RuleStudioPage() {
                 document.getElementById('rule-sim-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }, 100);
             }}
-            style={{ padding: '0 2px', fontSize: 11 }}
+            style={{ padding: '0 2px', fontSize: 12 }}
           >
             {t('ruleStudio.actions.simulate')}
           </Button>
@@ -232,7 +234,8 @@ export default function RuleStudioPage() {
     try {
       const res = await api.get(`/rule-studio/rules/${ruleId}`);
       setRuleDetail(res.data);
-    } catch {
+    } catch (err) {
+      console.warn('[RuleStudio] failed to load rule detail', err);
       setRuleDetail(null);
     } finally {
       setDetailLoading(false);
@@ -263,7 +266,7 @@ export default function RuleStudioPage() {
             )}
             {examples.triggered.evidence && (
               <Descriptions.Item label={t('ruleStudio.detail.evidence')}>
-                <Text code style={{ fontSize: 11 }}>{JSON.stringify(examples.triggered.evidence)}</Text>
+                <Text code style={{ fontSize: 12 }}>{JSON.stringify(examples.triggered.evidence)}</Text>
               </Descriptions.Item>
             )}
           </Descriptions>
@@ -353,7 +356,8 @@ export default function RuleStudioPage() {
       });
       const res = await api.post('/rule-studio/simulate', payload);
       setSimResult(res.data);
-    } catch {
+    } catch (err) {
+      console.warn('[RuleStudio] simulation failed', err);
       setSimResult(null);
     } finally {
       setSimLoading(false);
@@ -399,7 +403,7 @@ export default function RuleStudioPage() {
       <Card
         size="small"
         style={{
-          background: 'linear-gradient(135deg, rgba(250,140,22,0.06) 0%, rgba(22,119,255,0.06) 100%)',
+          background: `linear-gradient(135deg, ${token.colorWarning}0F 0%, ${token.colorPrimary}0F 100%)`,
         }}
       >
         <Title level={3} style={{ margin: 0 }}>
@@ -448,41 +452,41 @@ export default function RuleStudioPage() {
           {/* Summary stat cards */}
           <Row gutter={[16, 16]}>
             <Col xs={12} sm={6}>
-              <Card size="small" style={{ borderColor: 'rgba(255,77,79,0.3)' }}>
+              <Card size="small" style={{ borderColor: `${token.colorError}4D` }}>
                 <Statistic
                   title={t('ruleStudio.coverage.triggered')}
                   value={triggeredCount}
-                  prefix={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
-                  valueStyle={{ color: '#ff4d4f' }}
+                  prefix={<CloseCircleOutlined style={{ color: token.colorError }} />}
+                  valueStyle={{ color: token.colorError }}
                 />
               </Card>
             </Col>
             <Col xs={12} sm={6}>
-              <Card size="small" style={{ borderColor: 'rgba(82,196,26,0.3)' }}>
+              <Card size="small" style={{ borderColor: `${token.colorSuccess}4D` }}>
                 <Statistic
                   title={t('ruleStudio.coverage.passed')}
                   value={passedCount}
-                  prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-                  valueStyle={{ color: '#52c41a' }}
+                  prefix={<CheckCircleOutlined style={{ color: token.colorSuccess }} />}
+                  valueStyle={{ color: token.colorSuccess }}
                 />
               </Card>
             </Col>
             <Col xs={12} sm={6}>
-              <Card size="small" style={{ borderColor: 'rgba(250,140,22,0.3)' }}>
+              <Card size="small" style={{ borderColor: `${token.colorWarning}4D` }}>
                 <Statistic
                   title={t('ruleStudio.coverage.notEvaluable')}
                   value={notEvaluableCount}
-                  prefix={<QuestionCircleOutlined style={{ color: '#fa8c16' }} />}
-                  valueStyle={{ color: '#fa8c16' }}
+                  prefix={<QuestionCircleOutlined style={{ color: token.colorWarning }} />}
+                  valueStyle={{ color: token.colorWarning }}
                 />
               </Card>
             </Col>
             <Col xs={12} sm={6}>
-              <Card size="small" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+              <Card size="small" style={{ borderColor: token.colorBorderSecondary }}>
                 <Statistic
                   title={t('ruleStudio.coverage.notApplicable')}
                   value={notApplicableCount}
-                  prefix={<MinusCircleOutlined style={{ color: '#8c8c8c' }} />}
+                  prefix={<MinusCircleOutlined style={{ color: token.colorTextDisabled }} />}
                 />
               </Card>
             </Col>
@@ -519,7 +523,7 @@ export default function RuleStudioPage() {
                 key: 'triggered',
                 width: 100,
                 align: 'center',
-                render: (v) => <Text style={{ color: v > 0 ? '#ff4d4f' : undefined }}>{v || 0}</Text>,
+                render: (v) => <Text style={{ color: v > 0 ? token.colorError : undefined }}>{v || 0}</Text>,
               },
               {
                 title: t('ruleStudio.coverage.passed'),
@@ -527,7 +531,7 @@ export default function RuleStudioPage() {
                 key: 'passed',
                 width: 100,
                 align: 'center',
-                render: (v) => <Text style={{ color: v > 0 ? '#52c41a' : undefined }}>{v || 0}</Text>,
+                render: (v) => <Text style={{ color: v > 0 ? token.colorSuccess : undefined }}>{v || 0}</Text>,
               },
               {
                 title: t('ruleStudio.coverage.notEvaluable'),
@@ -535,7 +539,7 @@ export default function RuleStudioPage() {
                 key: 'not_evaluable',
                 width: 120,
                 align: 'center',
-                render: (v) => <Text style={{ color: v > 0 ? '#fa8c16' : undefined }}>{v || 0}</Text>,
+                render: (v) => <Text style={{ color: v > 0 ? token.colorWarning : undefined }}>{v || 0}</Text>,
               },
               {
                 title: t('ruleStudio.coverage.notApplicable'),
@@ -591,7 +595,7 @@ export default function RuleStudioPage() {
                 {ruleDetail.rule?.condition_type} — {ruleDetail.rule?.condition_desc}
               </Descriptions.Item>
               <Descriptions.Item label={t('ruleStudio.columns.evidence')}>
-                <Text code style={{ fontSize: 11 }}>{ruleDetail.rule?.generated_link_type || '-'}</Text>
+                <Text code style={{ fontSize: 12 }}>{ruleDetail.rule?.generated_link_type || '-'}</Text>
               </Descriptions.Item>
             </Descriptions>
 
@@ -722,8 +726,8 @@ export default function RuleStudioPage() {
                     onChange={(val) => updateSimField('species', val)}
                     allowClear
                     options={[
-                      { value: 'cat', label: 'Cat' },
-                      { value: 'dog', label: 'Dog' },
+                      { value: 'cat', label: t('ruleStudio.simulation.speciesCat', 'Cat') },
+                      { value: 'dog', label: t('ruleStudio.simulation.speciesDog', 'Dog') },
                     ]}
                     size="small"
                   />
@@ -739,9 +743,9 @@ export default function RuleStudioPage() {
                     onChange={(val) => updateSimField('life_stage', val)}
                     allowClear
                     options={[
-                      { value: 'kitten', label: 'Kitten' },
-                      { value: 'adult', label: 'Adult' },
-                      { value: 'senior', label: 'Senior' },
+                      { value: 'kitten', label: t('ruleStudio.simulation.lifeStageKitten', 'Kitten') },
+                      { value: 'adult', label: t('ruleStudio.simulation.lifeStageAdult', 'Adult') },
+                      { value: 'senior', label: t('ruleStudio.simulation.lifeStageSenior', 'Senior') },
                     ]}
                     size="small"
                   />
@@ -841,7 +845,7 @@ export default function RuleStudioPage() {
                     <span>{t('ruleStudio.simulation.resultTitle')}</span>
                   </Space>
                 }
-                style={{ borderColor: 'rgba(255,255,255,0.1)' }}
+                style={{ borderColor: token.colorBorderSecondary }}
               >
                 <Space direction="vertical" size={12} style={{ width: '100%' }}>
                   <Row gutter={[16, 8]}>
@@ -864,7 +868,7 @@ export default function RuleStudioPage() {
                         color={SEVERITY_COLORS[simResult.severity] || 'default'}
                         style={{ fontSize: 13, padding: '2px 10px' }}
                       >
-                        {simResult.severity || '-'}
+                        {t('ruleStudio.severity.' + (simResult.severity || ''), simResult.severity || '—')}
                       </Tag>
                     </Col>
                     <Col span={8}>
@@ -904,7 +908,7 @@ export default function RuleStudioPage() {
                         </Text>
                         <Space size={4} wrap>
                           {Object.entries(simResult.input_fields).map(([key, val]) => (
-                            <Tag key={key} color="blue" style={{ fontSize: 11 }}>
+                            <Tag key={key} color="blue" style={{ fontSize: 12 }}>
                               {key}: {String(val)}
                             </Tag>
                           ))}
@@ -918,7 +922,7 @@ export default function RuleStudioPage() {
                         </Text>
                         <Space size={4} wrap>
                           {simResult.missing_fields.map((f) => (
-                            <Tag key={f} color="orange" style={{ fontSize: 11 }}>
+                            <Tag key={f} color="orange" style={{ fontSize: 12 }}>
                               {f}
                             </Tag>
                           ))}
@@ -937,7 +941,7 @@ export default function RuleStudioPage() {
                   justifyContent: 'center',
                   padding: '40px 20px',
                   borderRadius: 8,
-                  border: '1px dashed rgba(255,255,255,0.1)',
+                  border: `1px dashed ${token.colorBorderSecondary}`,
                   minHeight: 200,
                 }}
               >

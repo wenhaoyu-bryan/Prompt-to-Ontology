@@ -315,7 +315,8 @@
     "toolsUsed": "Tools Used",
     "answerSummary": "Answer Summary",
     "llmUsed": "LLM Used",
-    "relationshipsExtracted": "Relationships"
+    "relationshipsExtracted": "Relationships",
+    "runId": "Run ID"
   },
   "settings": {
     "title": "Settings",
@@ -443,7 +444,14 @@
       "conflicting_property": "Conflicting Property",
       "new_relationship": "New Relationship",
       "missing_evidence": "Missing Evidence",
-      "new_object": "New Object"
+      "new_object": "New Object",
+      "IMPORT_OBJECT_CANDIDATE": "Import Object Candidate",
+      "IMPORT_LINK_CANDIDATE": "Import Link Candidate",
+      "PROPERTY_CONFLICT": "Property Conflict",
+      "VALIDATION_WARNING": "Validation Warning",
+      "RULE_TRIGGERED_ACTION": "Rule Triggered Action",
+      "AGENT_SUGGESTION": "Agent Suggestion",
+      "RULE_VIOLATION": "Rule Violation"
     }
   },
   "pipeline": {
@@ -569,11 +577,12 @@
     "sourceTypeRelCSV": "Custom CSV · Relationship",
     "selectIdColumns": "Select source and target ID columns",
     "critical": "Critical",
-    "info": "Info"
+    "info": "Info",
+    "planId": "Plan ID"
   },
   "graphGovernance": {
-    "title": "Title",
-    "subtitle": "Inspect, compare, and restore runtime graph snapshots",
+    "title": "Graph Governance",
+    "subtitle": "Create snapshots, inspect graph diffs, and safely restore runtime state.",
     "currentState": "Current Graph State",
     "nodes": "Nodes",
     "relationships": "Relationships",
@@ -633,7 +642,8 @@
     "actions": "Actions",
     "action": "Action",
     "currentGraphState": "Current Graph State",
-    "noDiffs": "No diffs yet. Compare two snapshots to generate a diff."
+    "noDiffs": "No diffs yet. Compare two snapshots to generate a diff.",
+    "changed": "changed"
   },
   "ruleStudio": {
     "title": "Rule Studio",
@@ -724,7 +734,12 @@
       "missingFields": "Missing Fields",
       "placeholder": "Select a rule and fill in fields, then click Run Simulation.",
       "yes": "Yes",
-      "no": "No"
+      "no": "No",
+      "speciesCat": "Cat",
+      "speciesDog": "Dog",
+      "lifeStageKitten": "Kitten",
+      "lifeStageAdult": "Adult",
+      "lifeStageSenior": "Senior"
     },
     "products": "Products",
     "rules": "Rules",
@@ -921,7 +936,9 @@
       "evidence_coverage": "Evidence Coverage",
       "review_safety": "Review Safety",
       "answer_completeness": "Answer Completeness"
-    }
+    },
+    "step": "Step",
+    "tracesCount": "traces"
   },
   "demoCenter": {
     "title": "Demo Center",

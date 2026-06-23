@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Button, Space, Typography, Tag, Steps, Table, Alert, Row, Col, Statistic, message, Progress, Divider, Collapse, Radio, Upload, Select } from 'antd';
+import { Card, Button, Space, Typography, Tag, Steps, Table, Alert, Row, Col, Statistic, message, Progress, Divider, Collapse, Radio, Upload, Select, theme } from 'antd';
 import {
   DatabaseOutlined,
   FileSearchOutlined,
@@ -62,6 +62,7 @@ function formatTime(ts) {
 
 export default function PipelinePage() {
   const { t, i18n } = useTranslation();
+  const { token } = theme.useToken();
   const navigate = useNavigate();
   const [step, setStep] = useState(-1);
   const [samples, setSamples] = useState([]);
@@ -90,22 +91,22 @@ export default function PipelinePage() {
   useEffect(() => {
     loadSamples();
     loadRecentPlans();
-    api.get('/demo/state').then(r => setDemoState(r.data)).catch(() => {});
-    api.get('/pipeline/link-types/pet_food').then(r => setLinkTypes(r.data.link_types || {})).catch(() => {});
+    api.get('/demo/state').then(r => setDemoState(r.data)).catch(err => console.warn('[Pipeline] failed to load demo state', err));
+    api.get('/pipeline/link-types/pet_food').then(r => setLinkTypes(r.data.link_types || {})).catch(err => console.warn('[Pipeline] failed to load link types', err));
   }, []);
 
   const loadSamples = async () => {
     try {
       const { data } = await api.get('/pipeline/samples');
       setSamples(data.samples || []);
-    } catch { setSamples([]); }
+    } catch (err) { console.warn('[Pipeline] failed to load samples', err); setSamples([]); }
   };
 
   const loadRecentPlans = async () => {
     try {
       const { data } = await api.get('/pipeline/import-plans');
       setRecentPlans(data.plans || []);
-    } catch { setRecentPlans([]); }
+    } catch (err) { console.warn('[Pipeline] failed to load recent plans', err); setRecentPlans([]); }
   };
 
   const handleProfile = async () => {
@@ -260,11 +261,11 @@ export default function PipelinePage() {
 
   const recentPlanColumns = [
     {
-      title: 'Plan ID',
+      title: t('pipeline.planId', 'Plan ID'),
       dataIndex: 'plan_id',
       key: 'plan_id',
       width: 130,
-      render: v => <Text code style={{ fontSize: 11 }}>{v}</Text>,
+      render: v => <Text code style={{ fontSize: 12 }}>{v}</Text>,
     },
     {
       title: t('pipeline.source'),
@@ -283,7 +284,7 @@ export default function PipelinePage() {
         } else {
           label = SOURCE_TYPE_LABELS[st] ? t(SOURCE_TYPE_LABELS[st]) : (r.source_profile?.source_name || '—');
         }
-        return <><Tag color={color} style={{ fontSize: 10 }}>{label}</Tag> {r.source_profile?.source_name || ''}</>;
+        return <><Tag color={color} style={{ fontSize: 12 }}>{label}</Tag> {r.source_profile?.source_name || ''}</>;
       },
     },
     {
@@ -319,7 +320,7 @@ export default function PipelinePage() {
       dataIndex: 'created_at',
       key: 'created_at',
       width: 140,
-      render: v => <Text type="secondary" style={{ fontSize: 11 }}>{formatTime(v)}</Text>,
+      render: v => <Text type="secondary" style={{ fontSize: 12 }}>{formatTime(v)}</Text>,
     },
     {
       title: t('pipeline.reviewStatus'),
@@ -330,7 +331,7 @@ export default function PipelinePage() {
           return (
             <Button type="link" size="small" style={{ padding: 0 }}
               onClick={() => navigate(`/review?batch_id=${r.review_batch_id}`)}>
-              <CheckCircleOutlined style={{ color: '#52c41a' }} /> {r.review_batch_id.slice(0, 16)}…
+              <CheckCircleOutlined style={{ color: token.colorSuccess }} /> {r.review_batch_id.slice(0, 16)}…
             </Button>
           );
         }
@@ -422,15 +423,15 @@ export default function PipelinePage() {
   ];
 
   const candidateObjColumns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', render: v => <Text code style={{ fontSize: 11 }}>{v}</Text> },
+    { title: t('common.id'), dataIndex: 'id', key: 'id', render: v => <Text code style={{ fontSize: 12 }}>{v}</Text> },
     { title: t('common.type'), dataIndex: 'type', key: 'type', render: v => <Tag color="blue">{v}</Tag> },
     { title: t('pipeline.confidence'), dataIndex: 'confidence', key: 'conf', render: v => `${(v * 100).toFixed(0)}%` },
-    { title: t('common.properties'), dataIndex: 'properties', key: 'props', ellipsis: true, render: v => Object.keys(v || {}).length + ' fields' },
+    { title: t('common.properties'), dataIndex: 'properties', key: 'props', ellipsis: true, render: v => Object.keys(v || {}).length + ' ' + t('pipeline.fields', 'fields') },
   ];
   const candidateLinkColumns = [
-    { title: t('pipeline.sourceId'), dataIndex: 'source_id', key: 'src', render: v => <Text code style={{ fontSize: 11 }}>{v}</Text> },
+    { title: t('pipeline.sourceId'), dataIndex: 'source_id', key: 'src', render: v => <Text code style={{ fontSize: 12 }}>{v}</Text> },
     { title: t('common.type'), dataIndex: 'type', key: 'type', render: v => <Tag color="green">{v}</Tag> },
-    { title: t('pipeline.targetId'), dataIndex: 'target_id', key: 'tgt', render: v => <Text code style={{ fontSize: 11 }}>{v}</Text> },
+    { title: t('pipeline.targetId'), dataIndex: 'target_id', key: 'tgt', render: v => <Text code style={{ fontSize: 12 }}>{v}</Text> },
   ];
 
   return (
@@ -453,12 +454,12 @@ export default function PipelinePage() {
       {/* Build Full Scenario */}
       {!buildPlan && (
         <Card
-          style={{ background: 'linear-gradient(135deg, rgba(22,119,255,0.04) 0%, rgba(114,46,209,0.04) 100%)', border: '1px solid rgba(22,119,255,0.15)' }}
+          style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${token.colorPrimary} 4%, transparent) 0%, color-mix(in srgb, ${token.colorPrimary} 4%, transparent) 100%)`, border: `1px solid color-mix(in srgb, ${token.colorPrimary} 15%, transparent)` }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>
-                <RocketOutlined style={{ marginRight: 8, color: '#1677ff' }} />
+                <RocketOutlined style={{ marginRight: 8, color: token.colorPrimary }} />
                 {t('pipeline.buildScenarioTitle')}
               </div>
               <Text type="secondary" style={{ fontSize: 13 }}>{t('pipeline.buildScenarioDesc')}</Text>
@@ -495,7 +496,7 @@ export default function PipelinePage() {
               <Col span={4}><Statistic title={t('pipeline.source')} value={buildPlan.summary?.sources || 0} prefix={<DatabaseOutlined />} /></Col>
               <Col span={5}><Statistic title={t('pipeline.candidateObjects')} value={buildPlan.summary?.total_candidate_objects || 0} /></Col>
               <Col span={5}><Statistic title={t('pipeline.candidateLinks')} value={buildPlan.summary?.total_candidate_links || 0} /></Col>
-              <Col span={5}><Statistic title={t('pipeline.valErrors')} value={buildPlan.summary?.total_validation_errors || 0} valueStyle={{ color: (buildPlan.summary?.total_validation_errors || 0) > 0 ? '#ff4d4f' : undefined }} /></Col>
+              <Col span={5}><Statistic title={t('pipeline.valErrors')} value={buildPlan.summary?.total_validation_errors || 0} valueStyle={{ color: (buildPlan.summary?.total_validation_errors || 0) > 0 ? token.colorError : undefined }} /></Col>
               <Col span={5}><Statistic title={t('pipeline.valWarnings')} value={buildPlan.summary?.total_validation_warnings || 0} /></Col>
             </Row>
 
@@ -573,17 +574,17 @@ export default function PipelinePage() {
                         size="small"
                         hoverable
                         onClick={() => setSelectedSample(s.name)}
-                        style={{ borderColor: selected ? '#1677ff' : undefined, cursor: 'pointer' }}
+                        style={{ borderColor: selected ? token.colorPrimary : undefined, cursor: 'pointer' }}
                       >
                         <div style={{ fontSize: 24, marginBottom: 8 }}>{info.icon || '📋'}</div>
                         <Text strong style={{ display: 'block', fontSize: 13 }}>{s.name}</Text>
-                        <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>
+                        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
                           {isZh ? info.desc_zh : info.desc_en}
                         </Text>
                         <div style={{ marginTop: 8 }}>
-                          {info.objectType && <Tag color="blue" style={{ fontSize: 10 }}>{info.objectType}</Tag>}
-                          {info.linkType && <Tag color="green" style={{ fontSize: 10 }}>{info.linkType}</Tag>}
-                          <Tag style={{ fontSize: 9 }}>{t('common.demoData')}</Tag>
+                          {info.objectType && <Tag color="blue" style={{ fontSize: 12 }}>{info.objectType}</Tag>}
+                          {info.linkType && <Tag color="green" style={{ fontSize: 12 }}>{info.linkType}</Tag>}
+                          <Tag style={{ fontSize: 12 }}>{t('common.demoData')}</Tag>
                         </div>
                       </Card>
                     </Col>
@@ -609,7 +610,7 @@ export default function PipelinePage() {
                 </Radio.Group>
               </div>
               <Alert type="info" showIcon icon={<InfoCircleOutlined />} message={csvImportType === 'object' ? t('pipeline.objectCSVDesc') : t('pipeline.relationshipCSVDesc')} style={{ fontSize: 12 }} />
-              <Card size="small" style={{ background: 'rgba(22,119,255,0.03)' }}>
+              <Card size="small" style={{ background: `color-mix(in srgb, ${token.colorPrimary} 3%, transparent)` }}>
                 <div style={{ textAlign: 'center', padding: '12px 0' }}>
                   <Upload.Dragger
                     accept=".csv"
@@ -617,7 +618,7 @@ export default function PipelinePage() {
                     beforeUpload={handleCSVUpload}
                     style={{ padding: '16px 0' }}
                   >
-                    <p className="ant-upload-drag-icon"><CloudUploadOutlined style={{ fontSize: 40, color: '#1677ff' }} /></p>
+                    <p className="ant-upload-drag-icon"><CloudUploadOutlined style={{ fontSize: 40, color: token.colorPrimary }} /></p>
                     <p className="ant-upload-text" style={{ fontSize: 14 }}>{t('pipeline.dropCSV')}</p>
                     <p className="ant-upload-hint" style={{ fontSize: 12 }}>{t('pipeline.csvUploadHint')}</p>
                   </Upload.Dragger>
@@ -756,12 +757,12 @@ export default function PipelinePage() {
             <Row gutter={16}>
               <Col span={8}>
                 <Card size="small">
-                  <Statistic title={t('pipeline.candidateObjects')} value={importPlan.candidate_objects?.length || 0} prefix={<TableOutlined style={{ color: '#1677ff' }} />} />
+                  <Statistic title={t('pipeline.candidateObjects')} value={importPlan.candidate_objects?.length || 0} prefix={<TableOutlined style={{ color: token.colorPrimary }} />} />
                 </Card>
               </Col>
               <Col span={8}>
                 <Card size="small">
-                  <Statistic title={t('pipeline.candidateLinks')} value={importPlan.candidate_links?.length || 0} prefix={<LinkOutlined style={{ color: '#52c41a' }} />} />
+                  <Statistic title={t('pipeline.candidateLinks')} value={importPlan.candidate_links?.length || 0} prefix={<LinkOutlined style={{ color: token.colorSuccess }} />} />
                 </Card>
               </Col>
             </Row>
@@ -794,9 +795,9 @@ export default function PipelinePage() {
               return (
                 <>
                   <Row gutter={16}>
-                    <Col span={6}><Card size="small"><Statistic title={t('pipeline.critical')} value={critical.length} valueStyle={{ color: critical.length > 0 ? '#ff4d4f' : undefined }} /></Card></Col>
-                    <Col span={6}><Card size="small"><Statistic title={t('pipeline.valErrors')} value={errors.length} valueStyle={{ color: errors.length > 0 ? '#ff4d4f' : undefined }} /></Card></Col>
-                    <Col span={6}><Card size="small"><Statistic title={t('pipeline.valWarnings')} value={warnings.length} valueStyle={{ color: warnings.length > 0 ? '#fa8c16' : undefined }} /></Card></Col>
+                    <Col span={6}><Card size="small"><Statistic title={t('pipeline.critical')} value={critical.length} valueStyle={{ color: critical.length > 0 ? token.colorError : undefined }} /></Card></Col>
+                    <Col span={6}><Card size="small"><Statistic title={t('pipeline.valErrors')} value={errors.length} valueStyle={{ color: errors.length > 0 ? token.colorError : undefined }} /></Card></Col>
+                    <Col span={6}><Card size="small"><Statistic title={t('pipeline.valWarnings')} value={warnings.length} valueStyle={{ color: warnings.length > 0 ? token.colorWarning : undefined }} /></Card></Col>
                     <Col span={6}><Card size="small"><Statistic title={t('pipeline.info')} value={infos.length} /></Card></Col>
                   </Row>
                   {issues.length === 0 ? (
@@ -826,13 +827,13 @@ export default function PipelinePage() {
       {importPlan && (
         <Card
           title={<><ImportOutlined /> {t('pipeline.s6')} — {importPlan.plan_id}</>}
-          extra={<Tag color={STATUS_COLORS[importPlan.status]}>{importPlan.status}</Tag>}
+          extra={<Tag color={STATUS_COLORS[importPlan.status]}>{t('common.statusLabels.' + importPlan.status, importPlan.status)}</Tag>}
         >
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Row gutter={[16, 16]}>
               <Col span={6}><Card size="small"><Statistic title={t('pipeline.newObjects')} value={importPlan.summary?.new_objects || 0} /></Card></Col>
               <Col span={6}><Card size="small"><Statistic title={t('pipeline.newLinks')} value={importPlan.summary?.new_links || 0} /></Card></Col>
-              <Col span={6}><Card size="small"><Statistic title={t('pipeline.valErrors')} value={importPlan.summary?.validation_errors || 0} valueStyle={{ color: importPlan.summary?.validation_errors > 0 ? '#ff4d4f' : undefined }} /></Card></Col>
+              <Col span={6}><Card size="small"><Statistic title={t('pipeline.valErrors')} value={importPlan.summary?.validation_errors || 0} valueStyle={{ color: importPlan.summary?.validation_errors > 0 ? token.colorError : undefined }} /></Card></Col>
               <Col span={6}><Card size="small"><Statistic title={t('pipeline.avgConfidence')} value={`${((importPlan.summary?.confidence_avg || 0) * 100).toFixed(1)}%`} /></Card></Col>
             </Row>
             <Row gutter={16}>
