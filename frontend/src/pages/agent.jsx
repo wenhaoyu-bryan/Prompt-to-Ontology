@@ -502,7 +502,7 @@ export default function AgentPage() {
         footer={null}
         width={480}
       >
-        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
           {llmStatus?.configured && (
             <Alert
               type={llmStatus.source === 'runtime' ? 'success' : 'info'}
@@ -608,7 +608,7 @@ export default function AgentPage() {
       >
         <ErrorBoundary>
         {selectedRun && (
-          <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
             {/* Status & Meta */}
             <Card size="small" variant="inner">
               <Row gutter={16}>

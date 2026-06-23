@@ -90,7 +90,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <Space orientation="vertical" size={24} style={{ width: '100%', maxWidth: 720 }}>
+    <Space direction="vertical" size={24} style={{ width: '100%', maxWidth: 720 }}>
       <div>
         <Title level={3} style={{ margin: 0 }}>{t('settings.title')}</Title>
         <Text type="secondary">{t('settings.subtitle')}</Text>
@@ -98,7 +98,7 @@ export default function SettingsPage() {
 
       {/* Theme */}
       <Card title={<><BulbOutlined /> {t('settings.theme')}</>}>
-        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text>{mode === 'dark' ? t('settings.darkMode') : t('settings.lightMode')}</Text>
             <Switch
@@ -200,7 +200,7 @@ export default function SettingsPage() {
         extra={<Button type="link" size="small" icon={<ReloadOutlined />} onClick={loadDemoState}>{t('settings.demoRefresh')}</Button>}
       >
         {demoState ? (
-          <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <Tag color={demoState.mode === 'seeded' ? 'green' : demoState.mode === 'clean' ? 'blue' : 'default'} style={{ fontSize: 14, padding: '4px 12px' }}>
                 {t(`dashboard.demoMode.${demoState.mode}`, demoState.mode)}

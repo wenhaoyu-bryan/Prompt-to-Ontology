@@ -361,7 +361,7 @@ export default function ReviewQueuePage() {
       dataIndex: 'title',
       key: 'title',
       render: (text, record) => (
-        <Space orientation="vertical" size={2}>
+        <Space direction="vertical" size={2}>
           <Text style={{ fontSize: 13 }}>{text}</Text>
           {record.source_plan_id && (
             <Text type="secondary" style={{ fontSize: 10 }}>plan: {record.source_plan_id}</Text>
@@ -442,7 +442,7 @@ export default function ReviewQueuePage() {
   // ── Render ──────────────────────────────────────────────────────────
 
   return (
-    <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
@@ -525,7 +525,7 @@ export default function ReviewQueuePage() {
         size={520}
       >
         {selectedItem && (
-          <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
             {/* Basic info */}
             <Descriptions column={1} size="small" bordered>
               <Descriptions.Item label={t('review.itemType')}>
@@ -687,7 +687,7 @@ export default function ReviewQueuePage() {
         okText={reasonModal.action === 'approve' ? t('review.approve') : t('review.reject')}
         okButtonProps={{ danger: reasonModal.action === 'reject' }}
       >
-        <Space orientation="vertical" size={12} style={{ width: '100%', marginTop: 12 }}>
+        <Space direction="vertical" size={12} style={{ width: '100%', marginTop: 12 }}>
           <Text>{reasonModal.action === 'approve' ? t('review.approveReasonHint') : t('review.rejectReasonHint')}</Text>
           <TextArea
             rows={3}

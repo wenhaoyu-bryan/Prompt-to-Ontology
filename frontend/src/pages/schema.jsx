@@ -127,7 +127,7 @@ export default function SchemaPage() {
               </Space>
             ),
             children: (
-              <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+              <Space direction="vertical" size={12} style={{ width: '100%' }}>
                 {OBJECT_TYPE_EXPLANATIONS[ot.name] && (
                   <Alert
                     type="info"
@@ -260,7 +260,7 @@ export default function SchemaPage() {
   ];
 
   return (
-    <Space orientation="vertical" size={20} style={{ width: '100%' }}>
+    <Space direction="vertical" size={20} style={{ width: '100%' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>

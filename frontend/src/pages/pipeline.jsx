@@ -434,7 +434,7 @@ export default function PipelinePage() {
   ];
 
   return (
-    <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
       {/* Header */}
       <div>
         <Title level={3} style={{ margin: 0 }}>{t('pipeline.title')}</Title>
@@ -489,7 +489,7 @@ export default function PipelinePage() {
             )
           }
         >
-          <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
             {/* Summary */}
             <Row gutter={16}>
               <Col span={4}><Statistic title={t('pipeline.source')} value={buildPlan.summary?.sources || 0} prefix={<DatabaseOutlined />} /></Col>
@@ -519,7 +519,7 @@ export default function PipelinePage() {
                   </div>
                 ),
                 children: (
-                  <Space orientation="vertical" size={8} style={{ width: '100%' }}>
+                  <Space direction="vertical" size={8} style={{ width: '100%' }}>
                     <Text type="secondary">{stage.description}</Text>
                     {stage.object_types?.length > 0 && (
                       <div>{t('schema.objectTypes')}: {stage.object_types.map(t => <Tag key={t}>{t}</Tag>)}</div>
@@ -546,7 +546,7 @@ export default function PipelinePage() {
 
       {/* ── Step 0: Select Source ─────────────────────────────────── */}
       <Card title={<><DatabaseOutlined /> {t('pipeline.s1')}</>}>
-        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
           {/* Source Mode Switch */}
           <div>
             <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('pipeline.dataSourceMode')}</Text>
@@ -637,7 +637,7 @@ export default function PipelinePage() {
               )}
               {csvImportType === 'relationship' && (
                 <Card size="small" title={t('pipeline.targetLinkType')}>
-                  <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+                  <Space direction="vertical" size={12} style={{ width: '100%' }}>
                     <div>
                       <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t('pipeline.targetLinkTypeDesc')}</Text>
                       <Select style={{ width: '100%' }} value={relLinkType} onChange={setRelLinkType}>
@@ -692,7 +692,7 @@ export default function PipelinePage() {
           title={<><FileSearchOutlined /> {t('pipeline.s2')} — {profile.source_name}</>}
           extra={<Tag>{profile.row_count} {t('pipeline.rows').toLowerCase()} × {profile.column_count} {t('pipeline.cols').toLowerCase()}</Tag>}
         >
-          <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Row gutter={16}>
               <Col span={6}><Card size="small"><Statistic title={t('pipeline.rowCount')} value={profile.row_count} prefix={<TableOutlined />} /></Card></Col>
               <Col span={6}><Card size="small"><Statistic title={t('pipeline.columnCount')} value={profile.column_count} prefix={<TableOutlined />} /></Card></Col>
@@ -726,7 +726,7 @@ export default function PipelinePage() {
       {/* ── Step 2: Map to Ontology ──────────────────────────────── */}
       {step >= 2 && mappings && (
         <Card title={<><SwapOutlined /> {t('pipeline.s3')}</>}>
-          <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
             {mappings.object_mappings?.length > 0 && (
               <div>
                 <Text strong>{t('pipeline.objectMappings')}:</Text>
@@ -752,7 +752,7 @@ export default function PipelinePage() {
       {/* ── Step 3: Candidate Preview ─────────────────────────────── */}
       {importPlan && (
         <Card title={<><EyeOutlined /> {t('pipeline.s4')}</>}>
-          <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Row gutter={16}>
               <Col span={8}>
                 <Card size="small">
@@ -784,7 +784,7 @@ export default function PipelinePage() {
       {/* ── Step 4: Validation ────────────────────────────────────── */}
       {importPlan && (
         <Card title={<><SafetyCertificateOutlined /> {t('pipeline.s5')}</>}>
-          <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
             {(() => {
               const issues = importPlan.validation_issues || [];
               const critical = issues.filter(i => i.level === 'critical');
@@ -828,7 +828,7 @@ export default function PipelinePage() {
           title={<><ImportOutlined /> {t('pipeline.s6')} — {importPlan.plan_id}</>}
           extra={<Tag color={STATUS_COLORS[importPlan.status]}>{importPlan.status}</Tag>}
         >
-          <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Row gutter={[16, 16]}>
               <Col span={6}><Card size="small"><Statistic title={t('pipeline.newObjects')} value={importPlan.summary?.new_objects || 0} /></Card></Col>
               <Col span={6}><Card size="small"><Statistic title={t('pipeline.newLinks')} value={importPlan.summary?.new_links || 0} /></Card></Col>

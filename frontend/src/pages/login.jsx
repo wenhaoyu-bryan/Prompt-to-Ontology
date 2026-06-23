@@ -27,7 +27,7 @@ export default function LoginPage() {
       background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%)',
     }}>
       <Card style={{ width: 380, borderRadius: 12 }} variant="borderless">
-        <Space orientation="vertical" size={4} style={{ width: '100%', marginBottom: 32, textAlign: 'center' }}>
+        <Space direction="vertical" size={4} style={{ width: '100%', marginBottom: 32, textAlign: 'center' }}>
           <img
             src="/project_profile.png"
             alt="Logo"
