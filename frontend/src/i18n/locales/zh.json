@@ -68,6 +68,7 @@
       "approved": "已通过",
       "rejected": "已拒绝",
       "failed": "失败",
+      "skipped": "已跳过",
       "high": "高",
       "medium": "中",
       "low": "低"
@@ -173,7 +174,12 @@
     "latestSnapshot": "最近快照",
     "guidedDemo": "引导演示",
     "guidedDemoDesc": "逐步引导的产品演示",
-    "startGoldenDemo": "开始 Golden Demo"
+    "startGoldenDemo": "开始 Golden Demo",
+    "heroTitle": "运营型本体运行时",
+    "heroSubtitle": "结构化数据 → 类型化图谱 → 规则与证据 → 人工审核 → 智能体操作",
+    "buildFromData": "从数据构建",
+    "exploreGraph": "探索图谱",
+    "moreMetrics": "更多指标"
   },
   "objects": {
     "title": "对象",

@@ -59,7 +59,7 @@ export default function DemoCenterPage() {
     try {
       const { data } = await api.post('/scenario-runs', { scenario_id: scenarioId });
       setActiveRun(data);
-      message.success(isZh ? '演示已启动' : 'Demo started');
+      message.success(t('demoCenter.demoStarted'));
       loadRuns();
     } catch (err) {
       message.error(err?.response?.data?.detail || t('common.error'));
@@ -87,7 +87,7 @@ export default function DemoCenterPage() {
     try {
       const { data } = await api.post(`/scenario-runs/${activeRun.run_id}/complete`);
       setActiveRun(data);
-      message.success(isZh ? '演示已完成' : 'Demo completed');
+      message.success(t('demoCenter.demoCompleted'));
       // Don't call loadRuns() — it would overwrite activeRun with null
     } catch (err) {
       message.error(err?.response?.data?.detail || t('common.error'));
@@ -110,7 +110,7 @@ export default function DemoCenterPage() {
       title: (
         <Space>
           <span>{isZh && step.title_zh ? step.title_zh : step.title}</span>
-          <Tag color={st.color} style={{ fontSize: 10 }}>{step.status}</Tag>
+          <Tag color={st.color} style={{ fontSize: 10 }}>{t(`common.statusLabels.${step.status}`, step.status)}</Tag>
         </Space>
       ),
       description: (
@@ -120,22 +120,22 @@ export default function DemoCenterPage() {
           </Text>
           {step.route && (
             <Button size="small" type="link" style={{ padding: 0, fontSize: 11 }} onClick={() => navigate(step.route)}>
-              {isZh ? '打开页面' : 'Open Page'} <RightOutlined />
+              {t('demoCenter.openPage')} <RightOutlined />
             </Button>
           )}
           {step.status === 'pending' && (
             <Space size={4} style={{ marginTop: 4 }}>
               <Button size="small" type="primary" loading={actionLoading[`${step.step_id}-start`]}
                 onClick={() => handleStepAction(activeRun.run_id, step.step_id, 'start')}>
-                {isZh ? '开始' : 'Start'}
+                {t('demoCenter.start')}
               </Button>
               <Button size="small" loading={actionLoading[`${step.step_id}-complete`]}
                 onClick={() => handleStepAction(activeRun.run_id, step.step_id, 'complete')}>
-                {isZh ? '完成' : 'Complete'}
+                {t('demoCenter.complete')}
               </Button>
               <Button size="small" loading={actionLoading[`${step.step_id}-skip`]}
                 onClick={() => handleStepAction(activeRun.run_id, step.step_id, 'skip')}>
-                {isZh ? '跳过' : 'Skip'}
+                {t('demoCenter.skip')}
               </Button>
             </Space>
           )}
@@ -143,17 +143,17 @@ export default function DemoCenterPage() {
             <Space size={4} style={{ marginTop: 4 }}>
               <Button size="small" type="primary" loading={actionLoading[`${step.step_id}-complete`]}
                 onClick={() => handleStepAction(activeRun.run_id, step.step_id, 'complete')}>
-                {isZh ? '标记完成' : 'Mark Complete'}
+                {t('demoCenter.markComplete')}
               </Button>
               <Button size="small" loading={actionLoading[`${step.step_id}-skip`]}
                 onClick={() => handleStepAction(activeRun.run_id, step.step_id, 'skip')}>
-                {isZh ? '跳过' : 'Skip'}
+                {t('demoCenter.skip')}
               </Button>
             </Space>
           )}
           {step.expected_result && step.status === 'pending' && (
             <Text type="secondary" style={{ fontSize: 10, display: 'block', marginTop: 4 }}>
-              {isZh ? '预期结果' : 'Expected'}: {isZh && step.expected_result_zh ? step.expected_result_zh : step.expected_result}
+              {t('demoCenter.expected')}: {isZh && step.expected_result_zh ? step.expected_result_zh : step.expected_result}
             </Text>
           )}
         </div>
@@ -225,7 +225,7 @@ export default function DemoCenterPage() {
               <Col>
                 <Text strong>{isZh && activeRun.title_zh ? activeRun.title_zh : activeRun.title}</Text>
                 <Tag color={activeRun.status === 'completed' ? 'green' : 'blue'} style={{ marginLeft: 8 }}>
-                  {activeRun.status}
+                  {t(`common.statusLabels.${activeRun.status}`, activeRun.status)}
                 </Tag>
               </Col>
               <Col>

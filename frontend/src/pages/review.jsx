@@ -391,7 +391,7 @@ export default function ReviewQueuePage() {
       render: (status) => {
         const s = status || 'pending';
         const icon = s === 'applied' ? <CheckCircleOutlined /> : s === 'approved' ? <CheckOutlined /> : s === 'rejected' ? <CloseCircleOutlined /> : s === 'failed' ? <ExclamationCircleOutlined /> : <ClockCircleOutlined />;
-        return <Tag icon={icon} color={STATUS_COLORS[s]}>{s}</Tag>;
+        return <Tag icon={icon} color={STATUS_COLORS[s]}>{t(`common.statusLabels.${s}`, s)}</Tag>;
       },
     },
     {
@@ -421,6 +421,7 @@ export default function ReviewQueuePage() {
         rowKey="id"
         size="small"
         loading={loading}
+        scroll={{ x: 800 }}
         pagination={{ pageSize: 20, showSizeChanger: false }}
         onRow={(record) => ({
           onClick: () => handleViewDetail(record),
@@ -534,7 +535,7 @@ export default function ReviewQueuePage() {
                 <Tag color={SEVERITY_COLORS[selectedItem.severity]}>{selectedItem.severity}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label={t('common.status')}>
-                <Tag color={STATUS_COLORS[selectedItem.status]}>{selectedItem.status}</Tag>
+                <Tag color={STATUS_COLORS[selectedItem.status]}>{t(`common.statusLabels.${selectedItem.status}`, selectedItem.status)}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label={t('review.source')}>
                 <Tag>{selectedItem.source}</Tag>

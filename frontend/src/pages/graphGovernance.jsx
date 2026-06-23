@@ -8,12 +8,14 @@ import {
   Space,
   Tag,
   Spin,
+  Skeleton,
   Button,
   Table,
   Modal,
   Select,
   Alert,
   Collapse,
+  Empty,
   message,
 } from 'antd';
 import {
@@ -178,9 +180,11 @@ export default function GraphGovernancePage() {
 
   if (pageLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <Spin size="large" />
-      </div>
+      <Space direction="vertical" size={20} style={{ width: '100%' }}>
+        <Skeleton active paragraph={{ rows: 2 }} />
+        <Card size="small"><Skeleton active paragraph={{ rows: 3 }} /></Card>
+        <Card size="small"><Skeleton active paragraph={{ rows: 4 }} /></Card>
+      </Space>
     );
   }
 
@@ -475,6 +479,7 @@ export default function GraphGovernancePage() {
           columns={snapshotColumns}
           rowKey="snapshot_id"
           size="small"
+          scroll={{ x: 960 }}
           pagination={{ pageSize: 10, showSizeChanger: false }}
           locale={{ emptyText: t('graphGovernance.noSnapshots') }}
         />
@@ -751,6 +756,7 @@ export default function GraphGovernancePage() {
           columns={diffHistoryColumns}
           rowKey="diff_id"
           size="small"
+          scroll={{ x: 1000 }}
           pagination={{ pageSize: 10, showSizeChanger: false }}
           locale={{ emptyText: t('graphGovernance.noDiffs') }}
         />

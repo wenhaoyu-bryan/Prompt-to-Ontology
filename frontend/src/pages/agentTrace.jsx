@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card, Table, Tag, Space, Typography, Button, message, Drawer,
-  Timeline, Progress, Row, Col, Spin, Result, Descriptions, Alert,
+  Timeline, Progress, Row, Col, Spin, Result, Descriptions, Alert, Empty,
 } from 'antd';
 import {
   ReloadOutlined,
@@ -454,7 +454,6 @@ export default function AgentTracePage() {
       title: t('common.actions'),
       key: 'actions',
       width: 240,
-      fixed: 'right',
       render: (_, record) => (
         <Space size={2} wrap={false}>
           <Button
@@ -648,14 +647,18 @@ export default function AgentTracePage() {
         title={<><EyeOutlined /> {t('agentTrace.recentTraces')} ({traces.length})</>}
         size="small"
       >
-        <Table
-          dataSource={traces}
-          columns={columns}
-          rowKey="trace_id"
-          size="small"
-          scroll={{ x: 1200 }}
-          pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `${total} traces` }}
-        />
+        {traces.length === 0 ? (
+          <Empty description={t('agentTrace.noTraces', 'No agent traces recorded yet. Use the Agent Operator to create traces.')} />
+        ) : (
+          <Table
+            dataSource={traces}
+            columns={columns}
+            rowKey="trace_id"
+            size="small"
+            scroll={{ x: 1200 }}
+            pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `${total} traces` }}
+          />
+        )}
       </Card>
 
       {/* Section B-D: Trace Detail Drawer */}

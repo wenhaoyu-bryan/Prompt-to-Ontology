@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Card, Space, Typography, Spin, Radio, Select, Button, Drawer, Tag, Checkbox, Row, Col, Statistic, Divider, Empty, Result } from 'antd';
+import { Card, Space, Typography, Spin, Skeleton, Radio, Select, Button, Drawer, Tag, Checkbox, Row, Col, Statistic, Divider, Empty, Result } from 'antd';
 import {
   ReloadOutlined,
   NodeIndexOutlined,
@@ -8,6 +8,7 @@ import {
   ExpandOutlined,
   FilterOutlined,
   EyeOutlined,
+  MenuOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -41,6 +42,8 @@ export default function GraphPage() {
   const [enabledLinkTypes, setEnabledLinkTypes] = useState(
     new Set(LINK_TYPE_FILTERS.map(f => f.value))
   );
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
+  const [sidebarDrawerOpen, setSidebarDrawerOpen] = useState(false);
 
   const loadGraph = useCallback(async () => {
     setLoading(true);
@@ -57,6 +60,13 @@ export default function GraphPage() {
   }, []);
 
   useEffect(() => { loadGraph(); }, [loadGraph]);
+
+  // Responsive: track window width for mobile sidebar collapse
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Auto-select highlighted node from URL
   useEffect(() => {
@@ -151,95 +161,137 @@ export default function GraphPage() {
     nodeTypeCounts[type] = (nodeTypeCounts[type] || 0) + 1;
   });
 
+  // Control panel content (shared between inline Card and mobile Drawer)
+  const controlPanelContent = (
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      {/* View Mode */}
+      <div>
+        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>{t('graph.viewMode')}</Text>
+        <Radio.Group value={viewMode} onChange={e => setViewMode(e.target.value)} size="small" style={{ width: '100%' }}>
+          <Radio.Button value="global" style={{ width: '50%', textAlign: 'center' }}>
+            <ExpandOutlined /> {t('graph.globalView')}
+          </Radio.Button>
+          <Radio.Button value="local" style={{ width: '50%', textAlign: 'center' }}>
+            <CompressOutlined /> {t('graph.localView')}
+          </Radio.Button>
+        </Radio.Group>
+      </div>
+
+      {/* Depth selector (local mode only) */}
+      {viewMode === 'local' && (
+        <div>
+          <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>{t('graph.depth')}</Text>
+          <Select
+            value={depth}
+            onChange={setDepth}
+            size="small"
+            style={{ width: '100%' }}
+            options={[
+              { label: t('graph.oneHop'), value: 1 },
+              { label: t('graph.twoHop'), value: 2 },
+            ]}
+          />
+        </div>
+      )}
+
+      <Divider style={{ margin: '4px 0' }} />
+
+      {/* Link Type Filters */}
+      <div>
+        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>{t('graph.relationshipTypes')}</Text>
+        <Space direction="vertical" size={4} style={{ width: '100%' }}>
+          {LINK_TYPE_FILTERS.map(f => (
+            <Checkbox
+              key={f.value}
+              checked={enabledLinkTypes.has(f.value)}
+              onChange={e => {
+                const next = new Set(enabledLinkTypes);
+                if (e.target.checked) next.add(f.value);
+                else next.delete(f.value);
+                setEnabledLinkTypes(next);
+              }}
+            >
+              <Text style={{ fontSize: 12 }}>{t(f.labelKey)}</Text>
+            </Checkbox>
+          ))}
+        </Space>
+      </div>
+
+      <Divider style={{ margin: '4px 0' }} />
+
+      {/* Legend */}
+      <div>
+        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>{t('graph.legend', 'Legend')}</Text>
+        <Space direction="vertical" size={2} style={{ width: '100%' }}>
+          {[
+            { label: 'PetFoodProduct', color: '#1677ff' },
+            { label: 'Brand', color: '#722ed1' },
+            { label: 'Ingredient', color: '#52c41a' },
+            { label: 'RiskRule', color: '#ff4d4f' },
+            { label: 'Species', color: '#13c2c2' },
+            { label: 'LifeStage', color: '#fa8c16' },
+          ].map(item => (
+            <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
+              <Text style={{ fontSize: 12 }}>{item.label}</Text>
+            </div>
+          ))}
+        </Space>
+      </div>
+
+      <Divider style={{ margin: '4px 0' }} />
+
+      {/* Stats */}
+      <div>
+        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>{t('graph.graphStats')}</Text>
+        <Space direction="vertical" size={2} style={{ width: '100%' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Text style={{ fontSize: 12 }}>{t('graph.visibleNodes')}</Text>
+            <Tag style={{ fontSize: 12 }}>{displayData.nodes.length}</Tag>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Text style={{ fontSize: 12 }}>{t('graph.visibleEdges')}</Text>
+            <Tag style={{ fontSize: 12 }}>{displayData.links.length}</Tag>
+          </div>
+        </Space>
+      </div>
+
+      <Divider style={{ margin: '4px 0' }} />
+
+      {/* Actions */}
+      <Space direction="vertical" size={4} style={{ width: '100%' }}>
+        <Button icon={<ReloadOutlined />} size="small" block onClick={loadGraph}>{t('common.refresh')}</Button>
+        <Button size="small" block onClick={resetFilters}>{t('graph.resetFilters')}</Button>
+      </Space>
+    </Space>
+  );
+
   return (
     <div style={{ display: 'flex', gap: 16, height: 'calc(100vh - 128px)' }}>
-      {/* Left filter panel */}
-      <Card
-        size="small"
-        style={{ width: 220, flexShrink: 0, overflow: 'auto' }}
-        styles={{ body: { padding: '12px' } }}
-        title={<><FilterOutlined /> {t('graph.controls')}</>}
-      >
-        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
-          {/* View Mode */}
-          <div>
-            <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>{t('graph.viewMode')}</Text>
-            <Radio.Group value={viewMode} onChange={e => setViewMode(e.target.value)} size="small" style={{ width: '100%' }}>
-              <Radio.Button value="global" style={{ width: '50%', textAlign: 'center' }}>
-                <ExpandOutlined /> {t('graph.globalView')}
-              </Radio.Button>
-              <Radio.Button value="local" style={{ width: '50%', textAlign: 'center' }}>
-                <CompressOutlined /> {t('graph.localView')}
-              </Radio.Button>
-            </Radio.Group>
-          </div>
+      {/* Left filter panel -- inline on desktop, Drawer on mobile */}
+      {!isMobile && (
+        <Card
+          size="small"
+          style={{ width: 220, flexShrink: 0, overflow: 'auto' }}
+          styles={{ body: { padding: '12px' } }}
+          title={<><FilterOutlined /> {t('graph.controls')}</>}
+        >
+          {controlPanelContent}
+        </Card>
+      )}
 
-          {/* Depth selector (local mode only) */}
-          {viewMode === 'local' && (
-            <div>
-              <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>{t('graph.depth')}</Text>
-              <Select
-                value={depth}
-                onChange={setDepth}
-                size="small"
-                style={{ width: '100%' }}
-                options={[
-                  { label: t('graph.oneHop'), value: 1 },
-                  { label: t('graph.twoHop'), value: 2 },
-                ]}
-              />
-            </div>
-          )}
-
-          <Divider style={{ margin: '4px 0' }} />
-
-          {/* Link Type Filters */}
-          <div>
-            <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>{t('graph.relationshipTypes')}</Text>
-            <Space orientation="vertical" size={4} style={{ width: '100%' }}>
-              {LINK_TYPE_FILTERS.map(f => (
-                <Checkbox
-                  key={f.value}
-                  checked={enabledLinkTypes.has(f.value)}
-                  onChange={e => {
-                    const next = new Set(enabledLinkTypes);
-                    if (e.target.checked) next.add(f.value);
-                    else next.delete(f.value);
-                    setEnabledLinkTypes(next);
-                  }}
-                >
-                  <Text style={{ fontSize: 12 }}>{t(f.labelKey)}</Text>
-                </Checkbox>
-              ))}
-            </Space>
-          </div>
-
-          <Divider style={{ margin: '4px 0' }} />
-
-          {/* Stats */}
-          <div>
-            <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>{t('graph.graphStats')}</Text>
-            <Space orientation="vertical" size={2} style={{ width: '100%' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 12 }}>{t('graph.visibleNodes')}</Text>
-                <Tag style={{ fontSize: 11 }}>{displayData.nodes.length}</Tag>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 12 }}>{t('graph.visibleEdges')}</Text>
-                <Tag style={{ fontSize: 11 }}>{displayData.links.length}</Tag>
-              </div>
-            </Space>
-          </div>
-
-          <Divider style={{ margin: '4px 0' }} />
-
-          {/* Actions */}
-          <Space orientation="vertical" size={4} style={{ width: '100%' }}>
-            <Button icon={<ReloadOutlined />} size="small" block onClick={loadGraph}>{t('common.refresh')}</Button>
-            <Button size="small" block onClick={resetFilters}>{t('graph.resetFilters')}</Button>
-          </Space>
-        </Space>
-      </Card>
+      {/* Mobile sidebar drawer */}
+      {isMobile && (
+        <Drawer
+          title={<><FilterOutlined /> {t('graph.controls')}</>}
+          open={sidebarDrawerOpen}
+          onClose={() => setSidebarDrawerOpen(false)}
+          placement="left"
+          width={280}
+        >
+          {controlPanelContent}
+        </Drawer>
+      )}
 
       {/* Main graph area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
@@ -247,9 +299,14 @@ export default function GraphPage() {
         <div style={{ marginBottom: 4 }}>
           <Text type="secondary" style={{ fontSize: 12 }}>{t('graph.subtitle')}</Text>
           <br />
-          <Text type="secondary" style={{ fontSize: 11, opacity: 0.65 }}>{t('graph.evidenceExplanation')}</Text>
+          <Text type="secondary" style={{ fontSize: 12, opacity: 0.65 }}>{t('graph.evidenceExplanation')}</Text>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+          {isMobile && (
+            <Button size="small" icon={<MenuOutlined />} onClick={() => setSidebarDrawerOpen(true)}>
+              {t('graph.controls')}
+            </Button>
+          )}
           {viewMode === 'local' && selectedNode && (
             <Tag color="blue" icon={<NodeIndexOutlined />}>
               {selectedNode.label || selectedNode.id} — {t('graph.nodeCount', { count: displayData.nodes.length })}
@@ -276,12 +333,14 @@ export default function GraphPage() {
                 extra={<Button type="primary" icon={<ReloadOutlined />} onClick={loadGraph}>{t('common.retry')}</Button>}
               />
             </div>
-          ) : displayData.nodes.length === 0 && viewMode === 'local' ? (
+          ) : displayData.nodes.length === 0 ? (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <Empty description={t('graph.selectNode')}>
-                <Button icon={<ExpandOutlined />} onClick={() => setViewMode('global')}>
-                  {t('graph.globalView')}
-                </Button>
+              <Empty description={viewMode === 'local' ? t('graph.selectNode') : 'No graph data loaded. Reset to Seeded Demo or build from Data Pipeline.'}>
+                {viewMode === 'local' && (
+                  <Button icon={<ExpandOutlined />} onClick={() => setViewMode('global')}>
+                    {t('graph.globalView')}
+                  </Button>
+                )}
               </Empty>
             </div>
           ) : (

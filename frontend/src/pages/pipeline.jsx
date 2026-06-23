@@ -291,7 +291,7 @@ export default function PipelinePage() {
       dataIndex: 'status',
       key: 'status',
       width: 100,
-      render: v => <Tag color={STATUS_COLORS[v]}>{v}</Tag>,
+      render: v => <Tag color={STATUS_COLORS[v]}>{t(`common.statusLabels.${v}`, v)}</Tag>,
     },
     {
       title: t('pipeline.newObjects'),
@@ -700,7 +700,7 @@ export default function PipelinePage() {
             </Row>
             <Divider style={{ margin: '8px 0' }} />
             <Text strong>{t('pipeline.columnProfiles')}</Text>
-            <Table dataSource={profile.columns} columns={profileColumns} rowKey="name" size="small" pagination={false} />
+            <Table dataSource={profile.columns} columns={profileColumns} rowKey="name" size="small" pagination={false} scroll={{ x: 600 }} />
             {profile.sample_rows?.length > 0 && (
               <>
                 <Text strong>{t('pipeline.sampleRows')}</Text>
@@ -739,7 +739,7 @@ export default function PipelinePage() {
                 </div>
               </div>
             )}
-            <Table dataSource={mappings.field_suggestions} columns={mappingColumns} rowKey="source_column" size="small" pagination={false} />
+            <Table dataSource={mappings.field_suggestions} columns={mappingColumns} rowKey="source_column" size="small" pagination={false} scroll={{ x: 900 }} />
             {step === 2 && (
               <Button type="primary" icon={<EyeOutlined />} onClick={csvImportType === 'relationship' && sourceMode === 'custom' ? handleCreateRelationshipPlan : handleCreatePlan} loading={loading}>
                 {t('pipeline.generatePlan')}
@@ -768,13 +768,13 @@ export default function PipelinePage() {
             {importPlan.candidate_objects?.length > 0 && (
               <>
                 <Text strong>{t('pipeline.candidateObjects')}:</Text>
-                <Table dataSource={importPlan.candidate_objects.slice(0, 10)} columns={candidateObjColumns} rowKey="id" size="small" pagination={false} />
+                <Table dataSource={importPlan.candidate_objects.slice(0, 10)} columns={candidateObjColumns} rowKey="id" size="small" pagination={false} scroll={{ x: 500 }} />
               </>
             )}
             {importPlan.candidate_links?.length > 0 && (
               <>
                 <Text strong>{t('pipeline.candidateLinks')}:</Text>
-                <Table dataSource={importPlan.candidate_links.slice(0, 10)} columns={candidateLinkColumns} rowKey={(_, i) => i} size="small" pagination={false} />
+                <Table dataSource={importPlan.candidate_links.slice(0, 10)} columns={candidateLinkColumns} rowKey={(_, i) => i} size="small" pagination={false} scroll={{ x: 500 }} />
               </>
             )}
           </Space>
@@ -806,6 +806,7 @@ export default function PipelinePage() {
                       dataSource={issues}
                       rowKey={(_, i) => i}
                       size="small"
+                      scroll={{ x: 480 }}
                       pagination={{ pageSize: 10 }}
                       columns={[
                         { title: t('common.level'), dataIndex: 'level', key: 'level', width: 80, render: v => <Tag color={v === 'critical' ? 'red' : v === 'error' ? 'red' : v === 'warning' ? 'orange' : 'default'}>{v}</Tag> },
@@ -882,6 +883,7 @@ export default function PipelinePage() {
             columns={recentPlanColumns}
             rowKey="plan_id"
             size="small"
+            scroll={{ x: 1000 }}
             pagination={{ pageSize: 10, showSizeChanger: false }}
           />
         ) : (

@@ -438,8 +438,11 @@ export default function AgentPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
-      {/* Subtitle */}
-      <Text type="secondary" style={{ fontSize: 12 }}>{t('agent.subtitle')}</Text>
+      {/* Header */}
+      <div style={{ marginBottom: 24 }}>
+        <Title level={4} style={{ margin: 0 }}>{t('agent.title')}</Title>
+        <Text type="secondary">{t('agent.subtitle')}</Text>
+      </div>
       {/* Tools explanation — compact banner */}
       <Alert
         type="info"
