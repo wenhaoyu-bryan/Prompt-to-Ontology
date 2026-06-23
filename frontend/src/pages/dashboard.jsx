@@ -440,15 +440,9 @@ export default function DashboardPage() {
                   border: demoState.mode === 'seeded' ? '1px solid rgba(82,196,26,0.2)' : '1px solid rgba(255,255,255,0.06)',
                 }}>
                   <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{t('dashboard.demoPathSeeded')}</div>
-                  <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>{t('dashboard.demoPathSeededDesc')}</Text>
+                  <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>{t('dashboard.demoPathSeededDesc')}</Text>
                   {demoState.mode === 'seeded' && (
-                    <Space size={8}>
-                      <Button size="small" type="primary" onClick={() => navigate('/objects')}>{t('dashboard.exploreObjects')}</Button>
-                      <Button size="small" onClick={() => navigate('/agent')}>{t('dashboard.askAgent')}</Button>
-                    </Space>
-                  )}
-                  {demoState.mode !== 'seeded' && (
-                    <Button size="small" type="primary" ghost onClick={() => navigate('/settings')}>{t('settings.demoResetSeeded')}</Button>
+                    <Tag color="green" style={{ marginTop: 8 }}>{t('common.active')}</Tag>
                   )}
                 </div>
               </Col>
@@ -459,12 +453,9 @@ export default function DashboardPage() {
                   border: demoState.mode === 'clean' ? '1px solid rgba(22,119,255,0.2)' : '1px solid rgba(255,255,255,0.06)',
                 }}>
                   <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{t('dashboard.demoPathClean')}</div>
-                  <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>{t('dashboard.demoPathCleanDesc')}</Text>
+                  <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>{t('dashboard.demoPathCleanDesc')}</Text>
                   {demoState.mode === 'clean' && (
-                    <Button size="small" type="primary" icon={<RocketOutlined />} onClick={() => navigate('/pipeline')}>{t('dashboard.startFullBuild')}</Button>
-                  )}
-                  {demoState.mode !== 'clean' && (
-                    <Button size="small" onClick={() => navigate('/settings')}>{t('settings.demoResetClean')}</Button>
+                    <Tag color="blue" style={{ marginTop: 8 }}>{t('common.active')}</Tag>
                   )}
                 </div>
               </Col>
