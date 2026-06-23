@@ -181,7 +181,10 @@
     "buildFromData": "从数据构建",
     "exploreGraph": "探索图谱",
     "moreMetrics": "更多指标",
-    "agentRunsAvailable": "智能体运行记录可在分析智能体页面查看"
+    "agentRunsAvailable": "智能体运行记录可在分析智能体页面查看",
+    "heroEyebrow": "运行型本体",
+    "heroPipeline": "结构化数据 → 类型化图谱 → 规则与证据 → 人工审核 → 智能体操作",
+    "activeCount": "项活跃"
   },
   "objects": {
     "title": "对象",
@@ -202,8 +205,8 @@
     "relatedObjects": "关联对象"
   },
   "graph": {
-    "title": "图谱",
-    "subtitle": "浏览产品、品牌、成分、物种和风险规则之间的关系网络",
+    "title": "图谱浏览器",
+    "subtitle": "探索本体对象、关系与规则证据",
     "localView": "局部",
     "globalView": "全局",
     "depth": "深度",
@@ -223,7 +226,17 @@
     "graphStats": "图谱统计",
     "visibleNodes": "可见对象",
     "visibleEdges": "可见关系",
-    "resetFilters": "重置筛选"
+    "resetFilters": "重置筛选",
+    "filters": "过滤器",
+    "emptyDesc": "图谱暂无数据。请切换至预置演示模式或通过数据管道构建本体。",
+    "legend": {
+      "petFood": "宠物食品产品",
+      "brand": "品牌",
+      "ingredient": "成分",
+      "riskRule": "风险规则",
+      "species": "物种",
+      "lifeStage": "生命阶段"
+    }
   },
   "schema": {
     "title": "模式",
@@ -554,13 +567,12 @@
     "triggersRiskNotUploadable": "TRIGGERS_RISK 由规则引擎生成，本阶段不支持用户直接上传。",
     "sourceTypeObjectCSV": "自定义 CSV · 对象",
     "sourceTypeRelCSV": "自定义 CSV · 关系",
-    "candidateLinks": "候选关系",
     "selectIdColumns": "请选择源 ID 列和目标 ID 列",
     "critical": "严重",
     "info": "信息"
   },
   "graphGovernance": {
-    "title": "图谱治理",
+    "title": "标题",
     "subtitle": "检查、对比和恢复运行时图谱快照",
     "currentState": "当前图谱状态",
     "nodes": "节点",
@@ -603,7 +615,6 @@
     "reasonAfterApply": "写入后",
     "reasonRestore": "回滚恢复",
     "reasonDemoReset": "演示重置",
-    "title": "标题",
     "snapshotCreateFailed": "创建快照失败",
     "selectBothSnapshots": "请选择前置快照和后置快照",
     "compareFailed": "对比快照失败",
@@ -932,6 +943,15 @@
     "complete": "完成",
     "skip": "跳过",
     "markComplete": "标记完成",
-    "expected": "预期结果"
+    "expected": "预期结果",
+    "viewResult": "查看结果"
+  },
+  "status": {
+    "notStarted": "未开始",
+    "pending": "待开始",
+    "running": "进行中",
+    "completed": "已完成",
+    "failed": "失败",
+    "skipped": "已跳过"
   }
 }

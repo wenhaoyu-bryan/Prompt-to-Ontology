@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Card, Space, Typography, Spin, Skeleton, Radio, Select, Button, Drawer, Tag, Checkbox, Row, Col, Statistic, Divider, Empty, Result } from 'antd';
+import { Card, Space, Typography, Spin, Skeleton, Radio, Select, Button, Drawer, Tag, Checkbox, Row, Col, Statistic, Divider, Empty, Result, theme } from 'antd';
+import { purple } from '@ant-design/colors';
 import {
   ReloadOutlined,
   NodeIndexOutlined,
@@ -13,6 +14,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../providers/dataProvider';
+import { PageHeader } from '../components/common';
 import D3GraphCanvas from '../legacy/D3GraphCanvas';
 import EntityInspector from '../legacy/EntityInspector';
 
@@ -26,8 +28,18 @@ const LINK_TYPE_FILTERS = [
   { labelKey: 'graph.showLifeStage', value: 'SUITABLE_FOR' },
 ];
 
+const LEGEND_ITEMS = [
+  { i18nKey: 'graph.legend.petFood', fallback: 'PetFoodProduct', colorToken: 'colorPrimary' },
+  { i18nKey: 'graph.legend.brand', fallback: 'Brand', colorToken: 'accent' },
+  { i18nKey: 'graph.legend.ingredient', fallback: 'Ingredient', colorToken: 'colorSuccess' },
+  { i18nKey: 'graph.legend.riskRule', fallback: 'RiskRule', colorToken: 'colorError' },
+  { i18nKey: 'graph.legend.species', fallback: 'Species', colorToken: 'colorInfo' },
+  { i18nKey: 'graph.legend.lifeStage', fallback: 'LifeStage', colorToken: 'colorWarning' },
+];
+
 export default function GraphPage() {
   const { t } = useTranslation();
+  const { token } = theme.useToken();
   const [searchParams] = useSearchParams();
   const highlightNodeId = searchParams.get('node');
 
@@ -51,7 +63,8 @@ export default function GraphPage() {
     try {
       const { data } = await api.get('/graph');
       setGraphData(data);
-    } catch {
+    } catch (err) {
+      console.warn('[Graph] Failed:', err.message);
       setGraphData({ nodes: [], links: [] });
       setError(true);
     } finally {
@@ -87,7 +100,8 @@ export default function GraphPage() {
     try {
       const { data } = await api.get(`/node/${node.id}`);
       setNodeDetail(data);
-    } catch {
+    } catch (err) {
+      console.warn('[Graph] Failed:', err.message);
       setNodeDetail(null);
     }
   }, []);
@@ -223,19 +237,15 @@ export default function GraphPage() {
       <div>
         <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>{t('graph.legend', 'Legend')}</Text>
         <Space direction="vertical" size={2} style={{ width: '100%' }}>
-          {[
-            { label: 'PetFoodProduct', color: '#1677ff' },
-            { label: 'Brand', color: '#722ed1' },
-            { label: 'Ingredient', color: '#52c41a' },
-            { label: 'RiskRule', color: '#ff4d4f' },
-            { label: 'Species', color: '#13c2c2' },
-            { label: 'LifeStage', color: '#fa8c16' },
-          ].map(item => (
-            <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
-              <Text style={{ fontSize: 12 }}>{item.label}</Text>
-            </div>
-          ))}
+          {LEGEND_ITEMS.map(item => {
+            const color = item.colorToken === 'accent' ? purple[5] : token[item.colorToken];
+            return (
+              <div key={item.i18nKey} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                <Text style={{ fontSize: 12 }}>{t(item.i18nKey, item.fallback)}</Text>
+              </div>
+            );
+          })}
         </Space>
       </div>
 
@@ -296,17 +306,16 @@ export default function GraphPage() {
       {/* Main graph area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {/* Title & Status bar */}
-        <div style={{ marginBottom: 4 }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>{t('graph.subtitle')}</Text>
-          <br />
-          <Text type="secondary" style={{ fontSize: 12, opacity: 0.65 }}>{t('graph.evidenceExplanation')}</Text>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-          {isMobile && (
+        <PageHeader
+          title={t('graph.title', 'Graph Explorer')}
+          subtitle={t('graph.subtitle', 'Explore ontology objects, relationships and rule evidence')}
+          extra={isMobile && (
             <Button size="small" icon={<MenuOutlined />} onClick={() => setSidebarDrawerOpen(true)}>
-              {t('graph.controls')}
+              {t('graph.filters', 'Filters')}
             </Button>
           )}
+        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
           {viewMode === 'local' && selectedNode && (
             <Tag color="blue" icon={<NodeIndexOutlined />}>
               {selectedNode.label || selectedNode.id} — {t('graph.nodeCount', { count: displayData.nodes.length })}
@@ -335,7 +344,7 @@ export default function GraphPage() {
             </div>
           ) : displayData.nodes.length === 0 ? (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <Empty description={viewMode === 'local' ? t('graph.selectNode') : 'No graph data loaded. Reset to Seeded Demo or build from Data Pipeline.'}>
+              <Empty description={viewMode === 'local' ? t('graph.selectNode') : t('graph.emptyDesc', 'No graph data loaded. Reset to Seeded Demo or build from Data Pipeline.')}>
                 {viewMode === 'local' && (
                   <Button icon={<ExpandOutlined />} onClick={() => setViewMode('global')}>
                     {t('graph.globalView')}
