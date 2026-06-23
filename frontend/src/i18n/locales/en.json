@@ -68,6 +68,7 @@
       "approved": "Approved",
       "rejected": "Rejected",
       "failed": "Failed",
+      "skipped": "Skipped",
       "high": "High",
       "medium": "Medium",
       "low": "Low"
@@ -173,7 +174,12 @@
     "latestSnapshot": "Latest Snapshot",
     "guidedDemo": "Guided Demo",
     "guidedDemoDesc": "Step-by-step guided product demo",
-    "startGoldenDemo": "Start Golden Demo"
+    "startGoldenDemo": "Start Golden Demo",
+    "heroTitle": "Operational Ontology Runtime",
+    "heroSubtitle": "Structured data → typed graph → rules and evidence → human review → agent operations",
+    "buildFromData": "Build from Data",
+    "exploreGraph": "Explore Graph",
+    "moreMetrics": "More Metrics"
   },
   "objects": {
     "title": "Objects",

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Statistic, Typography, Space, Tag, Spin, Button, Timeline, Table, Progress, Result, Steps, Alert } from 'antd';
+import { Card, Row, Col, Statistic, Typography, Space, Tag, Spin, Button, Timeline, Table, Progress, Result, Steps, Alert, Collapse } from 'antd';
 import {
   AppstoreOutlined,
   NodeIndexOutlined,
@@ -26,6 +26,7 @@ import {
   PlayCircleOutlined,
   RocketOutlined,
   SafetyOutlined,
+  DownOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -92,6 +93,7 @@ export default function DashboardPage() {
   const [latestSnapshotTime, setLatestSnapshotTime] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [moreMetricsOpen, setMoreMetricsOpen] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -141,9 +143,24 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <Spin size="large" />
-      </div>
+      <Space direction="vertical" size={20} style={{ width: '100%' }}>
+        <Skeleton active paragraph={{ rows: 2 }} />
+        <Row gutter={[16, 16]}>
+          {[...Array(6)].map((_, i) => (
+            <Col xs={12} sm={8} lg={4} key={i}>
+              <Card size="small"><Skeleton active paragraph={{ rows: 1 }} /></Card>
+            </Col>
+          ))}
+        </Row>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} lg={12}>
+            <Card size="small"><Skeleton active paragraph={{ rows: 4 }} /></Card>
+          </Col>
+          <Col xs={24} lg={12}>
+            <Card size="small"><Skeleton active paragraph={{ rows: 4 }} /></Card>
+          </Col>
+        </Row>
+      </Space>
     );
   }
 
@@ -163,73 +180,37 @@ export default function DashboardPage() {
 
   return (
     <Space direction="vertical" size={20} style={{ width: '100%' }}>
-      {/* Hero */}
+      {/* Hero — integrated with Guided Demo CTA */}
       <Card size="small" style={{ background: 'linear-gradient(135deg, rgba(22,119,255,0.06) 0%, rgba(114,46,209,0.06) 100%)' }}>
-        <Title level={3} style={{ margin: 0 }}>{t('dashboard.title')}</Title>
+        <Title level={3} style={{ margin: 0 }}>{t('dashboard.heroTitle')}</Title>
         <Paragraph type="secondary" style={{ margin: '8px 0 16px', fontSize: 14, lineHeight: 1.7 }}>
-          {t('dashboard.hero')}
+          {t('dashboard.heroSubtitle')}
         </Paragraph>
-        <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <Card size="small" variant="inner" style={{ height: '100%' }}>
-              <Title level={5} style={{ margin: 0 }}>{t('dashboard.buildPath')}</Title>
-              <Text type="secondary" style={{ fontSize: 12, display: 'block', margin: '6px 0' }}>{t('dashboard.buildPathDesc')}</Text>
-              <Text code style={{ fontSize: 10, display: 'block', marginBottom: 10 }}>{t('dashboard.buildPathWorkflow')}</Text>
-              <Space size={8}>
-                <Button size="small" type="primary" onClick={() => navigate('/pipeline')}>{t('dashboard.startPipeline')}</Button>
-                <Button size="small" onClick={() => navigate('/schema')}>{t('dashboard.openSchema')}</Button>
-              </Space>
-            </Card>
-          </Col>
-          <Col xs={24} md={12}>
-            <Card size="small" variant="inner" style={{ height: '100%' }}>
-              <Title level={5} style={{ margin: 0 }}>{t('dashboard.explorePath')}</Title>
-              <Text type="secondary" style={{ fontSize: 12, display: 'block', margin: '6px 0' }}>{t('dashboard.explorePathDesc')}</Text>
-              <Text code style={{ fontSize: 10, display: 'block', marginBottom: 10 }}>{t('dashboard.explorePathWorkflow')}</Text>
-              <Space size={8}>
-                <Button size="small" onClick={() => navigate('/objects')}>{t('dashboard.exploreObjects')}</Button>
-                <Button size="small" onClick={() => navigate('/graph')}>{t('dashboard.openGraph')}</Button>
-                <Button size="small" onClick={() => navigate('/agent')}>{t('dashboard.askAgent')}</Button>
-              </Space>
-            </Card>
-          </Col>
-        </Row>
+        <Space wrap size={12}>
+          <Button type="primary" size="large" icon={<RocketOutlined />} onClick={() => navigate('/demo-center')}>
+            {t('dashboard.startGoldenDemo')}
+          </Button>
+          <Button size="large" icon={<PlayCircleOutlined />} onClick={() => navigate('/pipeline')}>
+            {t('dashboard.buildFromData')}
+          </Button>
+          <Button size="large" icon={<NodeIndexOutlined />} onClick={() => navigate('/graph')}>
+            {t('dashboard.exploreGraph')}
+          </Button>
+        </Space>
       </Card>
 
       {/* Workflow Pipeline */}
       <WorkflowPipeline t={t} />
 
-      {/* Guided Demo Card */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card
-            title={<><RocketOutlined /> {t('dashboard.guidedDemo')}</>}
-            size="small"
-            style={{ borderColor: 'rgba(82,196,26,0.3)' }}
-          >
-            <Space direction="vertical" size={8} style={{ width: '100%' }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                {t('dashboard.guidedDemoDesc')}
-              </Text>
-              <Button type="primary" icon={<PlayCircleOutlined />} block onClick={() => navigate('/demo-center')}>
-                {t('dashboard.startGoldenDemo')}
-              </Button>
-            </Space>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Primary Stats */}
+      {/* Core Metrics — 4 most important cards */}
       <Row gutter={[16, 16]}>
         {[
           { title: t('dashboard.totalNodes'), value: stats?.nodes || 0, icon: <AppstoreOutlined />, color: '#1677ff', path: '/objects' },
           { title: t('dashboard.totalEdges'), value: stats?.edges || 0, icon: <NodeIndexOutlined />, color: '#52c41a', path: '/graph' },
-          { title: t('dashboard.objectTypes'), value: stats?.objectTypes || 0, icon: <ApartmentOutlined />, color: '#722ed1', path: '/schema?tab=objectTypes' },
-          { title: t('schema.linkTypes'), value: stats?.linkTypes || 0, icon: <LinkOutlined />, color: '#13c2c2', path: '/schema?tab=linkTypes' },
           { title: t('dashboard.riskRules'), value: stats?.rules || 0, icon: <WarningOutlined />, color: '#fa8c16', path: '/schema?tab=rules' },
-          { title: t('dashboard.evidenceEdges'), value: stats?.evidenceEdges || 0, icon: <LinkOutlined />, color: '#ff4d4f', path: '/graph' },
+          { title: t('dashboard.pendingReviews'), value: pendingCount, icon: <AuditOutlined />, color: pendingCount > 0 ? '#ff4d4f' : '#52c41a', path: '/review' },
         ].map((m, i) => (
-          <Col xs={12} sm={8} lg={4} key={i}>
+          <Col xs={12} sm={12} lg={6} key={i}>
             <Card
               size="small"
               hoverable
@@ -248,6 +229,99 @@ export default function DashboardPage() {
           </Col>
         ))}
       </Row>
+
+      {/* More Metrics — collapsible */}
+      <Collapse
+        ghost
+        activeKey={moreMetricsOpen ? ['more'] : []}
+        onChange={() => setMoreMetricsOpen(!moreMetricsOpen)}
+        items={[{
+          key: 'more',
+          label: (
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              {t('dashboard.moreMetrics')} ({[
+                { v: stats?.objectTypes || 0 },
+                { v: stats?.linkTypes || 0 },
+                { v: stats?.evidenceEdges || 0 },
+                { v: snapshotCount },
+                { v: diffCount },
+              ].filter(m => m.v > 0).length} {t('common.active') || 'active'})
+            </Text>
+          ),
+          children: (
+            <Row gutter={[16, 16]}>
+              {[
+                { title: t('dashboard.objectTypes'), value: stats?.objectTypes || 0, icon: <ApartmentOutlined />, color: '#722ed1', path: '/schema?tab=objectTypes' },
+                { title: t('schema.linkTypes'), value: stats?.linkTypes || 0, icon: <LinkOutlined />, color: '#13c2c2', path: '/schema?tab=linkTypes' },
+                { title: t('dashboard.evidenceEdges'), value: stats?.evidenceEdges || 0, icon: <LinkOutlined />, color: '#ff4d4f', path: '/graph' },
+                { title: t('dashboard.snapshots'), value: snapshotCount, icon: <SafetyOutlined />, color: '#1677ff', path: '/graph-governance' },
+                { title: t('dashboard.diffs'), value: diffCount, icon: <EyeOutlined />, color: '#722ed1', path: '/graph-governance' },
+              ].map((m, i) => (
+                <Col xs={12} sm={8} key={i}>
+                  <Card
+                    size="small"
+                    hoverable
+                    onClick={() => navigate(m.path)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <Statistic
+                      title={m.title}
+                      value={m.value}
+                      prefix={React.cloneElement(m.icon, { style: { color: m.color } })}
+                      valueStyle={{ fontSize: 16 }}
+                    />
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+          ),
+        }]}
+      />
+
+      {/* Runtime Status — compact single row */}
+      {demoState && (
+        <Card size="small">
+          <Row gutter={[16, 8]} align="middle">
+            {/* Demo State */}
+            <Col xs={24} sm={8}>
+              <Space size={8} align="center">
+                <PlayCircleOutlined style={{ color: '#1677ff' }} />
+                <Text type="secondary" style={{ fontSize: 12 }}>{t('dashboard.demoState')}</Text>
+                <Tag color={
+                  demoState.mode === 'seeded' ? 'green' :
+                  demoState.mode === 'clean' ? 'blue' :
+                  demoState.mode === 'custom_build' ? 'orange' : 'default'
+                } style={{ fontSize: 12, padding: '1px 8px' }}>
+                  {t(`dashboard.demoMode.${demoState.mode}`, demoState.mode)}
+                </Tag>
+              </Space>
+            </Col>
+
+            {/* Graph Governance */}
+            <Col xs={24} sm={8}>
+              <Space size={8} align="center">
+                <SafetyOutlined style={{ color: '#52c41a' }} />
+                <Text type="secondary" style={{ fontSize: 12 }}>{t('dashboard.snapshots')}: {snapshotCount}</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>| {t('dashboard.diffs')}: {diffCount}</Text>
+              </Space>
+            </Col>
+
+            {/* Rule Coverage */}
+            {ruleCoverage && (
+              <Col xs={24} sm={8}>
+                <Space size={8} align="center">
+                  <SafetyCertificateOutlined style={{ color: '#fa8c16' }} />
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {t('dashboard.triggered')}: <Text style={{ color: '#ff4d4f', fontSize: 12 }}>{ruleCoverage.triggered || 0}</Text>
+                    {' / '}
+                    {t('dashboard.passed')}: <Text style={{ color: '#52c41a', fontSize: 12 }}>{ruleCoverage.passed || 0}</Text>
+                  </Text>
+                </Space>
+              </Col>
+            )}
+          </Row>
+        </Card>
+      )}
 
       {/* Main content: 2x2 CSS Grid for cross-column row alignment */}
       <div className="dashboard-grid">
@@ -355,75 +429,7 @@ export default function DashboardPage() {
               )}
           </Card>
 
-        {/* Demo State — row 3, col 1 */}
-        {demoState && (
-          <Card
-            title={<><PlayCircleOutlined /> {t('dashboard.demoState')}</>}
-            size="small"
-            extra={<Button type="link" size="small" onClick={() => navigate('/settings')}>{t('dashboard.demoSettings')} <RightOutlined /></Button>}
-          >
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <Tag color={
-                  demoState.mode === 'seeded' ? 'green' :
-                  demoState.mode === 'clean' ? 'blue' :
-                  demoState.mode === 'custom_build' ? 'orange' : 'default'
-                } style={{ fontSize: 13, padding: '2px 10px' }}>
-                  {t(`dashboard.demoMode.${demoState.mode}`, demoState.mode)}
-                </Tag>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  {t({
-                    seeded: 'dashboard.demoModeSeededLine',
-                    clean: 'dashboard.demoModeCleanLine',
-                    custom_build: 'dashboard.demoModeCustomLine',
-                  }[demoState.mode] || '', '')}
-                </Text>
-              </div>
-              {demoState.mode === 'clean' && (
-                <Alert type="info" showIcon message={t('dashboard.cleanModeExplanation')} style={{ fontSize: 12 }} />
-              )}
-              <Row gutter={8}>
-                <Col span={6}><Statistic title={t('dashboard.totalNodes')} value={demoState.graph?.node_count || 0} valueStyle={{ fontSize: 16 }} /></Col>
-                <Col span={6}><Statistic title={t('dashboard.graphEdges')} value={demoState.graph?.relationship_count || 0} valueStyle={{ fontSize: 16 }} /></Col>
-                <Col span={6}><Statistic title={t('review.pending')} value={demoState.review_queue?.pending_count || 0} valueStyle={{ fontSize: 16, color: (demoState.review_queue?.pending_count || 0) > 0 ? '#fa8c16' : undefined }} /></Col>
-                <Col span={6}><Statistic title={t('pipeline.newObjects')} value={demoState.pipeline?.import_plan_count || 0} valueStyle={{ fontSize: 16 }} /></Col>
-              </Row>
-            </Space>
-          </Card>
-        )}
-
-        {/* Rule Coverage — row 4, col 1 */}
-        {demoState && stats?.nodes > 0 && (
-          <Card
-            title={<><SafetyCertificateOutlined /> {t('dashboard.ruleCoverage')}</>}
-            size="small"
-            extra={<Button type="link" size="small" onClick={() => navigate('/rule-studio')}>{t('dashboard.openRuleStudio')} <RightOutlined /></Button>}
-          >
-            <Row gutter={8}>
-              <Col span={6}><Statistic title={t('dashboard.triggered')} value={ruleCoverage?.triggered || 0} valueStyle={{ fontSize: 16, color: '#ff4d4f' }} /></Col>
-              <Col span={6}><Statistic title={t('dashboard.passed')} value={ruleCoverage?.passed || 0} valueStyle={{ fontSize: 16, color: '#52c41a' }} /></Col>
-              <Col span={6}><Statistic title={t('dashboard.notEvaluable')} value={ruleCoverage?.not_evaluable || 0} valueStyle={{ fontSize: 16, color: '#fa8c16' }} /></Col>
-              <Col span={6}><Statistic title={t('dashboard.notApplicable')} value={ruleCoverage?.not_applicable || 0} valueStyle={{ fontSize: 16 }} /></Col>
-            </Row>
-          </Card>
-        )}
-
-        {/* Graph Governance — row 4, col 2 */}
-        {demoState && (
-          <Card
-            title={<><SafetyOutlined /> {t('dashboard.graphGov')}</>}
-            size="small"
-            extra={<Button type="link" size="small" onClick={() => navigate('/graph-governance')}>{t('dashboard.openGov')} <RightOutlined /></Button>}
-          >
-            <Row gutter={8}>
-              <Col span={8}><Statistic title={t('dashboard.snapshots')} value={snapshotCount || 0} valueStyle={{ fontSize: 16 }} /></Col>
-              <Col span={8}><Statistic title={t('dashboard.diffs')} value={diffCount || 0} valueStyle={{ fontSize: 16 }} /></Col>
-              <Col span={8}><Statistic title={t('dashboard.latestSnapshot')} value={latestSnapshotTime || '—'} valueStyle={{ fontSize: 12 }} /></Col>
-            </Row>
-          </Card>
-        )}
-
-        {/* Demo Paths — row 3, col 2 */}
+        {/* Demo Paths — row 3, col 1 */}
         {demoState && (
           <Card title={<><ExperimentOutlined /> {t('dashboard.demoPaths')}</>} size="small">
             <Row gutter={12}>

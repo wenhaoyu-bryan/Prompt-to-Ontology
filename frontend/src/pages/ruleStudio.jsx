@@ -853,7 +853,7 @@ export default function RuleStudioPage() {
                         color={STATUS_COLORS[simResult.status] || 'default'}
                         style={{ fontSize: 13, padding: '2px 10px' }}
                       >
-                        {simResult.status}
+                        {t(`common.statusLabels.${simResult.status}`, simResult.status)}
                       </Tag>
                     </Col>
                     <Col span={8}>

@@ -1,0 +1,31 @@
+/* Page layout */
+.page-container {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* Responsive padding */
+@media (min-width: 1024px) {
+  .page-container { padding: 0 24px; }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .page-container { padding: 0 16px; }
+}
+@media (max-width: 767px) {
+  .page-container { padding: 0 12px; }
+}
+
+/* Table overflow */
+.table-container {
+  overflow-x: auto;
+}
+
+/* Consistent section spacing */
+.section-gap {
+  margin-bottom: 20px;
+}
+
+/* Avoid tiny text */
+.helper-text {
+  font-size: 12px;
+}

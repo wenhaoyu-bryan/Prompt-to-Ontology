@@ -252,6 +252,7 @@ export default function ObjectsPage() {
             dataSource={filteredNodes}
             rowKey="id"
             size="small"
+            scroll={{ x: 800 }}
             pagination={{ pageSize: 15, showSizeChanger: true, showTotal: (total) => `${total} items` }}
             columns={columns}
             onRow={(record) => ({
