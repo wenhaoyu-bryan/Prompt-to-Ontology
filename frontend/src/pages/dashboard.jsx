@@ -428,40 +428,6 @@ export default function DashboardPage() {
                 <Text type="secondary">{t('review.noViolations')}</Text>
               )}
           </Card>
-
-        {/* Demo Paths — row 3, col 1 */}
-        {demoState && (
-          <Card title={<><ExperimentOutlined /> {t('dashboard.demoPaths')}</>} size="small">
-            <Row gutter={12}>
-              <Col span={12}>
-                <div style={{
-                  padding: 12, borderRadius: 8, height: '100%',
-                  background: demoState.mode === 'seeded' ? 'rgba(82,196,26,0.06)' : 'transparent',
-                  border: demoState.mode === 'seeded' ? '1px solid rgba(82,196,26,0.2)' : '1px solid rgba(255,255,255,0.06)',
-                }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{t('dashboard.demoPathSeeded')}</div>
-                  <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>{t('dashboard.demoPathSeededDesc')}</Text>
-                  {demoState.mode === 'seeded' && (
-                    <Tag color="green" style={{ marginTop: 8 }}>{t('common.active')}</Tag>
-                  )}
-                </div>
-              </Col>
-              <Col span={12}>
-                <div style={{
-                  padding: 12, borderRadius: 8, height: '100%',
-                  background: demoState.mode === 'clean' ? 'rgba(22,119,255,0.06)' : 'transparent',
-                  border: demoState.mode === 'clean' ? '1px solid rgba(22,119,255,0.2)' : '1px solid rgba(255,255,255,0.06)',
-                }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{t('dashboard.demoPathClean')}</div>
-                  <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>{t('dashboard.demoPathCleanDesc')}</Text>
-                  {demoState.mode === 'clean' && (
-                    <Tag color="blue" style={{ marginTop: 8 }}>{t('common.active')}</Tag>
-                  )}
-                </div>
-              </Col>
-            </Row>
-          </Card>
-        )}
       </div>
     </Space>
   );
