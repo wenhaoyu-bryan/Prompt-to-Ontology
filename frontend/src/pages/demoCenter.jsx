@@ -7,7 +7,7 @@ import {
   PlayCircleOutlined, CheckCircleOutlined, RightOutlined,
   ExperimentOutlined, RocketOutlined, ClockCircleOutlined,
   StopOutlined, LinkOutlined, ReloadOutlined, PauseCircleOutlined,
-  ExclamationCircleOutlined, CloseCircleOutlined, SkipOutlined,
+  ExclamationCircleOutlined, CloseCircleOutlined, StepForwardOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
