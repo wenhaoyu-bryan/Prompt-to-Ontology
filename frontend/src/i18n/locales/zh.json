@@ -202,7 +202,8 @@
     "high": "高",
     "connections": "连接数",
     "objectInfo": "对象信息",
-    "relatedObjects": "关联对象"
+    "relatedObjects": "关联对象",
+    "items": "个"
   },
   "graph": {
     "title": "图谱浏览器",
@@ -367,7 +368,8 @@
     "demoResetSeededConfirm": "这会清空当前图谱和审核队列，并重新加载宠物食品演示本体。",
     "demoResetCleanConfirm": "这会清空图谱和审核队列。之后你可以从数据管道开始，使用示例数据重新构建本体。",
     "demoResetSuccess": "演示模式重置成功",
-    "demoResetFailed": "重置演示模式失败"
+    "demoResetFailed": "重置演示模式失败",
+    "english": "英文"
   },
   "pageFraming": {
     "pipeline": "这是「构建本体」路径的第一步。这里会对数据进行画像、字段映射、候选对象校验，并生成导入计划。它不会直接修改图谱。",

@@ -202,7 +202,8 @@
     "high": "High",
     "connections": "Connections",
     "objectInfo": "Object Info",
-    "relatedObjects": "Related Objects"
+    "relatedObjects": "Related Objects",
+    "items": "items"
   },
   "graph": {
     "title": "Graph Explorer",
@@ -367,7 +368,8 @@
     "demoResetSeededConfirm": "This will clear the current graph and review queue, then reload the Pet Food demo ontology.",
     "demoResetCleanConfirm": "This will clear the graph and review queue. You can then use Data Pipeline to build the ontology from sample datasets.",
     "demoResetSuccess": "Demo mode reset successfully",
-    "demoResetFailed": "Failed to reset demo mode"
+    "demoResetFailed": "Failed to reset demo mode",
+    "english": "English"
   },
   "pageFraming": {
     "pipeline": "This is the first step of the Build Ontology path. It profiles data, maps fields to ontology types, validates candidates, and creates Import Plans. It does not directly mutate the graph.",

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Table, Tag, Space, Typography, Spin, Collapse, Descriptions, Badge, Tabs, Statistic, Button, Alert } from 'antd';
+import { Card, Row, Col, Table, Tag, Space, Typography, Spin, Collapse, Descriptions, Badge, Tabs, Statistic, Button, Alert, theme } from 'antd';
 import {
   ApartmentOutlined,
   LinkOutlined,
@@ -56,6 +56,7 @@ export default function SchemaPage() {
   const [schema, setSchema] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const { token } = theme.useToken();
 
   const loadSchema = async () => {
     setLoading(true);
@@ -63,7 +64,8 @@ export default function SchemaPage() {
     try {
       const { data } = await api.get('/ontology/pet_food/schema');
       setSchema(data);
-    } catch {
+    } catch (err) {
+      console.warn('[Schema] failed to load schema', err);
       setSchema(null);
       setError(true);
     } finally {
@@ -149,6 +151,7 @@ export default function SchemaPage() {
                     ]}
                     size="small"
                     pagination={false}
+                    scroll={{ x: 'max-content' }}
                   />
                 )}
               </Space>
@@ -166,6 +169,7 @@ export default function SchemaPage() {
           rowKey="name"
           size="small"
           pagination={false}
+          scroll={{ x: 'max-content' }}
           columns={[
             { title: t('common.name'), dataIndex: 'name', key: 'name', render: (n) => <Tag color="green">{n}</Tag> },
             { title: t('common.source'), dataIndex: 'source', key: 'source' },
@@ -197,8 +201,9 @@ export default function SchemaPage() {
           rowKey="rule_id"
           size="small"
           pagination={false}
+          scroll={{ x: 'max-content' }}
           columns={[
-            { title: 'ID', dataIndex: 'rule_id', key: 'rule_id', render: (id) => <Text code>{id}</Text> },
+            { title: t('common.id'), dataIndex: 'rule_id', key: 'rule_id', render: (id) => <Text code>{id}</Text> },
             { title: t('common.name'), dataIndex: 'name', key: 'name' },
             {
               title: t('common.severity'), dataIndex: 'severity', key: 'severity',
@@ -232,6 +237,7 @@ export default function SchemaPage() {
           rowKey="name"
           size="small"
           pagination={false}
+          scroll={{ x: 'max-content' }}
           columns={[
             { title: t('common.name'), dataIndex: 'name', key: 'name', render: (n) => <Tag color="orange">{n}</Tag> },
             { title: t('common.description'), dataIndex: 'description', key: 'description' },
@@ -244,8 +250,8 @@ export default function SchemaPage() {
       label: <span><CodeOutlined /> {t('schema.schemaJson')}</span>,
       children: (
         <pre style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.08)',
+          background: token.colorFillSecondary,
+          border: `1px solid ${token.colorBorderSecondary}`,
           borderRadius: 8,
           padding: 16,
           fontSize: 12,
@@ -276,10 +282,10 @@ export default function SchemaPage() {
       {/* Summary stats */}
       <Row gutter={[16, 16]}>
         {[
-          { title: t('schema.objectTypes'), value: objectTypes.length, icon: <ApartmentOutlined />, color: '#1677ff' },
-          { title: t('schema.linkTypes'), value: linkTypes.length, icon: <LinkOutlined />, color: '#52c41a' },
-          { title: t('schema.rules'), value: rules.length, icon: <AlertOutlined />, color: '#ff4d4f' },
-          { title: t('schema.actions'), value: actions.length, icon: <ThunderboltOutlined />, color: '#fa8c16' },
+          { title: t('schema.objectTypes'), value: objectTypes.length, icon: <ApartmentOutlined />, color: token.colorPrimary },
+          { title: t('schema.linkTypes'), value: linkTypes.length, icon: <LinkOutlined />, color: token.colorSuccess },
+          { title: t('schema.rules'), value: rules.length, icon: <AlertOutlined />, color: token.colorError },
+          { title: t('schema.actions'), value: actions.length, icon: <ThunderboltOutlined />, color: token.colorWarning },
         ].map((s, i) => (
           <Col xs={12} sm={6} key={i}>
             <Card size="small" hoverable>
