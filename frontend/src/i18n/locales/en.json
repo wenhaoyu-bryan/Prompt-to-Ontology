@@ -9,7 +9,7 @@
     "objects": "Object Explorer",
     "graph": "Graph Explorer",
     "schema": "Ontology Manager",
-    "agent": "Agent Operator",
+    "agent": "Analyst Agent",
     "review": "Review Queue",
     "pipeline": "Data Pipeline",
     "settings": "Settings",
@@ -95,8 +95,8 @@
     "buildPathDesc": "Start from ready data, map it to ontology objects and links, validate it, review it, and write approved changes to the graph.",
     "buildPathWorkflow": "Data Pipeline → Ontology Manager → Review Queue → Graph Write",
     "explorePath": "Explore / Operate Ontology",
-    "explorePathDesc": "Inspect objects, explore relationships, reason with the Agent Operator, and submit reviewable ontology updates.",
-    "explorePathWorkflow": "Object Explorer → Graph Explorer → Agent Operator → Review Actions",
+    "explorePathDesc": "Inspect objects, explore relationships, reason with the Analyst Agent, and submit reviewable ontology updates.",
+    "explorePathWorkflow": "Object Explorer → Graph Explorer → Analyst Agent → Review Actions",
     "startPipeline": "Start with Data Pipeline",
     "openSchema": "Open Ontology Manager",
     "exploreObjects": "Explore Objects",
@@ -181,7 +181,7 @@
     "buildFromData": "Build from Data",
     "exploreGraph": "Explore Graph",
     "moreMetrics": "More Metrics",
-    "agentRunsAvailable": "Agent runs are available in the Agent Operator page"
+    "agentRunsAvailable": "Agent runs are available in the Analyst Agent page"
   },
   "objects": {
     "title": "Objects",
@@ -361,7 +361,7 @@
     "review": "This is the trust boundary before ontology graph mutation. Only approved and applied items can change the graph.",
     "objects": "Search, inspect, and compare ontology objects and their properties.",
     "graph": "Explore object relationships, evidence edges, risk links, and local graph neighborhoods.",
-    "agent": "The Agent Operator can answer ontology-grounded questions and propose reviewable updates. It cannot directly modify the graph.",
+    "agent": "The Analyst Agent can answer ontology-grounded questions and propose reviewable updates. It cannot directly modify the graph.",
     "settings": "Configure runtime preferences, language, theme, and local demo settings."
   },
   "review": {
@@ -883,7 +883,7 @@
     "issues": "Issues",
     "suggestionLifecycle": "Suggestion Lifecycle",
     "viewReview": "View Review",
-    "noTraces": "No agent traces yet. Use the Agent Operator to ask questions.",
+    "noTraces": "No agent traces yet. Use the Analyst Agent to ask questions.",
     "good": "Good",
     "warning": "Warning",
     "failed": "Failed",

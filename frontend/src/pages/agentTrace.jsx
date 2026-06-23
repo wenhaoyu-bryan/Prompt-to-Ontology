@@ -648,7 +648,7 @@ export default function AgentTracePage() {
         size="small"
       >
         {traces.length === 0 ? (
-          <Empty description={t('agentTrace.noTraces', 'No agent traces recorded yet. Use the Agent Operator to create traces.')} />
+          <Empty description={t('agentTrace.noTraces', 'No agent traces recorded yet. Use the Analyst Agent to create traces.')} />
         ) : (
           <Table
             dataSource={traces}

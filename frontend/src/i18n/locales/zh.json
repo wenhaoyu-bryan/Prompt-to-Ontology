@@ -9,7 +9,7 @@
     "objects": "对象浏览器",
     "graph": "图谱浏览器",
     "schema": "本体管理器",
-    "agent": "智能体操作员",
+    "agent": "分析智能体",
     "review": "审核队列",
     "pipeline": "数据管道",
     "settings": "设置",
@@ -96,7 +96,7 @@
     "buildPathWorkflow": "数据管道 → 本体管理器 → 审核队列 → 图谱写入",
     "explorePath": "探索 / 操作本体",
     "explorePathDesc": "浏览对象、探索关系网络，通过智能体进行推理，并提交可审核的本体更新建议。",
-    "explorePathWorkflow": "对象浏览器 → 图谱浏览器 → 智能体操作员 → 审核操作",
+    "explorePathWorkflow": "对象浏览器 → 图谱浏览器 → 分析智能体 → 审核操作",
     "startPipeline": "从数据管道开始",
     "openSchema": "打开本体管理器",
     "exploreObjects": "浏览对象",
@@ -177,11 +177,11 @@
     "guidedDemoDesc": "逐步引导的产品演示",
     "startGoldenDemo": "开始 Golden Demo",
     "heroTitle": "运营型本体运行时",
-    "heroSubtitle": "结构化数据 → 类型化图谱 → 规则与证据 → 人工审核 → 智能体操作",
+    "heroSubtitle": "结构化数据 → 类型化图谱 → 规则与证据 → 人工审核 → 分析智能体操作",
     "buildFromData": "从数据构建",
     "exploreGraph": "探索图谱",
     "moreMetrics": "更多指标",
-    "agentRunsAvailable": "智能体运行记录可在智能体操作员页面查看"
+    "agentRunsAvailable": "智能体运行记录可在分析智能体页面查看"
   },
   "objects": {
     "title": "对象",
@@ -361,7 +361,7 @@
     "review": "这里是图谱写入前的可信边界。只有审核通过并执行写入的项目才会修改本体图谱。",
     "objects": "搜索、查看和比较本体对象及其属性。",
     "graph": "探索对象关系、证据边、风险关联以及局部图谱网络。",
-    "agent": "智能体操作员可以回答基于本体的问题，并提出可审核的更新建议，但不能直接修改图谱。",
+    "agent": "分析智能体可以回答基于本体的问题，并提出可审核的更新建议，但不能直接修改图谱。",
     "settings": "配置运行时偏好、语言、主题以及本地演示设置。"
   },
   "review": {
@@ -883,7 +883,7 @@
     "issues": "问题",
     "suggestionLifecycle": "建议生命周期",
     "viewReview": "查看审核",
-    "noTraces": "暂无智能体追踪记录。请使用智能体操作员提问。",
+    "noTraces": "暂无智能体追踪记录。请使用分析智能体提问。",
     "good": "良好",
     "warning": "警告",
     "failed": "失败",
