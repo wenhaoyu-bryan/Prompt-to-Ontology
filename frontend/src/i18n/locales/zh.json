@@ -61,6 +61,7 @@
     "rule": "规则",
     "demoData": "演示数据",
     "prototype": "原型数据",
+    "level": "级别",
     "statusLabels": {
       "completed": "已完成",
       "running": "运行中",
@@ -179,7 +180,8 @@
     "heroSubtitle": "结构化数据 → 类型化图谱 → 规则与证据 → 人工审核 → 智能体操作",
     "buildFromData": "从数据构建",
     "exploreGraph": "探索图谱",
-    "moreMetrics": "更多指标"
+    "moreMetrics": "更多指标",
+    "agentRunsAvailable": "智能体运行记录可在智能体操作员页面查看"
   },
   "objects": {
     "title": "对象",
@@ -552,7 +554,10 @@
     "triggersRiskNotUploadable": "TRIGGERS_RISK 由规则引擎生成，本阶段不支持用户直接上传。",
     "sourceTypeObjectCSV": "自定义 CSV · 对象",
     "sourceTypeRelCSV": "自定义 CSV · 关系",
-    "candidateLinks": "候选关系"
+    "candidateLinks": "候选关系",
+    "selectIdColumns": "请选择源 ID 列和目标 ID 列",
+    "critical": "严重",
+    "info": "信息"
   },
   "graphGovernance": {
     "title": "图谱治理",
@@ -622,43 +627,94 @@
   "ruleStudio": {
     "title": "规则工作台",
     "subtitle": "浏览、解释和模拟本体规则",
-    "ruleOverview": "规则概览",
-    "ruleName": "规则",
-    "severity": "严重程度",
-    "targetType": "目标类型",
-    "condition": "条件",
-    "evidence": "证据",
-    "coverage": "覆盖率",
-    "viewDetail": "查看详情",
-    "simulate": "模拟",
-    "ruleCoverage": "规则覆盖率",
-    "triggered": "已触发",
-    "passed": "通过",
-    "notEvaluable": "无法评估",
-    "notApplicable": "不适用",
-    "ruleDetail": "规则详情",
-    "description": "描述",
-    "requiredFields": "必需字段",
-    "applicability": "适用条件",
-    "triggerCondition": "触发条件",
-    "passCondition": "通过条件",
-    "notEvaluableReason": "无法评估原因",
-    "exampleTriggered": "示例：已触发",
-    "examplePassed": "示例：通过",
-    "exampleNotEvaluable": "示例：无法评估",
-    "exampleNotApplicable": "示例：不适用",
-    "simulation": "规则模拟",
-    "simulationDesc": "使用自定义输入值测试规则，不修改图谱。",
-    "selectRule": "选择规则",
-    "runSimulation": "运行模拟",
-    "simResult": "模拟结果",
-    "simStatus": "状态",
-    "simReason": "原因",
-    "simInputFields": "使用的输入字段",
-    "simMissingFields": "缺失字段",
-    "simWouldGenerate": "是否生成证据",
-    "yes": "是",
-    "no": "否",
+    "columns": {
+      "ruleName": "规则",
+      "severity": "严重程度",
+      "targetType": "目标类型",
+      "condition": "条件",
+      "evidence": "证据",
+      "coverage": "覆盖率",
+      "actions": "操作"
+    },
+    "severity": {
+      "critical": "严重",
+      "high": "高",
+      "medium": "中",
+      "low": "低",
+      "info": "信息"
+    },
+    "sectionA": {
+      "title": "规则概览",
+      "totalRules": "共 {{count}} 条规则"
+    },
+    "sectionB": {
+      "title": "规则覆盖率"
+    },
+    "sectionD": {
+      "title": "规则模拟"
+    },
+    "actions": {
+      "viewDetail": "查看详情",
+      "simulate": "模拟"
+    },
+    "exampleStatus": {
+      "triggered": "已触发",
+      "passed": "通过",
+      "not_evaluable": "无法评估",
+      "not_applicable": "不适用"
+    },
+    "examples": {
+      "triggeredDesc": "示例：已触发",
+      "passedDesc": "示例：通过",
+      "notEvaluableDesc": "示例：无法评估",
+      "notApplicableDesc": "示例：不适用"
+    },
+    "coverage": {
+      "triggered": "已触发",
+      "passed": "通过",
+      "notEvaluable": "无法评估",
+      "notApplicable": "不适用"
+    },
+    "detail": {
+      "title": "规则详情",
+      "description": "描述",
+      "product": "产品",
+      "reason": "原因",
+      "evidence": "证据",
+      "explanation": "说明",
+      "plainEnglish": "英文说明",
+      "plainChinese": "中文说明",
+      "requiredFields": "必需字段",
+      "applicability": "适用条件",
+      "triggerCondition": "触发条件",
+      "passCondition": "通过条件",
+      "notEvaluableReason": "无法评估原因",
+      "examples": "示例"
+    },
+    "simulation": {
+      "selectRule": "选择规则",
+      "selectRulePlaceholder": "选择要模拟的规则",
+      "inputFields": "输入字段",
+      "species": "物种",
+      "lifeStage": "生命阶段",
+      "protein": "蛋白质",
+      "fat": "脂肪",
+      "phosphorus": "磷",
+      "taurine": "牛磺酸",
+      "selectPlaceholder": "请选择...",
+      "run": "运行模拟",
+      "resultTitle": "模拟结果",
+      "outputStatus": "状态",
+      "outputSeverity": "严重程度",
+      "outputEvidence": "是否生成证据",
+      "outputReason": "原因",
+      "outputLinkType": "证据关系类型",
+      "inputFieldsUsed": "使用的输入字段",
+      "missingFields": "缺失字段",
+      "placeholder": "选择规则并填写字段，然后点击运行模拟。",
+      "yes": "是",
+      "no": "否"
+    },
     "products": "产品",
     "rules": "规则",
     "productRuleResults": "规则结果",
@@ -836,7 +892,25 @@
     "generated": "已生成",
     "submittedToReview": "已提交审核",
     "applied": "已应用",
-    "rejected": "已拒绝"
+    "rejected": "已拒绝",
+    "evaluateSuccess": "评估提交成功",
+    "refreshSuccess": "审核状态已刷新",
+    "noSuggestions": "此追踪暂无建议。",
+    "loadingEvaluation": "加载评估中...",
+    "noEvaluation": "此追踪未找到评估记录。",
+    "runEvaluation": "运行评估",
+    "reEvaluate": "重新评估",
+    "toolCallsTimeline": "工具调用时间线",
+    "questionAnswer": "问题与回答",
+    "issuesWarnings": "问题 / 警告",
+    "labels": "标签",
+    "score": {
+      "groundedness": "依据充分性",
+      "tool_usage": "工具使用",
+      "evidence_coverage": "证据覆盖率",
+      "review_safety": "审核安全性",
+      "answer_completeness": "回答完整性"
+    }
   },
   "demoCenter": {
     "title": "演示中心",

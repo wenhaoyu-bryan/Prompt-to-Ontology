@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Statistic, Typography, Space, Tag, Spin, Button, Timeline, Table, Progress, Result, Steps, Alert, Collapse, Skeleton } from 'antd';
+import { Card, Row, Col, Statistic, Typography, Space, Tag, Spin, Button, Table, Progress, Result, Alert, Collapse, Skeleton } from 'antd';
 import {
   AppstoreOutlined,
   NodeIndexOutlined,
@@ -363,7 +363,7 @@ export default function DashboardPage() {
                 <Text type="secondary" style={{ fontSize: 13 }}>{t('dashboard.noAgentRuns')}</Text>
               ) : (
                 <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                  <Text type="secondary" style={{ fontSize: 13 }}>Agent runs are available in the Agent Operator page</Text>
+                  <Text type="secondary" style={{ fontSize: 13 }}>{t('dashboard.agentRunsAvailable')}</Text>
                   <Button size="small" type="primary" onClick={() => navigate('/agent')}>{t('dashboard.journeyAgent')} <RightOutlined /></Button>
                 </Space>
               )}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Button, Space, Typography, Tag, Steps, Table, Alert, Row, Col, Statistic, message, Progress, Divider, Collapse, Badge, Radio, Upload, Select } from 'antd';
+import { Card, Button, Space, Typography, Tag, Steps, Table, Alert, Row, Col, Statistic, message, Progress, Divider, Collapse, Radio, Upload, Select } from 'antd';
 import {
   DatabaseOutlined,
   FileSearchOutlined,
@@ -185,7 +185,7 @@ export default function PipelinePage() {
 
   const handleCreateRelationshipPlan = async () => {
     if (!profile) return;
-    if (!relSourceIdCol || !relTargetIdCol) { message.warning('Select source and target ID columns'); return; }
+    if (!relSourceIdCol || !relTargetIdCol) { message.warning(t('pipeline.selectIdColumns')); return; }
     setLoading(true);
     try {
       const lt = linkTypes[relLinkType] || {};
@@ -216,7 +216,7 @@ export default function PipelinePage() {
       loadRecentPlans();
       // If submitting from the active plan, update local state
       if (!planId && importPlan) {
-        setImportPlan(prev => prev ? { ...prev, submitted_to_review: true, review_batch_id: data.batch.id } : prev);
+        setImportPlan(prev => prev ? { ...prev, submitted_to_review: true, review_batch_id: data?.batch?.id } : prev);
       }
     } catch (err) {
       const detail = err?.response?.data?.detail || t('pipeline.submitReviewFailed');
@@ -522,10 +522,10 @@ export default function PipelinePage() {
                   <Space direction="vertical" size={8} style={{ width: '100%' }}>
                     <Text type="secondary">{stage.description}</Text>
                     {stage.object_types?.length > 0 && (
-                      <div>{t('schema.objectTypes')}: {stage.object_types.map(t => <Tag key={t}>{t}</Tag>)}</div>
+                      <div>{t('schema.objectTypes')}: {stage.object_types.map(tag => <Tag key={tag}>{tag}</Tag>)}</div>
                     )}
                     {stage.link_types?.length > 0 && (
-                      <div>{t('schema.linkTypes')}: {stage.link_types.map(t => <Tag key={t} color="green">{t}</Tag>)}</div>
+                      <div>{t('schema.linkTypes')}: {stage.link_types.map(tag => <Tag key={tag} color="green">{tag}</Tag>)}</div>
                     )}
                     {stage.validation_errors?.length > 0 && (
                       <Alert type="error" showIcon message={stage.validation_errors.join('; ')} />
@@ -794,10 +794,10 @@ export default function PipelinePage() {
               return (
                 <>
                   <Row gutter={16}>
-                    <Col span={6}><Card size="small"><Statistic title="Critical" value={critical.length} valueStyle={{ color: critical.length > 0 ? '#ff4d4f' : undefined }} /></Card></Col>
+                    <Col span={6}><Card size="small"><Statistic title={t('pipeline.critical')} value={critical.length} valueStyle={{ color: critical.length > 0 ? '#ff4d4f' : undefined }} /></Card></Col>
                     <Col span={6}><Card size="small"><Statistic title={t('pipeline.valErrors')} value={errors.length} valueStyle={{ color: errors.length > 0 ? '#ff4d4f' : undefined }} /></Card></Col>
                     <Col span={6}><Card size="small"><Statistic title={t('pipeline.valWarnings')} value={warnings.length} valueStyle={{ color: warnings.length > 0 ? '#fa8c16' : undefined }} /></Card></Col>
-                    <Col span={6}><Card size="small"><Statistic title="Info" value={infos.length} /></Card></Col>
+                    <Col span={6}><Card size="small"><Statistic title={t('pipeline.info')} value={infos.length} /></Card></Col>
                   </Row>
                   {issues.length === 0 ? (
                     <Alert type="success" showIcon message={t('pipeline.noCriticalIssues')} />
