@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card, Table, Tag, Space, Typography, Button, message, Drawer,
-  Timeline, Progress, Row, Col, Spin, Result, Descriptions, Alert, Empty,
+  Timeline, Progress, Row, Col, Spin, Result, Descriptions, Alert, Empty, theme,
 } from 'antd';
 import {
   ReloadOutlined,
@@ -47,18 +47,10 @@ const SUGGESTION_STATUS_COLORS = {
   failed: 'red',
 };
 
-const SCORE_COLORS = [
-  { key: 'groundedness', color: '#1677ff', icon: <CheckCircleOutlined /> },
-  { key: 'tool_usage', color: '#722ed1', icon: <ToolOutlined /> },
-  { key: 'evidence_coverage', color: '#13c2c2', icon: <FileSearchOutlined /> },
-  { key: 'review_safety', color: '#fa8c16', icon: <SafetyCertificateOutlined /> },
-  { key: 'answer_completeness', color: '#52c41a', icon: <BarChartOutlined /> },
-];
-
-function getScoreColor(value) {
-  if (value >= 80) return '#52c41a';
-  if (value >= 60) return '#fa8c16';
-  return '#ff4d4f';
+function getScoreColor(value, token) {
+  if (value >= 80) return token.colorSuccess;
+  if (value >= 60) return token.colorWarning;
+  return token.colorError;
 }
 
 function formatTime(ts) {
@@ -77,8 +69,9 @@ function truncate(str, len) {
 
 // ── Evaluation Score Cards ────────────────────────────────────────────────
 
-function EvaluationScores({ evaluation }) {
+function EvaluationScores({ evaluation, scoreColors }) {
   const { t } = useTranslation();
+  const { token } = theme.useToken();
 
   if (!evaluation) return null;
 
@@ -90,7 +83,7 @@ function EvaluationScores({ evaluation }) {
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
       <Text strong style={{ fontSize: 14 }}>{t('agentTrace.evaluationScores')}</Text>
       <Row gutter={[12, 12]}>
-        {SCORE_COLORS.map(({ key, color, icon }) => {
+        {scoreColors.map(({ key, color, icon }) => {
           const value = scores[key] ?? 0;
           return (
             <Col xs={12} sm={8} key={key}>
@@ -99,12 +92,12 @@ function EvaluationScores({ evaluation }) {
                   type="circle"
                   percent={value}
                   size={64}
-                  strokeColor={getScoreColor(value)}
+                  strokeColor={getScoreColor(value, token)}
                   format={(pct) => `${pct}`}
                 />
                 <div style={{ marginTop: 8 }}>
                   {icon}{' '}
-                  <Text style={{ fontSize: 11 }}>
+                  <Text style={{ fontSize: 12 }}>
                     {t(`agentTrace.score.${key}`, key)}
                   </Text>
                 </div>
@@ -167,7 +160,7 @@ function SuggestionTable({ suggestions, t, navigate }) {
       dataIndex: 'suggestion_id',
       key: 'suggestion_id',
       width: 140,
-      render: (v) => <Text code style={{ fontSize: 11 }}>{truncate(v, 12)}</Text>,
+      render: (v) => <Text code style={{ fontSize: 12 }}>{truncate(v, 12)}</Text>,
     },
     {
       title: t('common.description'),
@@ -182,7 +175,7 @@ function SuggestionTable({ suggestions, t, navigate }) {
       key: 'status',
       width: 150,
       render: (status) => (
-        <Tag color={SUGGESTION_STATUS_COLORS[status] || 'default'} style={{ fontSize: 11 }}>
+        <Tag color={SUGGESTION_STATUS_COLORS[status] || 'default'} style={{ fontSize: 12 }}>
           {t(`agentTrace.suggestionStatus.${status}`, status)}
         </Tag>
       ),
@@ -196,7 +189,7 @@ function SuggestionTable({ suggestions, t, navigate }) {
         <Button
           type="link"
           size="small"
-          style={{ padding: 0, fontSize: 11 }}
+          style={{ padding: 0, fontSize: 12 }}
           onClick={() => navigate(`/review?batch_id=${batchId}`)}
         >
           {truncate(batchId, 10)} <RightOutlined />
@@ -221,7 +214,16 @@ function SuggestionTable({ suggestions, t, navigate }) {
 
 export default function AgentTracePage() {
   const { t } = useTranslation();
+  const { token } = theme.useToken();
   const navigate = useNavigate();
+
+  const scoreColors = [
+    { key: 'groundedness', color: token.colorPrimary, icon: <CheckCircleOutlined /> },
+    { key: 'tool_usage', color: token.colorInfo, icon: <ToolOutlined /> },
+    { key: 'evidence_coverage', color: token.colorInfo, icon: <FileSearchOutlined /> },
+    { key: 'review_safety', color: token.colorWarning, icon: <SafetyCertificateOutlined /> },
+    { key: 'answer_completeness', color: token.colorSuccess, icon: <BarChartOutlined /> },
+  ];
 
   // List state
   const [traces, setTraces] = useState([]);
@@ -249,7 +251,8 @@ export default function AgentTracePage() {
     try {
       const { data } = await api.get('/agent/traces', { params: { limit: 50 } });
       setTraces(data.traces || []);
-    } catch {
+    } catch (err) {
+      console.warn('[AgentTrace] failed to load traces', err);
       setError(true);
     } finally {
       setLoading(false);
@@ -262,7 +265,8 @@ export default function AgentTracePage() {
     try {
       const { data } = await api.get('/agent/evaluations');
       setEvaluations(data.evaluations || []);
-    } catch {
+    } catch (err) {
+      console.warn('[AgentTrace] failed to load evaluations', err);
       setEvaluations([]);
     }
   }, []);
@@ -290,7 +294,7 @@ export default function AgentTracePage() {
             (e) => e.evaluation_id === data.evaluation_id
           );
           if (found) setSelectedEvaluation(found);
-        } catch { /* ignore */ }
+        } catch (err) { console.warn('[AgentTrace] failed to load evaluation detail', err); }
       }
     } catch {
       message.error(t('common.loadFailed'));
@@ -362,7 +366,7 @@ export default function AgentTracePage() {
       dataIndex: 'trace_id',
       key: 'trace_id',
       width: 130,
-      render: (v) => <Text code style={{ fontSize: 11 }}>{truncate(v, 10)}</Text>,
+      render: (v) => <Text code style={{ fontSize: 12 }}>{truncate(v, 10)}</Text>,
     },
     {
       title: t('agentTrace.question'),
@@ -370,7 +374,7 @@ export default function AgentTracePage() {
       key: 'question',
       width: 200,
       ellipsis: true,
-      render: (v) => <Text style={{ fontSize: 11 }} ellipsis>{truncate(v, 50)}</Text>,
+      render: (v) => <Text style={{ fontSize: 12 }} ellipsis>{truncate(v, 50)}</Text>,
     },
     {
       title: t('common.status'),
@@ -378,7 +382,7 @@ export default function AgentTracePage() {
       key: 'status',
       width: 100,
       render: (status) => (
-        <Tag color={STATUS_COLORS[status] || 'default'} style={{ fontSize: 11 }}>
+        <Tag color={STATUS_COLORS[status] || 'default'} style={{ fontSize: 12 }}>
           {t(`common.statusLabels.${status}`, status)}
         </Tag>
       ),
@@ -438,9 +442,9 @@ export default function AgentTracePage() {
       width: 90,
       align: 'center',
       render: (v) => v ? (
-        <Tag color="purple" style={{ fontSize: 10, margin: 0 }}>✓</Tag>
+        <Tag color="purple" style={{ fontSize: 12, margin: 0 }}>✓</Tag>
       ) : (
-        <Tag color="default" style={{ fontSize: 10, margin: 0 }}>—</Tag>
+        <Tag color="default" style={{ fontSize: 12, margin: 0 }}>—</Tag>
       ),
     },
     {
@@ -448,7 +452,7 @@ export default function AgentTracePage() {
       dataIndex: 'started_at',
       key: 'started_at',
       width: 150,
-      render: (v) => <Text type="secondary" style={{ fontSize: 10 }}>{formatTime(v)}</Text>,
+      render: (v) => <Text type="secondary" style={{ fontSize: 12 }}>{formatTime(v)}</Text>,
     },
     {
       title: t('common.actions'),
@@ -461,7 +465,7 @@ export default function AgentTracePage() {
             size="small"
             icon={<EyeOutlined />}
             onClick={() => openTraceDetail(record.trace_id)}
-            style={{ padding: '0 2px', fontSize: 11 }}
+            style={{ padding: '0 2px', fontSize: 12 }}
           >
             {t('agentTrace.openTrace')}
           </Button>
@@ -471,7 +475,7 @@ export default function AgentTracePage() {
             icon={<ExperimentOutlined />}
             loading={actionLoading[record.trace_id] === 'evaluate'}
             onClick={() => handleReEvaluate(record.trace_id)}
-            style={{ padding: '0 2px', fontSize: 11 }}
+            style={{ padding: '0 2px', fontSize: 12 }}
           >
             {t('agentTrace.reEvaluate')}
           </Button>
@@ -481,7 +485,7 @@ export default function AgentTracePage() {
             icon={<SyncOutlined />}
             loading={actionLoading[record.trace_id] === 'refresh'}
             onClick={() => handleRefreshReview(record.trace_id)}
-            style={{ padding: '0 2px', fontSize: 11 }}
+            style={{ padding: '0 2px', fontSize: 12 }}
           >
             {t('agentTrace.refreshReview')}
           </Button>
@@ -501,25 +505,25 @@ export default function AgentTracePage() {
         color: dotColor,
         children: (
           <div>
-            <Text strong style={{ fontSize: 12 }}>{call.tool_name || call.name || `Step ${idx + 1}`}</Text>
+            <Text strong style={{ fontSize: 12 }}>{call.tool_name || call.name || `${t('agentTrace.step', 'Step')} ${idx + 1}`}</Text>
             {call.status && (
               <Tag
                 color={call.status === 'success' ? 'green' : call.status === 'error' ? 'red' : 'blue'}
-                style={{ marginLeft: 8, fontSize: 10 }}
+                style={{ marginLeft: 8, fontSize: 12 }}
               >
                 {call.status}
               </Tag>
             )}
             <br />
             {call.input && (
-              <Text type="secondary" style={{ fontSize: 11 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
                 {typeof call.input === 'string' ? truncate(call.input, 100) : JSON.stringify(call.input).slice(0, 100)}
               </Text>
             )}
             {call.output && (
               <>
                 <br />
-                <Text style={{ fontSize: 11 }}>
+                <Text style={{ fontSize: 12 }}>
                   {typeof call.output === 'string' ? truncate(call.output, 120) : JSON.stringify(call.output).slice(0, 120)}
                 </Text>
               </>
@@ -527,13 +531,13 @@ export default function AgentTracePage() {
             {call.duration_ms != null && (
               <>
                 <br />
-                <Text type="secondary" style={{ fontSize: 10 }}>{call.duration_ms}ms</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>{call.duration_ms}ms</Text>
               </>
             )}
             {call.error && (
               <>
                 <br />
-                <Text type="danger" style={{ fontSize: 11 }}>{call.error}</Text>
+                <Text type="danger" style={{ fontSize: 12 }}>{call.error}</Text>
               </>
             )}
           </div>
@@ -550,14 +554,14 @@ export default function AgentTracePage() {
       dataIndex: 'id',
       key: 'id',
       width: 120,
-      render: (v) => <Text code style={{ fontSize: 11 }}>{truncate(v, 14)}</Text>,
+      render: (v) => <Text code style={{ fontSize: 12 }}>{truncate(v, 14)}</Text>,
     },
     {
       title: t('common.type'),
       dataIndex: 'type',
       key: 'type',
       width: 140,
-      render: (v) => <Tag color="blue" style={{ fontSize: 11 }}>{v || '---'}</Tag>,
+      render: (v) => <Tag color="blue" style={{ fontSize: 12 }}>{v || '---'}</Tag>,
     },
     {
       title: t('common.name'),
@@ -576,7 +580,7 @@ export default function AgentTracePage() {
       dataIndex: 'id',
       key: 'id',
       width: 140,
-      render: (v) => <Text code style={{ fontSize: 11 }}>{truncate(v, 14)}</Text>,
+      render: (v) => <Text code style={{ fontSize: 12 }}>{truncate(v, 14)}</Text>,
     },
     {
       title: t('common.name'),
@@ -595,21 +599,21 @@ export default function AgentTracePage() {
       dataIndex: 'source',
       key: 'source',
       width: 140,
-      render: (v) => <Text code style={{ fontSize: 11 }}>{truncate(v, 14)}</Text>,
+      render: (v) => <Text code style={{ fontSize: 12 }}>{truncate(v, 14)}</Text>,
     },
     {
       title: t('common.target'),
       dataIndex: 'target',
       key: 'target',
       width: 140,
-      render: (v) => <Text code style={{ fontSize: 11 }}>{truncate(v, 14)}</Text>,
+      render: (v) => <Text code style={{ fontSize: 12 }}>{truncate(v, 14)}</Text>,
     },
     {
       title: t('common.type'),
       dataIndex: 'type',
       key: 'type',
       width: 160,
-      render: (v) => <Tag color="cyan" style={{ fontSize: 11 }}>{v || '---'}</Tag>,
+      render: (v) => <Tag color="cyan" style={{ fontSize: 12 }}>{v || '---'}</Tag>,
     },
   ];
 
@@ -620,7 +624,7 @@ export default function AgentTracePage() {
       {/* Hero */}
       <Card
         size="small"
-        style={{ background: 'linear-gradient(135deg, rgba(114,46,209,0.06) 0%, rgba(22,119,255,0.06) 100%)' }}
+        style={{ background: `linear-gradient(135deg, ${token.colorInfo}10 0%, ${token.colorPrimary}10 100%)` }}
       >
         <Row justify="space-between" align="middle">
           <Col>
@@ -656,7 +660,7 @@ export default function AgentTracePage() {
             rowKey="trace_id"
             size="small"
             scroll={{ x: 1200 }}
-            pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `${total} traces` }}
+            pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `${total} ${t('agentTrace.tracesCount', 'traces')}` }}
           />
         )}
       </Card>
@@ -687,7 +691,7 @@ export default function AgentTracePage() {
             <Card size="small" title={t('agentTrace.questionAnswer')}>
               <Space direction="vertical" size={12} style={{ width: '100%' }}>
                 <div>
-                  <Text strong style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
+                  <Text strong style={{ fontSize: 12, color: token.colorTextSecondary }}>
                     {t('agentTrace.question')}
                   </Text>
                   <Paragraph style={{ margin: '4px 0 0', fontSize: 13 }}>
@@ -695,7 +699,7 @@ export default function AgentTracePage() {
                   </Paragraph>
                 </div>
                 <div>
-                  <Text strong style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
+                  <Text strong style={{ fontSize: 12, color: token.colorTextSecondary }}>
                     {t('agentTrace.answer')}
                   </Text>
                   <Paragraph style={{ margin: '4px 0 0', fontSize: 13, whiteSpace: 'pre-wrap' }}>
@@ -710,7 +714,7 @@ export default function AgentTracePage() {
                     {t(`common.statusLabels.${selectedTrace.status}`, selectedTrace.status)}
                   </Tag>
                   {selectedTrace.started_at && (
-                    <Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>
+                    <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
                       <ClockCircleOutlined /> {formatTime(selectedTrace.started_at)}
                       {selectedTrace.completed_at && ` -> ${formatTime(selectedTrace.completed_at)}`}
                     </Text>
@@ -779,7 +783,7 @@ export default function AgentTracePage() {
             {/* Section C: Evaluation Scores */}
             {selectedEvaluation && (
               <Card size="small" title={<><ExperimentOutlined /> {t('agentTrace.evaluation')}</>}>
-                <EvaluationScores evaluation={selectedEvaluation} />
+                <EvaluationScores evaluation={selectedEvaluation} scoreColors={scoreColors} />
               </Card>
             )}
 

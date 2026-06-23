@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, Component } from 'react';
-import { Card, Input, Button, Space, Typography, Tag, Divider, Spin, message, Modal, Select, Alert, Drawer, Table, Tabs, Row, Col, Statistic, Empty, Descriptions } from 'antd';
+import { Card, Input, Button, Space, Typography, Tag, Divider, Spin, message, Modal, Select, Alert, Drawer, Table, Tabs, Row, Col, Statistic, Empty, Descriptions, theme } from 'antd';
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -52,6 +52,7 @@ const STATUS_COLORS = {
 export default function AgentPage() {
   const { t, i18n } = useTranslation();
   const { mode } = useThemeContext();
+  const { token } = theme.useToken();
   const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -70,7 +71,8 @@ export default function AgentPage() {
     try {
       const { data } = await api.get('/llm/config');
       setLlmStatus(data);
-    } catch {
+    } catch (err) {
+      console.warn('[Agent] failed to load LLM status', err);
       setLlmStatus(null);
     }
   };
@@ -176,11 +178,11 @@ export default function AgentPage() {
 
   const runColumns = [
     {
-      title: 'Run ID',
+      title: t('agent.runId', 'Run ID'),
       dataIndex: 'run_id',
       key: 'run_id',
       width: 90,
-      render: (id) => <Text code style={{ fontSize: 11 }}>{id}</Text>,
+      render: (id) => <Text code style={{ fontSize: 12 }}>{id}</Text>,
     },
     {
       title: t('dashboard.prompt'),
@@ -258,18 +260,18 @@ export default function AgentPage() {
                   maxWidth: '80%',
                   padding: '10px 14px',
                   borderRadius: 12,
-                  background: msg.role === 'user' ? '#1677ff' : mode === 'dark' ? '#1f1f1f' : '#f0f0f0',
-                  color: msg.role === 'user' ? '#fff' : mode === 'dark' ? '#e0e0e0' : 'rgba(0,0,0,0.88)',
+                  background: msg.role === 'user' ? token.colorPrimary : token.colorBgLayout,
+                  color: msg.role === 'user' ? '#fff' : token.colorText,
                 }}>
                   {msg.role === 'assistant' && (
                     <div style={{ marginBottom: 4 }}>
                       {msg.llm_used ? (
-                        <Tag color="success" style={{ fontSize: 10 }}>{t('agent.llmTag')}</Tag>
+                        <Tag color="success" style={{ fontSize: 12 }}>{t('agent.llmTag')}</Tag>
                       ) : (
-                        <Tag color="warning" style={{ fontSize: 10 }}>{t('agent.fallbackTag')}</Tag>
+                        <Tag color="warning" style={{ fontSize: 12 }}>{t('agent.fallbackTag')}</Tag>
                       )}
                       {msg.tools?.map((tool, j) => (
-                        <Tag key={j} style={{ fontSize: 10, marginLeft: 4 }}>{tool}</Tag>
+                        <Tag key={j} style={{ fontSize: 12, marginLeft: 4 }}>{tool}</Tag>
                       ))}
                     </div>
                   )}
@@ -284,16 +286,16 @@ export default function AgentPage() {
                         ol: ({children}) => <ol style={{margin: '4px 0', paddingLeft: 20}}>{children}</ol>,
                         li: ({children}) => <li style={{margin: '2px 0'}}>{children}</li>,
                         code: ({children, className}) => className
-                          ? <pre style={{background: 'rgba(0,0,0,0.15)', padding: 8, borderRadius: 4, fontSize: 12, overflow: 'auto', margin: '6px 0'}}><code>{children}</code></pre>
-                          : <code style={{background: 'rgba(0,0,0,0.15)', padding: '1px 4px', borderRadius: 3, fontSize: 12}}>{children}</code>,
+                          ? <pre style={{background: token.colorFillTertiary, padding: 8, borderRadius: 4, fontSize: 12, overflow: 'auto', margin: '6px 0'}}><code>{children}</code></pre>
+                          : <code style={{background: token.colorFillTertiary, padding: '1px 4px', borderRadius: 3, fontSize: 12}}>{children}</code>,
                         strong: ({children}) => <strong style={{fontWeight: 600}}>{children}</strong>,
                         table: ({children}) => (
                           <div style={{overflowX: 'auto', margin: '6px 0'}}>
                             <table style={{borderCollapse: 'collapse', fontSize: 12, minWidth: '100%'}}>{children}</table>
                           </div>
                         ),
-                        th: ({children}) => <th style={{border: '1px solid rgba(128,128,128,0.3)', padding: '4px 8px', textAlign: 'left', fontWeight: 600, wordBreak: 'break-word'}}>{children}</th>,
-                        td: ({children}) => <td style={{border: '1px solid rgba(128,128,128,0.3)', padding: '4px 8px', wordBreak: 'break-word'}}>{children}</td>,
+                        th: ({children}) => <th style={{border: `1px solid ${token.colorBorderSecondary}`, padding: '4px 8px', textAlign: 'left', fontWeight: 600, wordBreak: 'break-word'}}>{children}</th>,
+                        td: ({children}) => <td style={{border: `1px solid ${token.colorBorderSecondary}`, padding: '4px 8px', wordBreak: 'break-word'}}>{children}</td>,
                       }}
                     >
                       {msg.content}
@@ -302,7 +304,7 @@ export default function AgentPage() {
 
                   {/* Phase 30: Show agent suggestions */}
                   {msg.suggestions?.length > 0 && (
-                    <div style={{ marginTop: 12, padding: '8px 10px', background: 'rgba(22,119,255,0.06)', borderRadius: 8, border: '1px solid rgba(22,119,255,0.15)' }}>
+                    <div style={{ marginTop: 12, padding: '8px 10px', background: `color-mix(in srgb, ${token.colorPrimary} 6%, transparent)`, borderRadius: 8, border: `1px solid color-mix(in srgb, ${token.colorPrimary} 15%, transparent)` }}>
                       <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
                         {t('agent.proposedUpdates')} ({msg.suggestions.length})
                       </Text>
@@ -310,45 +312,45 @@ export default function AgentPage() {
                         const showRule = sug.related_rule_id && sug.related_rule_id !== 'UNKNOWN_RULE';
                         const showMissingField = sug.missing_field && sug.missing_field !== 'data_quality';
                         return (
-                        <div key={j} style={{ fontSize: 11, marginBottom: 6, padding: '6px 8px', background: 'rgba(255,255,255,0.5)', borderRadius: 4 }}>
+                        <div key={j} style={{ fontSize: 12, marginBottom: 6, padding: '6px 8px', background: token.colorBgElevated, borderRadius: 4 }}>
                           <div style={{ marginBottom: 3 }}>
-                            <Tag color="purple" style={{ fontSize: 10 }}>{sug.type?.replace(/_/g, ' ')}</Tag>
+                            <Tag color="purple" style={{ fontSize: 12 }}>{sug.type?.replace(/_/g, ' ')}</Tag>
                             {sug.confidence != null && (
-                              <Text type="secondary" style={{ fontSize: 10 }}>({(sug.confidence * 100).toFixed(0)}%)</Text>
+                              <Text type="secondary" style={{ fontSize: 12 }}>({(sug.confidence * 100).toFixed(0)}%)</Text>
                             )}
                             {showRule && (
-                              <Tag color="orange" style={{ fontSize: 10, marginLeft: 4 }}>
+                              <Tag color="orange" style={{ fontSize: 12, marginLeft: 4 }}>
                                 {t('agent.ruleLabel', 'Rule')}: {sug.related_rule_id}{sug.related_rule_name ? ` ${sug.related_rule_name}` : ''}
                               </Tag>
                             )}
                             {showMissingField && (
-                              <Tag color="geekblue" style={{ fontSize: 10, marginLeft: 4 }}>
+                              <Tag color="geekblue" style={{ fontSize: 12, marginLeft: 4 }}>
                                 {t('agent.missingFieldLabel', 'Missing Field')}: {sug.missing_field}
                               </Tag>
                             )}
                           </div>
-                          <Text style={{ fontSize: 11, display: 'block' }}>{sug.title}</Text>
+                          <Text style={{ fontSize: 12, display: 'block' }}>{sug.title}</Text>
                           {sug.target_object_id && (
-                            <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>{t('common.target')}: {sug.target_object_id}</Text>
+                            <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>{t('common.target')}: {sug.target_object_id}</Text>
                           )}
                           {sug.property_update && (
-                            <Text code style={{ fontSize: 10, display: 'block', marginTop: 2 }}>
+                            <Text code style={{ fontSize: 12, display: 'block', marginTop: 2 }}>
                               {sug.property_update.property}: {sug.property_update.old_value ?? '?'} → {sug.property_update.new_value}
                             </Text>
                           )}
                           {sug.candidate_link && (
-                            <Text code style={{ fontSize: 10, display: 'block', marginTop: 2 }}>
+                            <Text code style={{ fontSize: 12, display: 'block', marginTop: 2 }}>
                               {sug.candidate_link.source_id} → {sug.candidate_link.type} → {sug.candidate_link.target_id}
                             </Text>
                           )}
                           {sug.why_it_matters && (
-                            <Text type="secondary" italic style={{ fontSize: 10, display: 'block', marginTop: 3 }}>{sug.why_it_matters}</Text>
+                            <Text type="secondary" italic style={{ fontSize: 12, display: 'block', marginTop: 3 }}>{sug.why_it_matters}</Text>
                           )}
                           {sug.reason && (
-                            <Text type="secondary" style={{ fontSize: 10, display: 'block', marginTop: 2 }}>{sug.reason}</Text>
+                            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 2 }}>{sug.reason}</Text>
                           )}
                           {sug.evidence && (
-                            <Text type="secondary" style={{ fontSize: 10, display: 'block', marginTop: 2 }}>{sug.evidence}</Text>
+                            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 2 }}>{sug.evidence}</Text>
                           )}
                         </div>
                         );
@@ -381,7 +383,7 @@ export default function AgentPage() {
 
             {loading && (
               <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 12 }}>
-                <div style={{ padding: '10px 14px', borderRadius: 12, background: mode === 'dark' ? '#1f1f1f' : '#f0f0f0' }}>
+                <div style={{ padding: '10px 14px', borderRadius: 12, background: token.colorBgLayout }}>
                   <Spin size="small" /> <Text type="secondary" style={{ marginLeft: 8 }}>{t('agent.thinking')}</Text>
                 </div>
               </div>
@@ -417,7 +419,7 @@ export default function AgentPage() {
     },
     {
       key: 'history',
-      label: <span><HistoryOutlined /> {t('agent.runHistory')} <Tag style={{ fontSize: 10 }}>{t('common.demoData')}</Tag></span>,
+      label: <span><HistoryOutlined /> {t('agent.runHistory')} <Tag style={{ fontSize: 12 }}>{t('common.demoData')}</Tag></span>,
       children: (
         <Card styles={{ body: { padding: 0 } }}>
           <Table
@@ -453,7 +455,7 @@ export default function AgentPage() {
           <span style={{ fontSize: 12 }}>
             {t('agent.toolsPanel')}{' '}
             {[t('agent.toolLookup'), t('agent.toolRelation'), t('agent.toolRule'), t('agent.toolEvidence'), t('agent.toolLimitation')].map((tool, i) => (
-              <Tag key={i} color="blue" style={{ fontSize: 10, marginLeft: 2 }}>{tool}</Tag>
+              <Tag key={i} color="blue" style={{ fontSize: 12, marginLeft: 2 }}>{tool}</Tag>
             ))}
           </span>
         }
@@ -465,7 +467,7 @@ export default function AgentPage() {
         showIcon
         icon={<InfoCircleOutlined />}
         message={t('agent.safetyBoundary')}
-        style={{ fontSize: 11 }}
+        style={{ fontSize: 12 }}
       />
       {/* Status bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -615,8 +617,8 @@ export default function AgentPage() {
                 <Col span={8}>
                   <Statistic
                     title={t('common.status')}
-                    value={selectedRun.status}
-                    styles={{ content: { color: selectedRun.status === 'completed' ? '#52c41a' : selectedRun.status === 'running' ? '#1677ff' : '#ff4d4f', fontSize: 16 } }}
+                    value={t('common.statusLabels.' + selectedRun.status, selectedRun.status)}
+                    styles={{ content: { color: selectedRun.status === 'completed' ? token.colorSuccess : selectedRun.status === 'running' ? token.colorPrimary : token.colorError, fontSize: 16 } }}
                   />
                 </Col>
                 <Col span={8}>
@@ -626,7 +628,7 @@ export default function AgentPage() {
                   <Statistic
                     title={t('agent.issuesFound')}
                     value={selectedRun.issues_found}
-                    styles={{ content: { color: selectedRun.issues_found > 0 ? '#ff4d4f' : undefined } }}
+                    styles={{ content: { color: selectedRun.issues_found > 0 ? token.colorError : undefined } }}
                   />
                 </Col>
               </Row>
@@ -658,9 +660,9 @@ export default function AgentPage() {
             {/* LLM Info */}
             <Card size="small" variant="inner">
               <Descriptions column={1} size="small">
-                <Descriptions.Item label="Run ID">{selectedRun.run_id}</Descriptions.Item>
+                <Descriptions.Item label={t('agent.runId', 'Run ID')}>{selectedRun.run_id}</Descriptions.Item>
                 <Descriptions.Item label={t('agent.llmUsed')}>
-                  {selectedRun.llm_used ? <Tag color="success">Yes</Tag> : <Tag>No (Fallback)</Tag>}
+                  {selectedRun.llm_used ? <Tag color="success">{t('common.yes')}</Tag> : <Tag>{t('common.no') + ' (' + t('agent.fallback') + ')'}</Tag>}
                 </Descriptions.Item>
                 <Descriptions.Item label={t('agent.relationshipsExtracted')}>{selectedRun.relationships_extracted}</Descriptions.Item>
               </Descriptions>

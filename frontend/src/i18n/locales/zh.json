@@ -147,7 +147,7 @@
     "demoMode": {
       "seeded": "完整演示模式",
       "clean": "空白图谱构建模式",
-      "custom_build": "自定义构建模式",
+      "custom_build": "自定义构建",
       "unknown": "未知状态"
     },
     "demoModeHint": "当前演示模式",
@@ -315,7 +315,8 @@
     "toolsUsed": "使用工具",
     "answerSummary": "回答摘要",
     "llmUsed": "是否使用 LLM",
-    "relationshipsExtracted": "提取关系"
+    "relationshipsExtracted": "提取关系",
+    "runId": "运行 ID"
   },
   "settings": {
     "title": "设置",
@@ -443,7 +444,14 @@
       "conflicting_property": "属性冲突",
       "new_relationship": "新增关系",
       "missing_evidence": "缺少证据",
-      "new_object": "新增对象"
+      "new_object": "新增对象",
+      "IMPORT_OBJECT_CANDIDATE": "导入对象候选",
+      "IMPORT_LINK_CANDIDATE": "导入链接候选",
+      "PROPERTY_CONFLICT": "属性冲突",
+      "VALIDATION_WARNING": "验证警告",
+      "RULE_TRIGGERED_ACTION": "规则触发操作",
+      "AGENT_SUGGESTION": "智能体建议",
+      "RULE_VIOLATION": "规则违规"
     }
   },
   "pipeline": {
@@ -569,11 +577,12 @@
     "sourceTypeRelCSV": "自定义 CSV · 关系",
     "selectIdColumns": "请选择源 ID 列和目标 ID 列",
     "critical": "严重",
-    "info": "信息"
+    "info": "信息",
+    "planId": "计划 ID"
   },
   "graphGovernance": {
-    "title": "标题",
-    "subtitle": "检查、对比和恢复运行时图谱快照",
+    "title": "图谱治理",
+    "subtitle": "创建快照、对比差异并安全恢复运行时图谱",
     "currentState": "当前图谱状态",
     "nodes": "节点",
     "relationships": "关系",
@@ -633,7 +642,8 @@
     "actions": "操作",
     "action": "操作",
     "currentGraphState": "当前图谱状态",
-    "noDiffs": "暂无差异记录。请对比两个快照以生成差异。"
+    "noDiffs": "暂无差异记录。请对比两个快照以生成差异。",
+    "changed": "项变更"
   },
   "ruleStudio": {
     "title": "规则工作台",
@@ -724,7 +734,12 @@
       "missingFields": "缺失字段",
       "placeholder": "选择规则并填写字段，然后点击运行模拟。",
       "yes": "是",
-      "no": "否"
+      "no": "否",
+      "speciesCat": "猫",
+      "speciesDog": "狗",
+      "lifeStageKitten": "幼猫",
+      "lifeStageAdult": "成猫",
+      "lifeStageSenior": "老年猫"
     },
     "products": "产品",
     "rules": "规则",
@@ -921,7 +936,9 @@
       "evidence_coverage": "证据覆盖率",
       "review_safety": "审核安全性",
       "answer_completeness": "回答完整性"
-    }
+    },
+    "step": "步骤",
+    "tracesCount": "条记录"
   },
   "demoCenter": {
     "title": "演示中心",

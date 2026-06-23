@@ -14,6 +14,7 @@ import {
   Modal,
   Select,
   Alert,
+  theme,
   Collapse,
   Empty,
   message,
@@ -41,6 +42,7 @@ const { Title, Text } = Typography;
 
 export default function GraphGovernancePage() {
   const { t } = useTranslation();
+  const { token } = theme.useToken();
 
   /* ── Section A state ── */
   const [demoState, setDemoState] = useState(null);
@@ -73,9 +75,9 @@ export default function GraphGovernancePage() {
     setPageError(false);
     try {
       const [demoRes, snapRes, diffRes] = await Promise.all([
-        api.get('/demo/state').catch(() => null),
-        api.get('/graph/snapshots').catch(() => null),
-        api.get('/graph/diffs').catch(() => null),
+        api.get('/demo/state').catch(err => { console.warn('[GraphGovernance] API call failed', err); return null; }),
+        api.get('/graph/snapshots').catch(err => { console.warn('[GraphGovernance] API call failed', err); return null; }),
+        api.get('/graph/diffs').catch(err => { console.warn('[GraphGovernance] API call failed', err); return null; }),
       ]);
       if (!demoRes && !snapRes) {
         setPageError(true);
@@ -176,6 +178,22 @@ export default function GraphGovernancePage() {
   const relCount = demoState?.graph?.relationship_count ?? 0;
   const demoMode = demoState?.mode || 'unknown';
 
+  /* ───────────────────── i18n Label Maps ───────────────────── */
+
+  const DEMO_MODE_LABELS = {
+    seeded: t('dashboard.demoMode.seeded'),
+    clean: t('dashboard.demoMode.clean'),
+    custom_build: t('dashboard.demoMode.custom_build'),
+    unknown: t('dashboard.demoMode.unknown'),
+  };
+
+  const REASON_LABELS = {
+    manual: t('graphGovernance.reasonManual'),
+    auto: t('graphGovernance.reasonAfterApply'),
+    pipeline: t('graphGovernance.reasonAfterApply'),
+    restore: t('graphGovernance.reasonRestore'),
+  };
+
   /* ───────────────────── Render Guards ───────────────────── */
 
   if (pageLoading) {
@@ -220,7 +238,7 @@ export default function GraphGovernancePage() {
       width: 120,
       render: (v) => {
         const colorMap = { manual: 'blue', auto: 'green', pipeline: 'orange', restore: 'red' };
-        return <Tag color={colorMap[v] || 'default'}>{v}</Tag>;
+        return <Tag color={colorMap[v] || 'default'}>{REASON_LABELS[v] || v}</Tag>;
       },
     },
     {
@@ -297,7 +315,7 @@ export default function GraphGovernancePage() {
   /* ───────────────────── Diff Detail Columns ───────────────────── */
 
   const nodeDiffColumns = [
-    { title: t('graphGovernance.nodeId'), dataIndex: 'id', key: 'id', width: 160, render: (v) => <Text code style={{ fontSize: 11 }}>{v}</Text> },
+    { title: t('graphGovernance.nodeId'), dataIndex: 'id', key: 'id', width: 160, render: (v) => <Text code style={{ fontSize: 12 }}>{v}</Text> },
     { title: t('graphGovernance.name'), key: 'name', ellipsis: true, render: (_, record) => {
       if (record.properties?.name) return record.properties.name;
       if (record.changed_fields?.length) return record.changed_fields.join(', ');
@@ -305,7 +323,7 @@ export default function GraphGovernancePage() {
     }},
     { title: t('graphGovernance.type'), key: 'type', width: 120, render: (_, record) => {
       if (record.labels?.length) return <Tag>{record.labels.join(', ')}</Tag>;
-      if (record.changed_fields?.length) return <Tag color="orange">{record.changed_fields.length} changed</Tag>;
+      if (record.changed_fields?.length) return <Tag color="orange">{record.changed_fields.length} {t('graphGovernance.changed', 'changed')}</Tag>;
       return '-';
     }},
     { title: t('graphGovernance.detail'), key: 'detail', ellipsis: true, render: (_, record) => {
@@ -339,14 +357,14 @@ export default function GraphGovernancePage() {
       dataIndex: 'before_snapshot_id',
       key: 'before_snapshot_id',
       width: 120,
-      render: (v) => <Text code style={{ fontSize: 11 }}>{v}</Text>,
+      render: (v) => <Text code style={{ fontSize: 12 }}>{v}</Text>,
     },
     {
       title: t('graphGovernance.after'),
       dataIndex: 'after_snapshot_id',
       key: 'after_snapshot_id',
       width: 120,
-      render: (v) => <Text code style={{ fontSize: 11 }}>{v}</Text>,
+      render: (v) => <Text code style={{ fontSize: 12 }}>{v}</Text>,
     },
     {
       title: t('graphGovernance.nodesDelta'),
@@ -357,8 +375,8 @@ export default function GraphGovernancePage() {
         const removed = record.summary?.nodes_removed || 0;
         return (
           <Space size={4}>
-            {added > 0 && <Text style={{ color: '#52c41a', fontSize: 12 }}>+{added}</Text>}
-            {removed > 0 && <Text style={{ color: '#ff4d4f', fontSize: 12 }}>-{removed}</Text>}
+            {added > 0 && <Text style={{ color: token.colorSuccess, fontSize: 12 }}>+{added}</Text>}
+            {removed > 0 && <Text style={{ color: token.colorError, fontSize: 12 }}>-{removed}</Text>}
             {added === 0 && removed === 0 && <Text type="secondary" style={{ fontSize: 12 }}>0</Text>}
           </Space>
         );
@@ -373,8 +391,8 @@ export default function GraphGovernancePage() {
         const removed = record.summary?.relationships_removed || 0;
         return (
           <Space size={4}>
-            {added > 0 && <Text style={{ color: '#52c41a', fontSize: 12 }}>+{added}</Text>}
-            {removed > 0 && <Text style={{ color: '#ff4d4f', fontSize: 12 }}>-{removed}</Text>}
+            {added > 0 && <Text style={{ color: token.colorSuccess, fontSize: 12 }}>+{added}</Text>}
+            {removed > 0 && <Text style={{ color: token.colorError, fontSize: 12 }}>-{removed}</Text>}
             {added === 0 && removed === 0 && <Text type="secondary" style={{ fontSize: 12 }}>0</Text>}
           </Space>
         );
@@ -409,7 +427,7 @@ export default function GraphGovernancePage() {
   return (
     <Space direction="vertical" size={20} style={{ width: '100%' }}>
       {/* Page Title */}
-      <Card size="small" style={{ background: 'linear-gradient(135deg, rgba(22,119,255,0.06) 0%, rgba(114,46,209,0.06) 100%)' }}>
+      <Card size="small" style={{ background: `linear-gradient(135deg, ${token.colorPrimary}0d 0%, ${token.colorInfo}0d 100%)` }}>
         <Title level={3} style={{ margin: 0 }}>{t('graphGovernance.title')}</Title>
         <Text type="secondary" style={{ fontSize: 14 }}>{t('graphGovernance.subtitle')}</Text>
       </Card>
@@ -434,14 +452,14 @@ export default function GraphGovernancePage() {
             <Statistic
               title={t('dashboard.totalNodes')}
               value={nodeCount}
-              prefix={<AppstoreOutlined style={{ color: '#1677ff' }} />}
+              prefix={<AppstoreOutlined style={{ color: token.colorPrimary }} />}
             />
           </Col>
           <Col xs={12} sm={6}>
             <Statistic
               title={t('dashboard.graphEdges')}
               value={relCount}
-              prefix={<NodeIndexOutlined style={{ color: '#52c41a' }} />}
+              prefix={<NodeIndexOutlined style={{ color: token.colorSuccess }} />}
             />
           </Col>
           <Col xs={12} sm={6}>
@@ -456,14 +474,14 @@ export default function GraphGovernancePage() {
               }
               style={{ fontSize: 13, padding: '2px 12px' }}
             >
-              {demoMode}
+              {DEMO_MODE_LABELS[demoMode] || demoMode}
             </Tag>
           </Col>
           <Col xs={12} sm={6}>
             <Statistic
               title={t('graphGovernance.lastSnapshot')}
               value={lastSnapshot ? new Date(lastSnapshot.created_at).toLocaleDateString() : '-'}
-              prefix={<ClockCircleOutlined style={{ color: '#fa8c16' }} />}
+              prefix={<ClockCircleOutlined style={{ color: token.colorWarning }} />}
             />
           </Col>
         </Row>
@@ -593,7 +611,7 @@ export default function GraphGovernancePage() {
                       <Statistic
                         title={t('graphGovernance.nodesAdded')}
                         value={diffResult.summary?.nodes_added ?? 0}
-                        valueStyle={{ color: '#52c41a', fontSize: 18 }}
+                        valueStyle={{ color: token.colorSuccess, fontSize: 18 }}
                         prefix={<PlusOutlined />}
                       />
                     </Card>
@@ -603,7 +621,7 @@ export default function GraphGovernancePage() {
                       <Statistic
                         title={t('graphGovernance.nodesRemoved')}
                         value={diffResult.summary?.nodes_removed ?? 0}
-                        valueStyle={{ color: '#ff4d4f', fontSize: 18 }}
+                        valueStyle={{ color: token.colorError, fontSize: 18 }}
                         prefix={<MinusOutlined />}
                       />
                     </Card>
@@ -613,7 +631,7 @@ export default function GraphGovernancePage() {
                       <Statistic
                         title={t('graphGovernance.nodesChanged')}
                         value={diffResult.summary?.nodes_changed ?? 0}
-                        valueStyle={{ color: '#fa8c16', fontSize: 18 }}
+                        valueStyle={{ color: token.colorWarning, fontSize: 18 }}
                         prefix={<EditOutlined />}
                       />
                     </Card>
@@ -623,7 +641,7 @@ export default function GraphGovernancePage() {
                       <Statistic
                         title={t('graphGovernance.relsAdded')}
                         value={diffResult.summary?.relationships_added ?? 0}
-                        valueStyle={{ color: '#52c41a', fontSize: 18 }}
+                        valueStyle={{ color: token.colorSuccess, fontSize: 18 }}
                         prefix={<PlusOutlined />}
                       />
                     </Card>
@@ -633,7 +651,7 @@ export default function GraphGovernancePage() {
                       <Statistic
                         title={t('graphGovernance.relsRemoved')}
                         value={diffResult.summary?.relationships_removed ?? 0}
-                        valueStyle={{ color: '#ff4d4f', fontSize: 18 }}
+                        valueStyle={{ color: token.colorError, fontSize: 18 }}
                         prefix={<MinusOutlined />}
                       />
                     </Card>
@@ -643,7 +661,7 @@ export default function GraphGovernancePage() {
                       <Statistic
                         title={t('graphGovernance.relsChanged')}
                         value={diffResult.summary?.relationships_changed ?? 0}
-                        valueStyle={{ color: '#fa8c16', fontSize: 18 }}
+                        valueStyle={{ color: token.colorWarning, fontSize: 18 }}
                         prefix={<EditOutlined />}
                       />
                     </Card>
