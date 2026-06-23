@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Layout, Menu, Dropdown, Space, Tag, Button, Drawer, Grid } from 'antd';
+import { Layout, Menu, Dropdown, Space, Tag, Button, Drawer, Grid, Avatar, theme } from 'antd';
 import {
   DashboardOutlined,
   AppstoreOutlined,
@@ -33,6 +33,7 @@ export default function AppLayout() {
   const location = useLocation();
   const { t, i18n } = useTranslation();
   const { mode, setMode } = useThemeContext();
+  const { token } = theme.useToken();
 
   const screens = useBreakpoint();
   const isMobile = !screens.md;
@@ -128,13 +129,13 @@ export default function AppLayout() {
   const sidebarContent = (
     <>
       <div style={{
-        height: 56,
+        height: 64,
         display: 'flex',
         alignItems: 'center',
         justifyContent: (collapsed && !isMobile) ? 'center' : 'flex-start',
         padding: (collapsed && !isMobile) ? '0' : '0 16px',
         gap: 10,
-        borderBottom: mode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0',
+        borderBottom: `1px solid ${token.colorBorderSecondary}`,
       }}>
         <img
           src="/project_profile.png"
@@ -143,10 +144,10 @@ export default function AppLayout() {
         />
         {(!collapsed || isMobile) && (
           <div style={{ overflow: 'hidden' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
               {t('app.name')}
             </div>
-            <div style={{ fontSize: 10, opacity: 0.5, whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: 12, opacity: 0.5, whiteSpace: 'nowrap' }}>
               {t('app.demoTag')}
             </div>
           </div>
@@ -154,6 +155,7 @@ export default function AppLayout() {
       </div>
 
       <Menu
+        className="sidebar-menu"
         mode="inline"
         selectedKeys={[currentKey]}
         items={menuItems}
@@ -182,7 +184,7 @@ export default function AppLayout() {
             left: 0,
             top: 0,
             bottom: 0,
-            borderRight: mode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0',
+            borderRight: `1px solid ${token.colorBorderSecondary}`,
           }}
         >
           {sidebarContent}
@@ -209,7 +211,8 @@ export default function AppLayout() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          borderBottom: mode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0',
+          borderBottom: `1px solid ${token.colorBorderSecondary}`,
+          background: token.colorBgContainer,
           height: 56,
           lineHeight: '56px',
           position: 'sticky',
@@ -225,20 +228,22 @@ export default function AppLayout() {
                 style={{ fontSize: 18 }}
               />
             )}
-            <Tag color="processing" style={{ margin: 0 }}>{t('app.demoTag')}</Tag>
+            <Tag color="processing" style={{ margin: 0, border: 'none' }}>{t('app.demoTag')}</Tag>
           </Space>
 
           <Space size={16}>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <Button type="text" size="small" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <UserOutlined />
-                <span style={{ fontSize: 13 }}>{t('auth.demoUser')}</span>
+                <Space size={6}>
+                  <Avatar size={28} icon={<UserOutlined />} style={{ backgroundColor: token.colorPrimary }} />
+                  {!isMobile && <span style={{ fontSize: 14 }}>{t('auth.demoUser')}</span>}
+                </Space>
               </Button>
             </Dropdown>
           </Space>
         </Header>
 
-        <Content style={{ padding: isMobile ? 16 : 24, overflow: 'auto' }}>
+        <Content style={{ padding: isMobile ? 12 : isTablet ? 16 : 24, background: token.colorBgLayout }}>
           <Outlet />
         </Content>
       </Layout>

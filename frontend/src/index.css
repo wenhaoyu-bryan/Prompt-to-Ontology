@@ -1,3 +1,52 @@
+/* =====================================================
+   Theme tokens & enterprise SaaS overrides
+   ===================================================== */
+
+:root {
+  --pto-primary: #6366f1;
+  --pto-primary-light: #eef2ff;
+  --pto-page-bg: #f6f7fb;
+  --pto-card-bg: #ffffff;
+  --pto-border: #e5e7eb;
+  --pto-text: #1f2937;
+  --pto-text-secondary: #6b7280;
+}
+
+/* Sidebar menu active state */
+.sidebar-menu .ant-menu-item-selected {
+  position: relative;
+}
+
+.sidebar-menu .ant-menu-item-selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--pto-primary);
+}
+
+/* Collapsed sidebar — center the indicator */
+.ant-layout-sider-collapsed .sidebar-menu .ant-menu-item-selected::before {
+  left: 0;
+}
+
+/* Sidebar group title styling */
+.sidebar-menu .ant-menu-item-group-title {
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  padding-top: 12px;
+  padding-bottom: 4px;
+}
+
+/* Accessibility — focus ring */
+*:focus-visible {
+  outline: 2px solid var(--pto-primary);
+  outline-offset: 2px;
+}
+
 /* Global overrides for Ant Design + Refine integration */
 
 * {
