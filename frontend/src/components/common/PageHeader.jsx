@@ -1,5 +1,5 @@
 import React from 'react';
-import { Space, Typography, Button, Tag, theme } from 'antd';
+import { Space, Typography, Tag, theme } from 'antd';
 
 const { Title, Text } = Typography;
 
@@ -27,7 +27,7 @@ export default function PageHeader({
             {tag && <Tag color={tagColor || 'blue'}>{tag}</Tag>}
           </Space>
           {subtitle && (
-            <Text type="secondary" style={{ display: 'block', marginTop: 4, fontSize: 13 }}>
+            <Text type="secondary" style={{ display: 'block', marginTop: 4, fontSize: 14 }}>
               {subtitle}
             </Text>
           )}
