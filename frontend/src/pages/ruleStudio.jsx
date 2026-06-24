@@ -402,9 +402,7 @@ export default function RuleStudioPage() {
       {/* Page header */}
       <Card
         size="small"
-        style={{
-          background: `linear-gradient(135deg, ${token.colorWarning}0F 0%, ${token.colorPrimary}0F 100%)`,
-        }}
+        className="hero-card"
       >
         <Title level={3} style={{ margin: 0 }}>
           <SafetyCertificateOutlined style={{ marginRight: 8 }} />

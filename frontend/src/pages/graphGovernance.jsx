@@ -427,7 +427,7 @@ export default function GraphGovernancePage() {
   return (
     <Space direction="vertical" size={20} style={{ width: '100%' }}>
       {/* Page Title */}
-      <Card size="small" style={{ background: `linear-gradient(135deg, ${token.colorPrimary}0d 0%, ${token.colorInfo}0d 100%)` }}>
+      <Card size="small" className="hero-card">
         <Title level={3} style={{ margin: 0 }}>{t('graphGovernance.title')}</Title>
         <Text type="secondary" style={{ fontSize: 14 }}>{t('graphGovernance.subtitle')}</Text>
       </Card>

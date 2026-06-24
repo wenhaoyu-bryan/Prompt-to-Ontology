@@ -188,7 +188,7 @@ export default function DashboardPage() {
   return (
     <Space direction="vertical" size={20} style={{ width: '100%' }}>
       {/* Hero — integrated with Guided Demo CTA */}
-      <Card size="small" style={{ background: `linear-gradient(135deg, ${token.colorPrimary}0f 0%, ${token.colorLink}0f 100%)` }}>
+      <Card size="small" className="hero-card">
         <Tag color="processing" icon={<TagOutlined />} style={{ marginBottom: 8 }}>
           {t('dashboard.heroEyebrow', 'Operational Ontology')}
         </Tag>

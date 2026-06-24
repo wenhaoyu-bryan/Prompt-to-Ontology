@@ -12,6 +12,24 @@
   --pto-text-secondary: #6b7280;
 }
 
+/* Hero cards: transparent background, no border — used on dashboard, demoCenter,
+   ruleStudio, agentTrace, graphGovernance hero/header cards */
+.hero-card.ant-card {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Agent page: make Tabs content fill available height */
+.ant-tabs.flex-1-tabs,
+.ant-tabs.flex-1-tabs .ant-tabs-content-holder,
+.ant-tabs.flex-1-tabs .ant-tabs-content,
+.ant-tabs.flex-1-tabs .ant-tabs-tabpane-active {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+}
+
 /* Sidebar menu active state */
 .sidebar-menu .ant-menu-item-selected {
   position: relative;

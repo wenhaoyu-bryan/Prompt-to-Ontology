@@ -229,10 +229,10 @@ export default function AgentPage() {
       key: 'chat',
       label: <span><RobotOutlined /> {t('agent.chat')}</span>,
       children: (
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'min(400px, 50vh)' }}>
           {/* Chat area */}
-          <Card style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
-            styles={{ body: { height: '65vh', overflow: 'auto', padding: 16 } }}
+          <Card style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}
+            styles={{ body: { flex: 1, overflow: 'auto', padding: 16 } }}
           >
             {messages.length === 0 && (
               <div style={{ textAlign: 'center', padding: '40px 0' }}>
@@ -439,9 +439,9 @@ export default function AgentPage() {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', minHeight: 'calc(100vh - 120px)' /* 56px header + 24px content padding + 40px breathing room */ }}>
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
+      <div>
         <Title level={4} style={{ margin: 0 }}>{t('agent.title')}</Title>
         <Text type="secondary">{t('agent.subtitle')}</Text>
       </div>
@@ -492,8 +492,9 @@ export default function AgentPage() {
       </div>
 
       {/* Main content */}
-      <Card styles={{ body: { padding: '0 16px 16px' } }}>
-        <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} style={{ marginTop: 8 }} />
+      <Card style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }} styles={{ body: { padding: '0 16px 16px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 } }}>
+        {/* flex-1-tabs: propagates flex layout into Ant Design Tabs content panes so the chat Card fills remaining height */}
+        <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} className="flex-1-tabs" style={{ marginTop: 8 }} />
       </Card>
 
       {/* LLM Config Modal */}
