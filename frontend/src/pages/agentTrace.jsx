@@ -624,7 +624,7 @@ export default function AgentTracePage() {
       {/* Hero */}
       <Card
         size="small"
-        style={{ background: `linear-gradient(135deg, ${token.colorInfo}10 0%, ${token.colorPrimary}10 100%)` }}
+        className="hero-card"
       >
         <Row justify="space-between" align="middle">
           <Col>

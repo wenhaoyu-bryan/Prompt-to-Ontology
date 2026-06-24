@@ -276,9 +276,7 @@ export default function DemoCenterPage() {
       )}
 
       {/* Hero */}
-      <Card size="small" style={{
-        background: `linear-gradient(135deg, ${token.colorSuccessBg} 0%, ${token.colorPrimaryBg} 100%)`,
-      }}>
+      <Card size="small" className="hero-card">
         <Row justify="space-between" align="middle" gutter={[16, 16]}>
           <Col flex="auto">
             <Title level={3} style={{ margin: 0 }}>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Row, Col, Typography, Space, Radio, Switch, Divider, Tag, Descriptions, List, Button, Modal, message, Statistic, Spin } from 'antd';
+import { Card, Row, Col, Typography, Space, Radio, Switch, Divider, Tag, Descriptions, List, Button, Modal, message, Statistic, Spin, theme } from 'antd';
 import {
   BulbOutlined,
   GlobalOutlined,
@@ -32,6 +32,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
+  const { token } = theme.useToken();
   const { mode, setMode, color, setColor } = useThemeContext();
   const [demoState, setDemoState] = useState(null);
   const [demoLoading, setDemoLoading] = useState(false);
@@ -40,7 +41,7 @@ export default function SettingsPage() {
     try {
       const { data } = await api.get('/demo/state');
       setDemoState(data);
-    } catch { /* ignore */ }
+    } catch (err) { console.warn('[Settings] failed to load demo state', err); }
   }, []);
 
   useEffect(() => { loadDemoState(); }, [loadDemoState]);

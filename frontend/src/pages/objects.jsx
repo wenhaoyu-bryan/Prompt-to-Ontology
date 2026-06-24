@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Card, Row, Col, Table, Tag, Space, Typography, Spin, Input, Button, Descriptions, Drawer, Badge, Divider, Empty, Tooltip, Progress, Result } from 'antd';
+import { Card, Row, Col, Table, Tag, Space, Typography, Spin, Input, Button, Descriptions, Drawer, Badge, Divider, Empty, Tooltip, Progress, Result, theme } from 'antd';
 import {
   ReloadOutlined,
   SearchOutlined,
@@ -36,6 +36,7 @@ const TYPE_ICONS = {
 
 export default function ObjectsPage() {
   const { t } = useTranslation();
+  const { token } = theme.useToken();
   const navigate = useNavigate();
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
   const [loading, setLoading] = useState(true);
@@ -53,7 +54,8 @@ export default function ObjectsPage() {
     try {
       const { data } = await api.get('/graph');
       setGraphData(data);
-    } catch {
+    } catch (err) {
+      console.warn('[Objects] failed to load graph', err);
       setGraphData({ nodes: [], links: [] });
       setError(true);
     } finally {
@@ -101,7 +103,8 @@ export default function ObjectsPage() {
     try {
       const { data } = await api.get(`/node/${node.id}`);
       setNodeDetail(data);
-    } catch {
+    } catch (err) {
+      console.warn('[Objects] failed to load node detail', err);
       setNodeDetail(null);
     } finally {
       setDrawerLoading(false);
@@ -176,7 +179,7 @@ export default function ObjectsPage() {
       width: 100,
       render: (_, record) => {
         const stats = nodeStats[record.id] || {};
-        return <Badge count={stats.outgoingCount || 0} showZero style={{ backgroundColor: '#1677ff' }} overflowCount={99} />;
+        return <Badge count={stats.outgoingCount || 0} showZero style={{ backgroundColor: token.colorPrimary }} overflowCount={99} />;
       },
       sorter: (a, b) => (nodeStats[a.id]?.outgoingCount || 0) - (nodeStats[b.id]?.outgoingCount || 0),
     },
@@ -213,7 +216,7 @@ export default function ObjectsPage() {
       {/* Type selector + Search in one row */}
       <Card size="small" styles={{ body: { padding: '12px 16px' } }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <FilterOutlined style={{ color: 'rgba(255,255,255,0.45)' }} />
+          <FilterOutlined style={{ color: token.colorTextSecondary }} />
           {Object.keys(TYPE_COLORS).map(type => (
             <Tag
               key={type}
@@ -253,7 +256,7 @@ export default function ObjectsPage() {
             rowKey="id"
             size="small"
             scroll={{ x: 800 }}
-            pagination={{ pageSize: 15, showSizeChanger: true, showTotal: (total) => `${total} items` }}
+            pagination={{ pageSize: 15, showSizeChanger: true, showTotal: (total) => `${total} ${t('objects.items', 'items')}` }}
             columns={columns}
             onRow={(record) => ({
               onClick: () => handleViewDetail(record),
@@ -306,26 +309,26 @@ export default function ObjectsPage() {
               <Row gutter={16}>
                 <Col span={8}>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 20, fontWeight: 600, color: '#1677ff' }}>
+                    <div style={{ fontSize: 20, fontWeight: 600, color: token.colorPrimary }}>
                       {relatedEdges.length}
                     </div>
-                    <Text type="secondary" style={{ fontSize: 11 }}>{t('objects.connections')}</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{t('objects.connections')}</Text>
                   </div>
                 </Col>
                 <Col span={8}>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 20, fontWeight: 600, color: riskEdges.length > 0 ? '#ff4d4f' : '#52c41a' }}>
+                    <div style={{ fontSize: 20, fontWeight: 600, color: riskEdges.length > 0 ? token.colorError : token.colorSuccess }}>
                       {riskEdges.length}
                     </div>
-                    <Text type="secondary" style={{ fontSize: 11 }}>{t('common.risks')}</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{t('common.risks')}</Text>
                   </div>
                 </Col>
                 <Col span={8}>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 20, fontWeight: 600, color: '#722ed1' }}>
+                    <div style={{ fontSize: 20, fontWeight: 600, color: 'purple' }}>
                       {nodeDetail.properties ? Object.keys(nodeDetail.properties).length : 0}
                     </div>
-                    <Text type="secondary" style={{ fontSize: 11 }}>{t('common.properties')}</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{t('common.properties')}</Text>
                   </div>
                 </Col>
               </Row>
@@ -333,7 +336,7 @@ export default function ObjectsPage() {
 
             {/* Risks */}
             {riskEdges.length > 0 && (
-              <Card size="small" title={<><ExclamationCircleOutlined style={{ color: '#ff4d4f' }} /> {t('common.risks')} ({riskEdges.length})</>} variant="inner">
+              <Card size="small" title={<><ExclamationCircleOutlined style={{ color: token.colorError }} /> {t('common.risks')} ({riskEdges.length})</>} variant="inner">
                 {riskEdges.map((r, i) => (
                   <Tag key={i} color="red" style={{ margin: 2 }}>
                     {r.target?.label || r.target || t('common.risk')}
