@@ -133,7 +133,7 @@ The Analyst Agent answers through ontology tools rather than free-form guessing.
 
 ## Demo Video
 
-[Watch the full Prompt-to-Ontology demo](media/prompt-to-ontology-demo.mp4)
+[![Watch the demo](https://img.youtube.com/vi/XG8USHbZ3oM/0.jpg)](https://youtu.be/XG8USHbZ3oM)
 
 The video walks through data ingestion, ontology construction, human review, graph exploration, rule evaluation, and Analyst Agent operations.
 
