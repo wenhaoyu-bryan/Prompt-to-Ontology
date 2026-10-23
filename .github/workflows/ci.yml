@@ -12,7 +12,7 @@ permissions:
 jobs:
   backend-unit:
     name: Backend module checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: Check out repository
@@ -49,7 +49,7 @@ jobs:
 
   backend-integration:
     name: Neo4j integration checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
       neo4j:
@@ -82,16 +82,41 @@ jobs:
         run: python -m pip install -r requirements.txt
         working-directory: backend
 
-      - name: Run Neo4j integration checks
+      - name: Run graph snapshot and relationship checks
         run: |
           python scripts/test_graph_snapshot.py
           python scripts/test_relationship_csv_pipeline.py
-          python scripts/test_rule_studio.py
+
+      - name: Seed Rule Studio fixture
+        run: |
+          python - <<'PY'
+          from neo4j_connector import get_driver
+
+          with get_driver().session() as session:
+              session.run(
+                  """
+                  MERGE (p:PetFoodProduct {id: $id})
+                  SET p.name = $name,
+                      p.target_species = $species,
+                      p.life_stage = $life_stage,
+                      p.fat_100g = $fat
+                  """,
+                  id="ci-pf-001",
+                  name="CI Test Product",
+                  species="Cat",
+                  life_stage="Adult",
+                  fat=12,
+              )
+          PY
+        working-directory: backend
+
+      - name: Run Rule Studio checks
+        run: python scripts/test_rule_studio.py
         working-directory: backend
 
   frontend:
     name: Frontend build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Check out repository
