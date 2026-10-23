@@ -86,6 +86,7 @@ jobs:
         run: |
           python scripts/test_graph_snapshot.py
           python scripts/test_relationship_csv_pipeline.py
+        working-directory: backend
 
       - name: Seed Rule Studio fixture
         run: |
