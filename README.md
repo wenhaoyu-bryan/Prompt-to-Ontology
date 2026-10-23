@@ -1,8 +1,8 @@
 # Prompt-to-Ontology
 
-> An open-source, domain-agnostic operational ontology runtime that turns structured data into typed graphs, rules, evidence, reviewable updates, and agent operations.
+> A learning-by-building project exploring how operational ontologies turn structured data into typed objects, evidence-backed rules, and reviewable agent workflows.
 
-**Status:** Feature-complete reference implementation · Maintenance and bug fixes
+**Status:** Learning project · Runnable reference implementation · Maintenance-focused
 
 ![MIT License](https://img.shields.io/badge/license-MIT-blue)
 ![Python](https://img.shields.io/badge/python-3.10+-3776ab)
@@ -23,11 +23,27 @@
 
 ## What This Is
 
-Prompt-to-Ontology is a domain-agnostic operational ontology runtime. It ingests structured CSV data, builds a graph of typed objects and relationships, evaluates rules against that graph, generates evidence edges, and supports an ontology-grounded Analyst Agent — all with human-in-the-loop review at every step.
+Prompt-to-Ontology is a learning-by-building project about operational ontology platforms. It includes a runnable reference implementation that profiles structured data, maps it to typed objects and relationships, evaluates explicit rules, records evidence, and lets an ontology-grounded Analyst Agent inspect the graph and propose reviewable updates.
 
-The runtime covers the full lifecycle: structured data ingestion through a profiled Data Pipeline, typed ontology construction via Import Plans and Review Queue, rule evaluation and evidence generation in Rule Studio, agent reasoning through tool-calling with deterministic fallback, structured Agent Trace and evaluation, and graph governance with snapshot, diff, and rollback.
+The Pet Food demo makes one possible lifecycle concrete: profile data, prepare and review an import plan, explore typed graph objects, evaluate rules, inspect agent traces, and review graph changes through snapshots, diffs, and rollback.
 
-Pet Food is the built-in demonstration domain, not the product itself. The same engine can be pointed at any domain schema — food safety, supply chain, compliance — without changing the runtime code.
+The goal is to make product and architecture questions tangible, not to claim production readiness or feature parity with an enterprise platform.
+
+---
+
+## Learning Goals and Scope
+
+This project explores three questions:
+
+- How do object types, relationships, constraints, rules, and actions give business data operational meaning?
+- How can rule results carry explicit evidence and distinguish triggered, passed, not evaluable, and not applicable states?
+- How can agents use ontology tools while proposed changes remain reviewable and reversible?
+
+Pet Food is the only domain example included in this repository. The schema-driven components are designed to make other domains possible, but this project does not prove cross-domain or production readiness. The guided demo uses sample data and is not a production deployment.
+
+## Design References
+
+The project learns from publicly documented ontology concepts in [Palantir Foundry](https://www.palantir.com/docs/foundry/ontologies/ontologies-overview) and open-source graph and ontology tooling in [Semantica](https://github.com/semantica-agi/semantica). These are design references; this project does not claim access to vendor internals or feature equivalence.
 
 ---
 
@@ -43,7 +59,7 @@ Pet Food is the built-in demonstration domain, not the product itself. The same 
 
 ## Core Principles
 
-- Domain-agnostic runtime — the engine is not tied to Pet Food or any specific industry
+- Runnable reference — the Pet Food demo makes one end-to-end ontology workflow inspectable
 - Schema-first modeling — object types, link types, constraints, rules, and actions are declared in YAML
 - Rules produce explicit evidence — 4-state evaluation (triggered / passed / not_evaluable / not_applicable)
 - Agents operate through ontology tools — not free-form text generation
@@ -268,7 +284,7 @@ To enable LLM-powered reasoning:
 
 ```
 backend/
-  ontology_kernel/     Domain-agnostic runtime
+  ontology_kernel/     Schema-driven runtime and validation
   data_pipeline/       CSV profiling, mapping, import plans
   review_queue/        HITL review workflow
   graph_snapshot/      Snapshot, diff, rollback
@@ -298,9 +314,13 @@ Frontend: `npm run test:smoke` (Playwright route smoke tests).
 
 ## Project Status
 
-Prompt-to-Ontology is a feature-complete reference implementation. The repository demonstrates the complete operational ontology lifecycle, from structured data ingestion to governed agent operations.
+Prompt-to-Ontology is a learning project with a runnable reference implementation. The included Pet Food demo makes the design choices and workflow inspectable.
 
-Future updates will focus on maintenance, bug fixes, documentation, and optional domain examples rather than expanding the core runtime.
+The repository includes module-level backend test scripts and frontend smoke tests, but does not provide a production deployment, enterprise identity and access management, or validation across multiple business domains. Future work will focus on maintenance, documentation, and small examples that test the learning goals rather than broad platform expansion.
+
+## Contributing
+
+Small, focused contributions are welcome, especially documentation improvements, reproducible bug reports, tests, and self-contained sample domains. For larger feature ideas, open an issue first to check that they fit the project's learning scope.
 
 ---
 
@@ -317,5 +337,5 @@ MIT
 ---
 
 <p align="center">
-  <sub>Open-source operational ontology runtime: structured data → typed graph → rules and evidence → human review → analyst agent.</sub>
+  <sub>A learning-by-building reference for operational ontologies: structured data → typed graph → rules and evidence → human review → ontology-grounded agent.</sub>
 </p>
