@@ -2,6 +2,7 @@
 
 [![GitHub Stars](https://img.shields.io/github/stars/wenhaoyu-bryan/Prompt-to-Ontology?style=social)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology)
 [![GitHub Last Commit](https://img.shields.io/github/last-commit/wenhaoyu-bryan/Prompt-to-Ontology)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology)
+[![CI](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml)
 
 **[English](README.md)** | **中文**
 
@@ -19,7 +20,7 @@ Prompt-to-Ontology 是一个通过构建来学习本体平台的开源项目。�
 
 仓库目前只包含 Pet Food 演示领域。核心模块按 YAML Schema 组织，但这份代码还没有通过多个业务领域验证通用性。演示使用样例数据，也没有提供企业级身份认证与权限、生产部署或服务等级保证。
 
-仓库包含后端模块级测试脚本和前端 smoke tests，但没有自动化 CI/CD 工作流。可运行的演示说明核心路径可以被检查，不等于生产环境的安全性、可靠性或性能已经得到验证。
+仓库包含后端模块级测试脚本和前端 smoke tests。GitHub Actions 会在推送到 `main` 和 Pull Request 时运行后端模块检查、使用临时 Neo4j 5 服务运行集成检查，并构建前端；前端 smoke tests 仍可在本地运行。可运行的演示说明核心路径可以被检查，不等于生产环境的安全性、可靠性或性能已经得到验证。
 
 项目主要由产品经理定义目标、架构边界和设计约束，并通过 Vibe Coding 与大语言模型协作实现。代码是学习工具；更重要的产出是对本体建模、运行语义和治理边界的理解。
 

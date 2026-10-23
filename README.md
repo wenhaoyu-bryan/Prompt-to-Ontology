@@ -1,5 +1,7 @@
 # Prompt-to-Ontology
 
+[![CI](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml)
+
 > A learning-by-building project exploring how operational ontologies turn structured data into typed objects, evidence-backed rules, and reviewable agent workflows.
 
 **Status:** Learning project · Runnable reference implementation · Maintenance-focused
@@ -306,9 +308,11 @@ sample-data/           Demo CSV data
 
 ## Testing
 
-Backend: `python scripts/test_<module>.py` for each module (ontology_kernel, data_pipeline, review_queue, graph_snapshot, rule_studio, analyst_agent, agent_trace, scenario_run).
+Backend: run module checks from `backend/` with `python scripts/test_<module>.py`.
 
 Frontend: `npm run test:smoke` (Playwright route smoke tests).
+
+GitHub Actions runs backend module checks, runs Neo4j integration checks against an ephemeral Neo4j 5 service, and builds the frontend on pushes to `main` and pull requests. The Playwright route smoke tests remain available for local runs.
 
 ---
 
