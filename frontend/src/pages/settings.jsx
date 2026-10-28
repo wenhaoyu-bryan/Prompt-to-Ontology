@@ -20,6 +20,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useThemeContext } from '../providers/ThemeProvider';
 import { api } from '../providers/dataProvider';
+import frontendPackage from '../../package.json';
 
 const { Title, Text, Link } = Typography;
 
@@ -198,7 +199,7 @@ export default function SettingsPage() {
         <Descriptions column={1} size="small">
           <Descriptions.Item label={t('settings.productLabel')}>Prompt-to-Ontology</Descriptions.Item>
           <Descriptions.Item label={t('settings.demoLabel')}>{t('app.demo')}</Descriptions.Item>
-          <Descriptions.Item label={t('settings.version')}>1.0.0</Descriptions.Item>
+          <Descriptions.Item label={t('settings.version')}>{frontendPackage.version}</Descriptions.Item>
           <Descriptions.Item label={t('settings.stack')}>React + Refine + Ant Design + FastAPI + Neo4j</Descriptions.Item>
           <Descriptions.Item label={t('settings.repository')}>
             <Link href="https://github.com/wenhaoyu-bryan/Prompt-to-Ontology" target="_blank">

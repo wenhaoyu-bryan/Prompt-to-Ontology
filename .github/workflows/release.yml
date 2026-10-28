@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version without v prefix (must match VERSION and frontend package files)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark versions with a suffix such as -alpha.1 as prereleases'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: product-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Verify and publish tag release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_PRERELEASE: ${{ inputs.prerelease }}
+    steps:
+      - name: Require main branch
+        run: |
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Run this workflow from main." >&2
+            exit 1
+          fi
+
+      - name: Check out exact main commit and tags
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate version files and tag order
+        run: |
+          args=("$RELEASE_VERSION")
+          if [[ "$RELEASE_PRERELEASE" == "true" ]]; then args+=(--prerelease); fi
+          python scripts/release_version.py "${args[@]}"
+
+      - name: Verify current main and successful CI on this commit
+        run: |
+          main_sha=$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.commit.sha')
+          if [[ "$GITHUB_SHA" != "$main_sha" ]]; then
+            echo "Main advanced after this workflow started; rerun from the new main commit." >&2
+            exit 1
+          fi
+          passed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&branch=main&per_page=100" \
+            --jq '[.workflow_runs[] | select(.head_sha == env.GITHUB_SHA and .event == "push" and .status == "completed" and .conclusion == "success")] | length')
+          if [[ "$passed" -lt 1 ]]; then
+            echo "No successful main push CI run exists for $GITHUB_SHA." >&2
+            exit 1
+          fi
+
+      - name: Publish GitHub Release and tag
+        run: |
+          flags=(--target "$GITHUB_SHA" --title "Prompt-to-Ontology $RELEASE_VERSION — Pet Food reference" --generate-notes --fail-on-no-commits)
+          previous=$(git tag --list 'v0.*' --sort=-version:refname | head -n 1)
+          if [[ -n "$previous" ]]; then
+            flags+=(--notes-start-tag "$previous")
+          else
+            flags+=(--notes-start-tag v1.0.4)
+          fi
+          if [[ "$RELEASE_PRERELEASE" == "true" ]]; then
+            flags+=(--prerelease --latest=false)
+          else
+            flags+=(--latest)
+          fi
+          gh release create "v$RELEASE_VERSION" "${flags[@]}"

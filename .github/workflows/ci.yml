@@ -48,6 +48,9 @@ jobs:
           python scripts/test_demo_admin.py
         working-directory: backend
 
+      - name: Check release version rules
+        run: python scripts/test_release_version.py
+
   backend-integration:
     name: Neo4j integration checks
     runs-on: ubuntu-24.04
