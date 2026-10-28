@@ -12,6 +12,7 @@ from .models import (
     Cardinality,
     ConstraintDef,
     LinkTypeDef,
+    MetricDef,
     ObjectTypeDef,
     OntologySchema,
     PropertyDef,
@@ -150,7 +151,14 @@ def _normalize_actions(raw: dict[str, Any]) -> dict[str, ActionTypeDef]:
         result[name] = ActionTypeDef(
             name=name,
             description=data.get("description", ""),
-            params=data.get("params", []),
+            params=data.get("params", [item.get("name", "") for item in data.get("inputs", [])]),
+            applicable_object_type=data.get("applicable_object_type", ""),
+            preconditions=data.get("preconditions", []),
+            inputs=[PropertyDef(**item) for item in data.get("inputs", [])],
+            result_fields=[PropertyDef(**item) for item in data.get("result_fields", [])],
+            executor=data.get("executor", ""),
+            side_effect=data.get("side_effect", "read_only"),
+            approval_required=data.get("approval_required", False),
             metadata=data.get("metadata", {}),
         )
     return result
@@ -221,6 +229,7 @@ def load_ontology_schema(domain: str, ontology_path: str) -> OntologySchema:
     raw_links = _load_yaml("link_types.yaml")
     raw_rules = _load_yaml("rules.yaml")
     raw_actions = _load_yaml("action_types.yaml")
+    raw_metrics = _load_yaml("metrics.yaml")
     raw_constraints = _load_yaml("constraints.yaml")
 
     return OntologySchema(
@@ -229,6 +238,7 @@ def load_ontology_schema(domain: str, ontology_path: str) -> OntologySchema:
         link_types=_normalize_link_types(raw_links.get("link_types", raw_links)),
         rules=_normalize_rules(raw_rules.get("rules", raw_rules)),
         actions=_normalize_actions(raw_actions.get("action_types", raw_actions)),
+        metrics={name: MetricDef(name=name, **data) for name, data in raw_metrics.get("metrics", {}).items()},
         constraints=_normalize_constraints(raw_constraints.get("constraints", raw_constraints)),
     )
 

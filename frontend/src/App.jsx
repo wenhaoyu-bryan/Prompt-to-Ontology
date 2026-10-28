@@ -24,6 +24,7 @@ import GraphGovernancePage from './pages/graphGovernance';
 import RuleStudioPage from './pages/ruleStudio';
 import AgentTracePage from './pages/agentTrace';
 import DemoCenterPage from './pages/demoCenter';
+import VerifiedQAPage from './pages/verifiedQA';
 
 import './i18n';
 
@@ -66,6 +67,7 @@ function AppInner() {
           <Route path="/graph" element={<GraphPage />} />
           <Route path="/schema" element={<SchemaPage />} />
           <Route path="/agent" element={<AgentPage />} />
+          <Route path="/verified-qa" element={<VerifiedQAPage />} />
           <Route path="/review" element={<ReviewQueuePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/pipeline" element={<PipelinePage />} />

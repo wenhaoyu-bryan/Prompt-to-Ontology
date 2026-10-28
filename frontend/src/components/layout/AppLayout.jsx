@@ -17,6 +17,7 @@ import {
   ExperimentOutlined,
   EyeOutlined,
   RocketOutlined,
+  FileSearchOutlined,
   MenuOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
@@ -79,6 +80,7 @@ export default function AppLayout() {
       label: !collapsed ? t('nav.groupOperate') : null,
       children: [
         { key: '/agent', icon: <RobotOutlined />, label: t('nav.agent') },
+        { key: '/verified-qa', icon: <FileSearchOutlined />, label: t('nav.verifiedQA') },
         { key: '/graph-governance', icon: <SafetyOutlined />, label: t('nav.graphGovernance') },
         { key: '/rule-studio', icon: <ExperimentOutlined />, label: t('nav.ruleStudio') },
         { key: '/agent-traces', icon: <EyeOutlined />, label: t('nav.agentTrace') },
@@ -197,7 +199,7 @@ export default function AppLayout() {
           placement="left"
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
-          width={220}
+          size={220}
           styles={{ body: { padding: 0 } }}
           closable={false}
         >

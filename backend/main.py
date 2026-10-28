@@ -1179,6 +1179,67 @@ def api_pet_food_agent_chat(req: PetFoodChatRequest):
 
 # ── Data Pipeline API ───────────────────────────────────────────────────
 
+from pathlib import Path as _Path
+from verified_qa import VerifiedQAService
+from verified_qa.evaluation import VerifiedEvaluator
+
+verified_qa_service = VerifiedQAService(_Path(__file__).resolve().parent.parent)
+verified_evaluator = VerifiedEvaluator(_Path(__file__).resolve().parent.parent, _Path(__file__).resolve().parent / ".runtime/verified-evaluations.json")
+
+
+@app.get("/api/verified-qa/questions")
+def api_verified_questions():
+    """Public bounded question catalog; reference answers are never returned."""
+    return {"version": verified_qa_service.catalog_version, "questions": verified_qa_service.questions()}
+
+
+@app.post("/api/verified-qa/answer")
+def api_verified_answer(body: dict):
+    """Read-only deterministic answer over the current Pet Food sample files."""
+    question_id = body.get("question_id", "")
+    try:
+        return verified_qa_service.answer(question_id).model_dump(mode="json")
+    except ValueError as exc:
+        raise HTTPException(404, str(exc))
+
+
+@app.post("/api/verified-qa/evaluations")
+def api_run_verified_evaluation(body: dict):
+    try:
+        return verified_evaluator.run(body.get("changed_assets"))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
+@app.get("/api/verified-qa/evaluations")
+def api_list_verified_evaluations():
+    return {"runs": verified_evaluator.list_runs()}
+
+
+@app.get("/api/verified-qa/evaluations/compare")
+def api_compare_verified_evaluations(before: str, after: str):
+    try:
+        return verified_evaluator.compare(before, after)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc))
+
+
+@app.get("/api/verified-qa/evaluations/{run_id}")
+def api_get_verified_evaluation(run_id: str):
+    try:
+        return verified_evaluator.get(run_id)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc))
+
+
+@app.post("/api/verified-qa/feedback")
+def api_verified_feedback(body: dict):
+    try:
+        return verified_evaluator.propose_question(body.get("question", ""), body.get("reason", ""))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
 # Phase 28 uses in-memory storage. Future phases can persist pipeline runs.
 from data_pipeline import PipelineService
 pipeline_service = PipelineService()
@@ -1222,6 +1283,19 @@ def api_pipeline_profile_csv(body: dict):
         return profile.model_dump()
     except Exception as e:
         raise HTTPException(400, f"Failed to profile CSV: {e}")
+
+
+@app.post("/api/pipeline/profile/{fmt}")
+def api_pipeline_profile_structured(fmt: str, body: dict):
+    if fmt not in {"json", "ndjson"}:
+        raise HTTPException(404, "Unsupported format")
+    content = body.get("content", "")
+    if not content:
+        raise HTTPException(400, "content is required")
+    try:
+        return pipeline_service.profile_structured_content(body.get("filename", f"upload.{fmt}"), content, fmt).model_dump()
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
 
 @app.get("/api/pipeline/profile/{source_id}")
 def api_pipeline_get_profile(source_id: str):

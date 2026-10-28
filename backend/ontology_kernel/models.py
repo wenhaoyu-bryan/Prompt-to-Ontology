@@ -110,7 +110,27 @@ class ActionTypeDef(BaseModel):
     name: str
     description: str = ""
     params: list[str] = Field(default_factory=list)
+    applicable_object_type: str = ""
+    preconditions: list[str] = Field(default_factory=list)
+    inputs: list[PropertyDef] = Field(default_factory=list)
+    result_fields: list[PropertyDef] = Field(default_factory=list)
+    executor: str = ""
+    side_effect: str = "read_only"
+    approval_required: bool = False
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class MetricDef(BaseModel):
+    name: str
+    description: str = ""
+    object_type: str
+    aggregation: str
+    group_by: list[str] = Field(default_factory=list)
+    source_field: str = ""
+    unit: str = ""
+    grain: str = ""
+    freshness: str = "sample_snapshot"
+    source_asset: str = ""
 
 
 # ── Top-Level Schema ─────────────────────────────────────────────────────
@@ -122,6 +142,7 @@ class OntologySchema(BaseModel):
     link_types: dict[str, LinkTypeDef] = Field(default_factory=dict)
     rules: dict[str, RuleDef] = Field(default_factory=dict)
     actions: dict[str, ActionTypeDef] = Field(default_factory=dict)
+    metrics: dict[str, MetricDef] = Field(default_factory=dict)
     constraints: dict[str, ConstraintDef] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
 

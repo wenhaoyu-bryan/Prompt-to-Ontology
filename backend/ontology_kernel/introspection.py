@@ -19,12 +19,14 @@ def get_schema_summary(schema: OntologySchema) -> dict[str, Any]:
             "link_types": len(schema.link_types),
             "rules": len(schema.rules),
             "actions": len(schema.actions),
+            "metrics": len(schema.metrics),
             "constraints": len(schema.constraints),
         },
         "object_types": list(schema.object_types.keys()),
         "link_types": list(schema.link_types.keys()),
         "rules": list(schema.rules.keys()),
         "actions": list(schema.actions.keys()),
+        "metrics": list(schema.metrics.keys()),
     }
 
 

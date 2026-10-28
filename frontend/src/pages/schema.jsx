@@ -112,7 +112,15 @@ export default function SchemaPage() {
   const actions = Object.entries(schema.actionTypes || schema.actions || {}).map(([name, v]) => ({
     name,
     description: v.description || '',
+    applicableObjectType: v.applicable_object_type || '',
+    preconditions: v.preconditions || [],
+    inputs: v.inputs || [],
+    resultFields: v.result_fields || [],
+    executor: v.executor || '',
+    sideEffect: v.side_effect || '',
+    approvalRequired: !!v.approval_required,
   }));
+  const metrics = Object.entries(schema.metrics || {}).map(([name, v]) => ({ name, ...v }));
 
   const tabItems = [
     {
@@ -241,9 +249,31 @@ export default function SchemaPage() {
           columns={[
             { title: t('common.name'), dataIndex: 'name', key: 'name', render: (n) => <Tag color="orange">{n}</Tag> },
             { title: t('common.description'), dataIndex: 'description', key: 'description' },
+            { title: i18n.language === 'zh' ? '副作用' : 'Side effect', dataIndex: 'sideEffect', key: 'sideEffect', render: value => <Tag color={value === 'read_only' ? 'green' : 'orange'}>{value}</Tag> },
           ]}
+          expandable={{ expandedRowRender: record => <Descriptions column={1} bordered size="small" items={[
+            { key: 'object', label: i18n.language === 'zh' ? '适用对象' : 'Object', children: record.applicableObjectType },
+            { key: 'preconditions', label: i18n.language === 'zh' ? '前置条件' : 'Preconditions', children: record.preconditions.join('; ') },
+            { key: 'inputs', label: i18n.language === 'zh' ? '输入' : 'Inputs', children: record.inputs.map(item => `${item.name}: ${item.type}${item.required ? ' *' : ''}`).join(', ') },
+            { key: 'results', label: i18n.language === 'zh' ? '结果字段' : 'Result fields', children: record.resultFields.map(item => `${item.name}: ${item.type}`).join(', ') },
+            { key: 'executor', label: i18n.language === 'zh' ? '执行器' : 'Executor', children: record.executor },
+            { key: 'approval', label: i18n.language === 'zh' ? '需审批' : 'Approval required', children: record.approvalRequired ? 'Yes' : 'No' },
+          ]} /> }}
         />
       ),
+    }] : []),
+    ...(metrics.length > 0 ? [{
+      key: 'metrics',
+      label: <span>{i18n.language === 'zh' ? '指标定义' : 'Metric definitions'} ({metrics.length})</span>,
+      children: <Table dataSource={metrics} rowKey="name" size="small" pagination={false} columns={[
+        { title: i18n.language === 'zh' ? '指标' : 'Metric', dataIndex: 'name' },
+        { title: i18n.language === 'zh' ? '对象' : 'Object', dataIndex: 'object_type' },
+        { title: i18n.language === 'zh' ? '计算' : 'Aggregation', dataIndex: 'aggregation' },
+        { title: i18n.language === 'zh' ? '维度' : 'Group by', dataIndex: 'group_by', render: value => value?.join(', ') },
+        { title: i18n.language === 'zh' ? '单位' : 'Unit', dataIndex: 'unit' },
+        { title: i18n.language === 'zh' ? '来源' : 'Source', dataIndex: 'source_asset' },
+        { title: i18n.language === 'zh' ? '时效' : 'Freshness', dataIndex: 'freshness' },
+      ]} />,
     }] : []),
     {
       key: 'json',

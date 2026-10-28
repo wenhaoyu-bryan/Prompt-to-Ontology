@@ -29,6 +29,8 @@
 
 [Pet Food 八个固定问题](sample-data/pet-food/question-set.v1.json)覆盖规则触发、未触发、关系来源、字段来源、数据缺口及冲突处理，并使用 SHA-256 固定 CSV 与规则输入。这是可复现的设计及后续评估基线，**尚不是 Agent 正确率报告**。
 
+新增的 [22 题可核对问题集](sample-data/pet-food/verified-questions.v2.json)提供固定范围内的只读回答，逐条展示来源、路径和无法回答的原因。[参考答案](sample-data/pet-food/verified-gold.v2.json)仅由回归评估器读取；结论、证据、路径、恰当弃答分别评分。支持按变更资产重跑受影响问题、逐题比较两轮结果，以及把新增问题建议保存为待审草稿。这些分数只代表样例问题集和确定性读取器，**不是自由文本 Agent 的正确率**。
+
 ```mermaid
 flowchart LR
   Q[问题] --> S[来源与字段画像]
@@ -44,11 +46,12 @@ flowchart LR
 
 | 能力 | 当前状态 |
 |---|---|
-| Pet Food CSV 画像、映射建议、Import Plan | 可运行 |
+| Pet Food CSV、扁平 JSON 数组、NDJSON 画像、映射建议、Import Plan | 可运行 |
 | 来源资产 ID、内容版本 ID、字段 ID、映射决定与双向追溯 | 可运行；来源目录只存元数据和决定。Import Plan 仍可能保存来源画像中的样例行 |
 | Review Queue 审核及应用 | 可运行的演示工作流；并非后端权限系统 |
 | 对象、图谱、规则、Agent、Trace、快照与回滚 | 可在样例中检查；Agent Trace 的启发式分数不等于答案正确率 |
-| 八个固定问题 | 有事实与来源检查；尚未自动跑 Agent 答案评估 |
+| 固定问题与回归评估 | v1 八题为设计基线；v2 22 题可只读回答，四项独立评分与逐题对比可运行 |
+| 指标与 Action 契约 | 样例指标可回答猫粮数量问题；Action 声明适用对象、输入、前置条件、结果、副作用与审批要求，不执行外部写入 |
 | 其他行业、生产权限、性能与稳定性 | 未验证 |
 
 来源状态需区分：**已解析、建议映射、人工确认、图谱可查询**。确认字段映射并不证明数据已经写入 Neo4j；生成 Import Plan 也只产生候选。
@@ -72,7 +75,9 @@ Compose 使用命名卷 `backend_runtime` 保存来源目录、Import Plan 和�
 
 ## 推荐体验路径
 
-Dashboard → Data Pipeline（选择样例、检查来源 ID、确认字段、生成 Import Plan）→ Review Queue → Object Explorer → Graph Explorer → Rule Studio → Analyst Agent → Agent Trace → Graph Governance。
+Dashboard → Data Pipeline（选择样例或上传 CSV/JSON/NDJSON、检查来源 ID、确认字段、生成 Import Plan）→ Review Queue → Ontology Manager（查看指标和 Action 契约）→ Verified Questions（问答与回归评估）→ Object Explorer → Graph Explorer → Rule Studio → Analyst Agent → Agent Trace → Graph Governance。
+
+Verified Questions 当前读取仓库中的 Pet Food CSV/YAML 样例文件，不读取运行时 Neo4j 图谱；来源映射或导入计划完成也不代表图谱实例已可查询。
 
 图谱视图当前用于浏览运行时对象与关系。按 Schema 结构与运行时实例分层、显示来源及证据的视觉升级尚未纳入此阶段，见英文 README 的后续方向。
 

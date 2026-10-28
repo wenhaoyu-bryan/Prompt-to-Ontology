@@ -48,6 +48,8 @@ const TARGET_OBJECT_TYPES = ['PetFoodProduct', 'Ingredient', 'Brand', 'RiskRule'
 const SOURCE_TYPE_LABELS = {
   sample: 'pipeline.sourceTypeSample',
   custom_csv: 'pipeline.sourceTypeCustomCSV',
+  custom_json: 'pipeline.sourceTypeCustomJSON',
+  custom_ndjson: 'pipeline.sourceTypeCustomNDJSON',
   build_scenario: 'pipeline.sourceTypeBuildScenario',
 };
 
@@ -131,7 +133,8 @@ export default function PipelinePage() {
     setLoading(true);
     try {
       const content = await file.text();
-      const { data } = await api.post('/pipeline/profile/csv', { filename: file.name, content });
+      const format = file.name.toLowerCase().endsWith('.ndjson') ? 'ndjson' : file.name.toLowerCase().endsWith('.json') ? 'json' : 'csv';
+      const { data } = await api.post(`/pipeline/profile/${format}`, { filename: file.name, content });
       setProfile(data);
       setMappings(null);
       setLineage(null);
@@ -322,10 +325,10 @@ export default function PipelinePage() {
       render: (_, r) => {
         const st = r.metadata?.source_type || r.source_profile?.source_type;
         const importType = r.metadata?.import_type;
-        let color = st === 'custom_csv' ? 'orange' : st === 'sample' ? 'blue' : 'default';
+        let color = st?.startsWith('custom_') ? 'orange' : st === 'sample' ? 'blue' : 'default';
         let label;
-        if (st === 'custom_csv' && importType === 'relationship') {
-          label = t('pipeline.sourceTypeRelCSV');
+        if (st?.startsWith('custom_') && importType === 'relationship') {
+          label = st === 'custom_csv' ? t('pipeline.sourceTypeRelCSV') : `${st.slice(7).toUpperCase()} ${t('pipeline.relationshipCSV')}`;
           color = 'purple';
         } else if (st === 'custom_csv') {
           label = t('pipeline.sourceTypeObjectCSV');
@@ -687,7 +690,7 @@ export default function PipelinePage() {
               <Card size="small" style={{ background: `color-mix(in srgb, ${token.colorPrimary} 3%, transparent)` }}>
                 <div style={{ textAlign: 'center', padding: '12px 0' }}>
                   <Upload.Dragger
-                    accept=".csv"
+                    accept=".csv,.json,.ndjson"
                     showUploadList={false}
                     beforeUpload={handleCSVUpload}
                     style={{ padding: '16px 0' }}

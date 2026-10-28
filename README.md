@@ -56,6 +56,8 @@ The prompt is a **question and modeling hypothesis**, not an instruction to gene
 
 The [eight-question Pet Food set](sample-data/pet-food/question-set.v1.json) freezes its CSV and rule inputs with SHA-256 hashes. It is a reproducible design and evaluation baseline, not a claim that the Analyst Agent already answers all eight correctly.
 
+The newer [22-question catalog](sample-data/pet-food/verified-questions.v2.json) powers a bounded read-only Verified Questions view. Its separate [reference judgments](sample-data/pet-food/verified-gold.v2.json) are loaded only by the regression evaluator. The four reported scores check conclusion value/status, cited source evidence, relation/evaluation path, and appropriate abstention. They measure this fixed question set and deterministic sample reader; they are not free-form Agent accuracy scores. Evaluations can rerun only questions affected by a changed asset, compare two runs per question, and save suggested questions as drafts for review.
+
 ## Design References
 
 The project learns from publicly documented ontology concepts in [Palantir Foundry](https://www.palantir.com/docs/foundry/ontologies/ontologies-overview) and open-source graph and ontology tooling in [Semantica](https://github.com/semantica-agi/semantica). These are design references; this project does not claim access to vendor internals or feature equivalence.
@@ -260,11 +262,11 @@ Quick Demo steps:
 
 | Feature | Status | Description |
 |---|---|---|
-| Ontology Manager | ✅ Available | Object types, link types, rules, actions, constraints |
-| Data Pipeline | ✅ Available | Profile, suggest and confirm field mappings, inspect source lineage, generate import plans; confirmed decisions affect subsequent plans |
-| Pet Food question set | ✅ Fixture | Eight evidence-backed questions with fixed input hashes; no automated answer accuracy score yet |
-| Custom Object CSV | ✅ Available | Upload object CSV with type inference |
-| Relationship CSV | ✅ Available | Upload relationship CSV with validation |
+| Ontology Manager | ✅ Available | Object types, link types, rules, typed action contracts, a sample metric definition, constraints |
+| Data Pipeline | ✅ Available | Profile CSV, flat JSON arrays and NDJSON; suggest and confirm field mappings, inspect source lineage, generate import plans |
+| Pet Food question sets | ✅ Available | Eight-question v1 design fixture; 22-question v2 read-only answers and separate regression gold with four scored dimensions |
+| Custom Object Data | ✅ Available | Upload CSV, JSON array or NDJSON with type inference |
+| Relationship Data | ✅ Available | Upload CSV, JSON array or NDJSON with validation |
 | Review Queue | ✅ Available | Human-in-the-loop approve / reject / apply |
 | Object Explorer | ✅ Available | Browse and inspect runtime objects |
 | Graph Explorer | ✅ Available | Global and local graph views with D3 |
@@ -343,7 +345,7 @@ GitHub Actions runs backend module checks, runs Neo4j integration checks against
 
 Prompt-to-Ontology is a learning project with a runnable reference implementation. The included Pet Food demo makes the design choices and workflow inspectable.
 
-The repository includes backend checks and frontend smoke tests, but does not provide a production deployment, enterprise identity and access management, or validation across multiple business domains. Source mapping decisions are persisted as metadata; they do not prove that an imported value is queryable in Neo4j. The next steps are question-based answer evaluation and a clearer schema/runtime graph view.
+The repository includes backend checks and frontend smoke tests, but does not provide a production deployment, enterprise identity and access management, or validation across multiple business domains. Source mapping decisions are persisted as metadata; they do not prove that an imported value is queryable in Neo4j. Verified Questions read checked-in CSV/YAML sample files rather than the runtime Neo4j graph. A clearer schema/runtime graph view remains future work.
 
 ## Contributing
 

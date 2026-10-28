@@ -1,0 +1,28 @@
+{
+  "version": "pet-food-verified-gold-v2",
+  "review_note": "Reference judgments for the checked-in Pet Food sample snapshot. This file is evaluator-only and is never loaded by the answer service or question catalog endpoint.",
+  "answers": {
+    "Q01": {"status": "answered", "value": "triggered", "evidence_fields": ["phosphorus_100g", "condition"], "evidence_refs": [{"source_path": "sample-data/pet-food/pet_food_products.csv", "record_id": "PF003", "field": "phosphorus_100g", "value": "1.0"}, {"source_path": "ontology/pet_food/rules.yaml", "record_id": "RR004", "field": "condition"}], "path_kinds": ["rule_evaluation"], "path_edges": [{"source_id": "PF003", "relation": "EVALUATED_BY", "target_id": "RR004"}]},
+    "Q02": {"status": "answered", "value": "triggered", "evidence_fields": ["protein_100g", "condition"], "path_kinds": ["rule_evaluation"]},
+    "Q03": {"status": "answered", "value": "chicken", "evidence_fields": ["ingredient_order", "ingredient_name"], "evidence_refs": [{"source_path": "sample-data/pet-food/product_ingredients.csv", "record_id": "PF001:ING001", "field": "ingredient_order", "value": "1"}, {"source_path": "sample-data/pet-food/pet_food_ingredients.csv", "record_id": "ING001", "field": "ingredient_name", "value": "chicken"}], "path_kinds": ["instance_relation"], "path_edges": [{"source_id": "PF001", "relation": "CONTAINS", "target_id": "ING001"}]},
+    "Q04": {"status": "answered", "value": "passed", "evidence_fields": ["fat_100g", "condition"], "path_kinds": ["rule_evaluation"]},
+    "Q05": {"status": "answered", "value": "sample-data/pet-food/pet_food_products.csv.phosphorus_100g", "evidence_fields": ["phosphorus_100g"], "path_kinds": ["source_binding"]},
+    "Q06": {"status": "unknown", "value": null, "unknown_reasons": ["source_field_missing"], "evidence_fields": [], "path_kinds": []},
+    "Q07": {"status": "unknown", "value": null, "unknown_reasons": ["trusted_time_missing"], "evidence_fields": [], "path_kinds": []},
+    "Q08": {"status": "unknown", "value": null, "unknown_reasons": ["mapping_decision_required"], "evidence_fields": [], "path_kinds": []},
+    "Q09": {"status": "answered", "value": "triggered", "evidence_fields": ["fat_100g", "condition"], "path_kinds": ["rule_evaluation"]},
+    "Q10": {"status": "answered", "value": "triggered", "evidence_fields": ["fat_100g", "condition"], "path_kinds": ["rule_evaluation"]},
+    "Q11": {"status": "answered", "value": "triggered", "evidence_fields": ["protein_100g", "condition"], "path_kinds": ["rule_evaluation"]},
+    "Q12": {"status": "not_applicable", "value": "not_applicable", "evidence_fields": ["target_species", "life_stage", "condition"], "path_kinds": ["rule_evaluation"]},
+    "Q13": {"status": "answered", "value": "chicken meal", "evidence_fields": ["ingredient_order", "ingredient_name"], "path_kinds": ["instance_relation"]},
+    "Q14": {"status": "answered", "value": "beef", "evidence_fields": ["ingredient_order", "ingredient_name"], "path_kinds": ["instance_relation"]},
+    "Q15": {"status": "answered", "value": "turkey", "evidence_fields": ["ingredient_order", "ingredient_name"], "path_kinds": ["instance_relation"]},
+    "Q16": {"status": "answered", "value": "22", "evidence_fields": ["fat_100g"], "path_kinds": []},
+    "Q17": {"status": "answered", "value": "0.4", "evidence_fields": ["phosphorus_100g"], "path_kinds": []},
+    "Q18": {"status": "unknown", "value": null, "unknown_reasons": ["source_field_missing"], "evidence_fields": [], "path_kinds": []},
+    "Q19": {"status": "answered", "value": "triggered", "evidence_fields": ["ingredient_id", "ingredient_name", "condition"], "path_kinds": ["rule_evaluation"]},
+    "Q20": {"status": "not_applicable", "value": "not_applicable", "evidence_fields": ["target_species", "condition"], "path_kinds": ["rule_evaluation"]},
+    "Q21": {"status": "answered", "value": 7, "evidence_fields": ["definition", "target_species"], "evidence_refs": [{"source_path": "ontology/pet_food/metrics.yaml", "record_id": "ProductCountBySpecies", "field": "definition"}], "path_kinds": ["metric_evaluation"], "path_edges": [{"source_id": "pet_food_products.csv", "relation": "COUNT_BY", "target_id": "ProductCountBySpecies"}]},
+    "Q22": {"status": "answered", "value": "product_id", "evidence_fields": ["inputs"], "evidence_refs": [{"source_path": "ontology/pet_food/action_types.yaml", "record_id": "ExplainProductRisk", "field": "inputs"}], "path_kinds": ["action_contract"], "path_edges": [{"source_id": "ExplainProductRisk", "relation": "REQUIRES_INPUT", "target_id": "product_id"}]}
+  }
+}

@@ -1,0 +1,11 @@
+metrics:
+  ProductCountBySpecies:
+    description: "Count PetFoodProduct rows by target_species in the checked-in sample snapshot"
+    object_type: PetFoodProduct
+    aggregation: count
+    group_by: [target_species]
+    source_field: product_id
+    source_asset: pet_food_products.csv
+    grain: product_id
+    unit: products
+    freshness: sample_snapshot
