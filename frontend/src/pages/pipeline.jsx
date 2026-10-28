@@ -582,12 +582,6 @@ export default function PipelinePage() {
               <Text type="secondary">{t('pipeline.stepCount', { current: step + 1, total: stepItems.length })}</Text>
               <Text strong>{stepItems[step].title}</Text>
             </div>
-            <Space size={8}>
-              <Button size="small" icon={<LeftOutlined />} disabled={previousAvailableStep === undefined || loading} onClick={() => setStep(previousAvailableStep)} aria-label={t('pipeline.previousStep')} />
-              {step < 5 && <Button size="small" type="primary" disabled={nextDisabled} loading={loading} onClick={handleNextStep}>
-                {nextStepLabel} <RightOutlined />
-              </Button>}
-            </Space>
           </div>
           <div className="pipeline-stepper-scroll">
             <Steps current={step} items={stepItems.map((item, index) => ({ ...item, disabled: !canVisitStep(index) }))} size="small" responsive={false} onChange={i => { if (canVisitStep(i)) setStep(i); }} />
@@ -595,7 +589,7 @@ export default function PipelinePage() {
         </div>
 
       {/* ── Step 0: Select Source ─────────────────────────────────── */}
-      {step === 0 && <Card className="pipeline-step-card" title={<><DatabaseOutlined /> {t('pipeline.s1')}</>}>
+      {step === 0 && <Card title={<><DatabaseOutlined /> {t('pipeline.s1')}</>}>
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
           {/* Source Mode Switch */}
           <div>
