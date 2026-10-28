@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml)
 
-[Releases](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases) · [Release process](docs/releasing.md)
+[Releases](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases) · [Contributing](CONTRIBUTING.md) · [Release process](docs/releasing.md)
 
 > A learning-by-building project exploring how operational ontologies turn structured data into typed objects, evidence-backed rules, and reviewable agent workflows.
 
@@ -339,7 +339,7 @@ Backend: run module checks from `backend/` with `python scripts/test_<module>.py
 
 Frontend: `npm run test:smoke -- --workers=1` (Playwright route, responsive, and Pet Food workflow checks). Start the local Docker Compose stack first.
 
-GitHub Actions runs backend unit/module checks, Neo4j integration checks, a frontend build, and Playwright UI smoke tests on pull requests and pushes to `main`. The browser job starts a disposable Docker Compose stack. This is CI only: it does not deploy the project. Repository branch protection must separately mark these checks as required to block a failing PR from merging.
+GitHub Actions runs backend unit/module checks, Neo4j integration checks, a frontend build, and Playwright UI smoke tests on pull requests and pushes to `main`. The browser job starts a disposable Docker Compose stack. The protected `main` branch requires all four checks. CI does not deploy the project.
 
 ---
 
@@ -353,7 +353,7 @@ Ontology Manager edits are saved as local review drafts in `backend/.runtime/sch
 
 ## Contributing
 
-Small, focused contributions are welcome, especially documentation improvements, reproducible bug reports, tests, and self-contained sample domains. For larger feature ideas, open an issue first to check that they fit the project's learning scope.
+Small, focused contributions are welcome, especially documentation improvements, reproducible bug reports, and tests. Read the [contribution guide](CONTRIBUTING.md) for setup, local checks, PR requirements, and release-impact choices. For larger feature ideas, open an issue first to check that they fit the project's learning scope.
 
 ---
 
