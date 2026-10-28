@@ -8,6 +8,8 @@
 
 **Status:** Learning project · Runnable reference implementation · Maintenance-focused
 
+**Version line:** `0.x` for the Pet Food reference implementation. Earlier `v1.x` releases remain available as historical snapshots; see the [release process](docs/releasing.md).
+
 ![MIT License](https://img.shields.io/badge/license-MIT-blue)
 ![Python](https://img.shields.io/badge/python-3.10+-3776ab)
 ![React](https://img.shields.io/badge/react-18-61dafb)

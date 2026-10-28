@@ -9,6 +9,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+TAG_PREFIX = "p2o-v"
 SEMVER = re.compile(
     r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
     r"(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$"
@@ -63,19 +64,19 @@ def validate(version, prerelease):
         if value != version:
             raise ValueError(f"{path} contains {value!r}; expected {version!r}")
 
-    tags = subprocess.check_output(["git", "tag", "--list", "v*"], cwd=ROOT, text=True).splitlines()
+    tags = subprocess.check_output(["git", "tag", "--list", f"{TAG_PREFIX}*"], cwd=ROOT, text=True).splitlines()
     existing = []
     for tag in tags:
         try:
-            parse_version(tag[1:])
+            parse_version(tag[len(TAG_PREFIX):])
         except ValueError:
             continue
-        existing.append(tag[1:])
+        existing.append(tag[len(TAG_PREFIX):])
     if existing:
         latest = max(existing, key=cmp_to_key(compare_versions))
         if compare_versions(version, latest) <= 0:
-            raise ValueError(f"v{version} must be newer than existing tag v{latest}")
-    print(f"Release version v{version} is valid")
+            raise ValueError(f"{TAG_PREFIX}{version} must be newer than existing tag {TAG_PREFIX}{latest}")
+    print(f"Release version {TAG_PREFIX}{version} is valid")
 
 
 if __name__ == "__main__":

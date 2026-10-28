@@ -25,19 +25,19 @@ class ReleaseVersionTests(unittest.TestCase):
             root = Path(tmp)
             frontend = root / "frontend"
             frontend.mkdir()
-            (root / "VERSION").write_text("1.1.0-alpha.1\n")
-            (frontend / "package.json").write_text(json.dumps({"version": "1.1.0-alpha.1"}))
-            lock = {"version": "1.1.0-alpha.1", "packages": {"": {"version": "1.1.0-alpha.1"}}}
+            (root / "VERSION").write_text("0.1.0\n")
+            (frontend / "package.json").write_text(json.dumps({"version": "0.1.0"}))
+            lock = {"version": "0.1.0", "packages": {"": {"version": "0.1.0"}}}
             (frontend / "package-lock.json").write_text(json.dumps(lock))
             with patch.object(release_version, "ROOT", root), patch.object(
-                release_version.subprocess, "check_output", return_value="v1.0.4\n"
+                release_version.subprocess, "check_output", return_value=""
             ):
-                release_version.validate("1.1.0-alpha.1", True)
-                with patch.object(release_version.subprocess, "check_output", return_value="v1.1.0-alpha.1\n"):
+                release_version.validate("0.1.0", False)
+                with patch.object(release_version.subprocess, "check_output", return_value="p2o-v0.1.0\n"):
                     with self.assertRaisesRegex(ValueError, "newer than"):
-                        release_version.validate("1.1.0-alpha.1", True)
+                        release_version.validate("0.1.0", False)
                 with self.assertRaisesRegex(ValueError, "checkbox"):
-                    release_version.validate("1.1.0-alpha.1", False)
+                    release_version.validate("0.1.0-alpha.1", False)
 
 
 if __name__ == "__main__":

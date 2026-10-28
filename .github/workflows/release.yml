@@ -66,8 +66,16 @@ jobs:
 
       - name: Publish GitHub Release and tag
         run: |
-          flags=(--target "$GITHUB_SHA" --generate-notes --fail-on-no-commits)
+          flags=(--target "$GITHUB_SHA" --title "Prompt-to-Ontology $RELEASE_VERSION — Pet Food reference" --generate-notes --fail-on-no-commits)
+          previous=$(git tag --list 'p2o-v*' --sort=-version:refname | head -n 1)
+          if [[ -n "$previous" ]]; then
+            flags+=(--notes-start-tag "$previous")
+          else
+            flags+=(--notes-start-tag v1.0.4)
+          fi
           if [[ "$RELEASE_PRERELEASE" == "true" ]]; then
             flags+=(--prerelease --latest=false)
+          else
+            flags+=(--latest)
           fi
-          gh release create "v$RELEASE_VERSION" "${flags[@]}"
+          gh release create "p2o-v$RELEASE_VERSION" "${flags[@]}"
