@@ -40,10 +40,20 @@ test('regression UI runs all questions, reruns affected cases, and compares runs
 test('metric and action contracts answer concrete questions in the UI', async ({ page }) => {
   await page.goto('/schema');
   await page.getByRole('tab', { name: 'Metric definitions (1)' }).click();
-  await expect(page.getByRole('cell', { name: 'ProductCountBySpecies' })).toBeVisible();
+  await page.getByRole('row').filter({ hasText: 'ProductCountBySpecies' }).getByRole('button', { name: 'View details' }).click();
+  const metricDrawer = page.getByRole('dialog', { name: /ProductCountBySpecies/ });
+  await expect(metricDrawer).toContainText('target_species');
+  await metricDrawer.getByRole('button', { name: 'Edit draft' }).click();
+  await metricDrawer.getByRole('textbox', { name: /Unit/ }).fill('sample items');
+  await metricDrawer.getByRole('button', { name: 'Save draft' }).click();
+  await expect(metricDrawer).toContainText('sample items');
+  await metricDrawer.getByRole('button', { name: 'Discard draft' }).click();
+  await page.getByRole('button', { name: 'OK' }).click();
+  await expect(metricDrawer).toContainText('products');
+  await metricDrawer.getByRole('button', { name: 'Close' }).last().click();
   await page.getByRole('tab', { name: /Actions \(4\)/ }).click();
-  await page.getByRole('row').filter({ hasText: 'ExplainProductRisk' }).getByRole('button', { name: 'Expand row' }).click();
-  await expect(page.getByText('product_id: string *')).toBeVisible();
+  await page.getByRole('row').filter({ hasText: 'ExplainProductRisk' }).getByRole('button', { name: 'View details' }).click();
+  await expect(page.getByRole('dialog', { name: 'ExplainProductRisk' })).toContainText('product_id');
 
   await page.goto('/verified-qa');
   await page.getByRole('listitem', { name: '3' }).click();
