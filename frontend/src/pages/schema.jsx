@@ -6,7 +6,6 @@ import {
   AlertOutlined,
   ThunderboltOutlined,
   SafetyOutlined,
-  CodeOutlined,
   ReloadOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
@@ -45,7 +44,8 @@ const SEVERITY_COLORS = {
 export default function SchemaPage() {
   const { t, i18n } = useTranslation();
   const [searchParams] = useSearchParams();
-  const defaultTab = searchParams.get('tab') || 'objectTypes';
+  const requestedTab = searchParams.get('tab');
+  const defaultTab = ['objectTypes', 'linkTypes', 'rules', 'actions', 'metrics'].includes(requestedTab) ? requestedTab : 'objectTypes';
   const [schema, setSchema] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -226,24 +226,6 @@ export default function SchemaPage() {
         detailAction('metrics'),
       ]} />,
     }] : []),
-    {
-      key: 'json',
-      label: <span><CodeOutlined /> {t('schema.schemaJson')}</span>,
-      children: (
-        <pre style={{
-          background: token.colorFillSecondary,
-          border: `1px solid ${token.colorBorderSecondary}`,
-          borderRadius: 8,
-          padding: 16,
-          fontSize: 12,
-          lineHeight: 1.6,
-          overflow: 'auto',
-          maxHeight: 500,
-        }}>
-          {JSON.stringify(schema, null, 2)}
-        </pre>
-      ),
-    },
   ];
 
   return (

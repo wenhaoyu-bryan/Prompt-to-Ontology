@@ -203,6 +203,14 @@
 .trace-empty { padding: 36px 16px 40px; }
 .trace-empty .ant-empty-description { color: var(--pto-text-secondary); }
 
+.pipeline-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
 .pipeline-workflow {
   min-width: 0;
   scroll-margin-top: 68px;

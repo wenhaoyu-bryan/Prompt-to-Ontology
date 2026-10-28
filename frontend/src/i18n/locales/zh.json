@@ -254,8 +254,7 @@
     "objectTypeExplanation": "它代表什么，以及为什么被建模为对象",
     "linkTypeExplanation": "业务含义及其对推理的重要性",
     "ruleExplanation": "输入、逻辑、输出边和证据示例",
-    "required": "必填",
-    "schemaJson": "Schema JSON"
+    "required": "必填"
   },
   "agent": {
     "title": "智能体",
@@ -465,7 +464,6 @@
   "pipeline": {
     "title": "数据管道",
     "subtitle": "就绪数据工作台 — 在数据进入本体图谱之前，完成检查、映射、校验和预览。",
-    "intro": "这是「构建本体」路径的第一步。这里会对数据进行画像、字段映射、候选对象校验，并生成导入计划。它不会直接修改图谱。",
     "s1": "选择数据源",
     "s2": "数据画像",
     "s3": "本体映射",
@@ -527,6 +525,7 @@
     "goToReview": "前往审核队列",
     "journeyPipeline": "打开数据管道",
     "recentPlans": "最近导入计划",
+    "planHistory": "计划历史",
     "noPlans": "暂无导入计划。运行管道以创建。",
     "source": "数据源",
     "createdAt": "创建时间",
@@ -538,6 +537,7 @@
     "viewPlan": "查看",
     "submitShort": "提交",
     "buildScenarioTitle": "构建完整宠物食品本体",
+    "buildScenarioShort": "完整构建演示",
     "buildScenarioDesc": "从多张示例数据表开始，生成一个完整的、可审核的本体构建计划。",
     "buildScenarioCTA": "开始完整构建场景",
     "buildScenarioRecommended": "推荐在空白构建模式下使用",

@@ -254,8 +254,7 @@
     "objectTypeExplanation": "What it represents and why it is modeled as an object",
     "linkTypeExplanation": "Business meaning and why it matters for reasoning",
     "ruleExplanation": "Inputs, logic, output edge, and evidence example",
-    "required": "Required",
-    "schemaJson": "Schema JSON"
+    "required": "Required"
   },
   "agent": {
     "title": "Agent",
@@ -465,7 +464,6 @@
   "pipeline": {
     "title": "Data Pipeline",
     "subtitle": "Ready Data Workbench — inspect, map, validate, and preview data before it enters the ontology graph.",
-    "intro": "This is the first step of the Build Ontology path. It profiles data, maps fields to ontology types, validates candidates, and creates Import Plans. It does not directly mutate the graph.",
     "s1": "Select Source",
     "s2": "Profile Data",
     "s3": "Map to Ontology",
@@ -527,6 +525,7 @@
     "goToReview": "Go to Review Queue",
     "journeyPipeline": "Open Data Pipeline",
     "recentPlans": "Recent Import Plans",
+    "planHistory": "Plan history",
     "noPlans": "No import plans yet. Run the pipeline to create one.",
     "source": "Source",
     "createdAt": "Created At",
@@ -538,6 +537,7 @@
     "viewPlan": "View",
     "submitShort": "Submit",
     "buildScenarioTitle": "Build Full Pet Food Ontology",
+    "buildScenarioShort": "Full build demo",
     "buildScenarioDesc": "Start from multiple sample datasets and generate a complete reviewable ontology build plan.",
     "buildScenarioCTA": "Start Full Build Scenario",
     "buildScenarioRecommended": "Recommended for Clean Build Mode",
