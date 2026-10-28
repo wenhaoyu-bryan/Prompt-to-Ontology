@@ -34,8 +34,12 @@ class ReleaseVersionTests(unittest.TestCase):
             ):
                 release_version.validate("0.1.0", False)
                 with patch.object(release_version.subprocess, "check_output", return_value="v1.0.4\nv0.1.0\n"):
+                    release_version.validate("0.1.0", False, files_only=True)
                     with self.assertRaisesRegex(ValueError, "newer than"):
                         release_version.validate("0.1.0", False)
+                (frontend / "package.json").write_text(json.dumps({"version": "0.1.1"}))
+                with self.assertRaisesRegex(ValueError, "frontend/package.json"):
+                    release_version.validate("0.1.0", False, files_only=True)
                 with self.assertRaisesRegex(ValueError, "checkbox"):
                     release_version.validate("0.1.0-alpha.1", False)
 

@@ -46,9 +46,9 @@ def compare_versions(left, right):
     return (len(left_pre) > len(right_pre)) - (len(left_pre) < len(right_pre))
 
 
-def validate(version, prerelease):
+def validate(version, prerelease, files_only=False):
     target_core, identifiers = parse_version(version)
-    if bool(identifiers) != prerelease:
+    if not files_only and bool(identifiers) != prerelease:
         raise ValueError("Prerelease checkbox must match the version suffix (e.g. -alpha.1)")
 
     product_version = (ROOT / "VERSION").read_text().strip()
@@ -63,6 +63,10 @@ def validate(version, prerelease):
     for path, value in found.items():
         if value != version:
             raise ValueError(f"{path} contains {value!r}; expected {version!r}")
+
+    if files_only:
+        print(f"Version files agree on {version}")
+        return
 
     tags = subprocess.check_output(["git", "tag", "--list", f"{TAG_PREFIX}*"], cwd=ROOT, text=True).splitlines()
     existing = []
@@ -88,5 +92,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("version", help="SemVer without the v prefix")
     parser.add_argument("--prerelease", action="store_true")
+    parser.add_argument("--files-only", action="store_true", help="Check version files without requiring an unissued tag")
     args = parser.parse_args()
-    validate(args.version, args.prerelease)
+    validate(args.version, args.prerelease, files_only=args.files_only)
