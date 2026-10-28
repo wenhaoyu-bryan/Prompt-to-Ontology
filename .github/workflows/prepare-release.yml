@@ -8,7 +8,6 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: write
   contents: write
   pull-requests: write
 
@@ -42,7 +41,6 @@ jobs:
           else
             echo 'run=true' >> "$GITHUB_OUTPUT"
           fi
-
       - name: Plan the release from merged PR decisions
         if: steps.current.outputs.run == 'true'
         id: plan
@@ -126,10 +124,4 @@ jobs:
               --title "Prepare v$TARGET_VERSION release" --body-file /tmp/release-pr-body.md
           else
             gh pr edit "$pr_number" --repo "$GITHUB_REPOSITORY" --title "Prepare v$TARGET_VERSION release"
-          fi
-
-          # PRs created by GITHUB_TOKEN may require workflow approval. A separate
-          # workflow_dispatch run creates the required checks on this exact SHA.
-          if [[ "$new_sha" != "$previous_sha" ]]; then
-            gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$branch"
           fi
