@@ -63,7 +63,9 @@ test('JSON upload reaches the existing source and mapping workflow', async ({ pa
   });
   await expect(page.getByText('Profile Data — ci-products.json')).toBeVisible();
   await expect(page.getByText('2 rows × 2 columns', { exact: true })).toBeVisible();
-  await page.locator('button').filter({ hasText: 'Map to Ontology' }).click();
+  await page.getByRole('button', { name: /Map to Ontology/ }).first().click();
   await expect(page.getByText(/Source revision rev_/)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Generate Import Plan' })).toBeVisible();
+  await page.getByRole('button', { name: /Generate & preview candidates/ }).first().click();
+  await expect(page.getByText('Step 4 of 6').first()).toBeVisible();
+  await expect(page.getByText('Preview Candidates', { exact: true }).first()).toBeVisible();
 });
