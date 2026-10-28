@@ -8,6 +8,8 @@
 
 **项目状态：学习项目 · 可运行参考实现 · 单一 Pet Food 样例**
 
+当前版本线为 `0.x`。每个功能 PR 都需说明对发版的影响（无需发版、补丁或次版本）；版本文件统一更新后，只从通过 CI 的 `main` 创建 Tag。详见[版本决策与发版流程](docs/releasing.md)。
+
 ![Dashboard](media/dashboard.png)
 
 ## 项目定位

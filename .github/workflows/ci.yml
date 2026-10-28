@@ -51,6 +51,9 @@ jobs:
       - name: Check release version rules
         run: python scripts/test_release_version.py
 
+      - name: Check version files agree
+        run: python scripts/release_version.py "$(cat VERSION)" --files-only
+
   backend-integration:
     name: Neo4j integration checks
     runs-on: ubuntu-24.04
