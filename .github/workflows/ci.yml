@@ -171,8 +171,8 @@ jobs:
       - name: Start disposable demo stack
         run: docker compose up --build --wait -d
 
-      - name: Run baseline browser smoke tests
-        run: npx playwright test tests/smoke/routes.spec.js tests/smoke/responsive.spec.js --workers=1
+      - name: Run browser smoke tests
+        run: npm run test:smoke -- --workers=1
         working-directory: frontend
 
       - name: Show service logs on failure

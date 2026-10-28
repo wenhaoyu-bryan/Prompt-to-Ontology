@@ -25,6 +25,7 @@ class OntologyRegistry:
         self._constraints: dict | None = None
         self._rules: dict | None = None
         self._action_types: dict | None = None
+        self._metrics: dict | None = None
 
     # ---- 文件路径 ----
 
@@ -72,6 +73,11 @@ class OntologyRegistry:
             self._action_types = self._load_yaml("action_types")
         return self._action_types
 
+    def load_metrics(self) -> dict:
+        if self._metrics is None:
+            self._metrics = self._load_yaml("metrics")
+        return self._metrics
+
     # ---- 聚合查询 ----
 
     def get_schema(self) -> dict[str, Any]:
@@ -83,6 +89,7 @@ class OntologyRegistry:
             "constraints": self.load_constraints().get("constraints", {}),
             "rules": self.load_rules().get("rules", {}),
             "actionTypes": self.load_action_types().get("action_types", {}),
+            "metrics": self.load_metrics().get("metrics", {}),
         }
 
     def get_object_type(self, name: str) -> dict | None:

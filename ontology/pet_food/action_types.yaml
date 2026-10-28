@@ -1,24 +1,52 @@
 action_types:
-
   ExplainProductRisk:
-    description: "Explain risk rules triggered by a product and the reasons"
-    params:
-      - product_id
-
+    description: "Explain evaluated sample risk rules for a product"
+    applicable_object_type: PetFoodProduct
+    preconditions: ["product exists", "relevant rule facts are available"]
+    inputs:
+      - {name: product_id, type: string, required: true}
+    result_fields:
+      - {name: rule_results, type: list, required: true}
+      - {name: evidence, type: list, required: true}
+    executor: unconfigured
+    side_effect: read_only
+    approval_required: false
   RecommendAlternativeProduct:
-    description: "Recommend alternatives that avoid the same risks"
-    params:
-      - product_id
-      - species
-      - life_stage
-
+    description: "Propose sample alternatives that avoid the same evaluated risk"
+    applicable_object_type: PetFoodProduct
+    preconditions: ["product exists", "candidate products and rules are available"]
+    inputs:
+      - {name: product_id, type: string, required: true}
+      - {name: species, type: string, required: true}
+      - {name: life_stage, type: string, required: true}
+    result_fields:
+      - {name: candidates, type: list, required: true}
+      - {name: evidence, type: list, required: true}
+    executor: unconfigured
+    side_effect: read_only
+    approval_required: false
   CreateWatchlist:
-    description: "Add product to watchlist for ongoing risk tracking"
-    params:
-      - product_id
-      - reason
-
+    description: "Request addition of a product to an external watchlist; contract only in this demo"
+    applicable_object_type: PetFoodProduct
+    preconditions: ["product exists", "authorized external watchlist executor configured"]
+    inputs:
+      - {name: product_id, type: string, required: true}
+      - {name: reason, type: string, required: true}
+    result_fields:
+      - {name: watchlist_entry_id, type: string, required: true}
+      - {name: execution_status, type: string, required: true}
+    executor: external_unconfigured
+    side_effect: external_write
+    approval_required: true
   GenerateIngredientReport:
-    description: "Generate product ingredient analysis report"
-    params:
-      - product_id
+    description: "Generate a read-only ingredient analysis response"
+    applicable_object_type: PetFoodProduct
+    preconditions: ["product and ingredient relations are available"]
+    inputs:
+      - {name: product_id, type: string, required: true}
+    result_fields:
+      - {name: ingredients, type: list, required: true}
+      - {name: evidence, type: list, required: true}
+    executor: unconfigured
+    side_effect: read_only
+    approval_required: false

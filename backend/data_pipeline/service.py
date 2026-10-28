@@ -141,6 +141,19 @@ class PipelineService:
 
         return profile
 
+    def profile_structured_content(self, filename: str, content: str, fmt: str) -> DataSourceProfile:
+        """Register JSON/NDJSON revisions and reuse the CSV mapping/import path."""
+        from .profiler import parse_structured_rows
+        rows = parse_structured_rows(content, fmt)
+        profile = profile_rows(rows, filename)
+        profile.source_type = f"custom_{fmt}"
+        revision = self.source_catalog.register(filename, profile.source_type, content.encode("utf-8"), [c.name for c in profile.columns])
+        profile.source_asset_id = revision["asset_id"]
+        profile.source_revision_id = revision["revision_id"]
+        self._profiles[profile.source_id] = profile
+        self._rows[filename] = rows
+        return profile
+
     def get_profile(self, source_id: str) -> DataSourceProfile | None:
         return self._profiles.get(source_id)
 
@@ -291,9 +304,9 @@ class PipelineService:
             if f["mapping"] is not None
         ]
 
-        # Add source metadata for custom CSV uploads
-        if profile.source_type == "custom_csv":
-            plan.metadata["source_type"] = "custom_csv"
+        # Preserve the uploaded format through the same reviewable plan path.
+        if profile.source_type.startswith("custom_"):
+            plan.metadata["source_type"] = profile.source_type
             plan.metadata["filename"] = profile.source_name
             plan.metadata["uploaded_at"] = profile.created_at.isoformat() if profile.created_at else ""
 
@@ -462,7 +475,7 @@ class PipelineService:
             summary=summary,
             status=status,
             metadata={
-                "source_type": "custom_csv",
+                "source_type": profile.source_type,
                 "import_type": "relationship",
                 "filename": profile.source_name,
                 "link_type": link_type,

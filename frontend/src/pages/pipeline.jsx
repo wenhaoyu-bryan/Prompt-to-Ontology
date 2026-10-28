@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Card, Button, Space, Typography, Tag, Steps, Table, Alert, Row, Col, Statistic, message, Progress, Divider, Collapse, Radio, Upload, Select, Modal, theme } from 'antd';
+import { Card, Button, Space, Typography, Tag, Steps, Table, Alert, Row, Col, Statistic, message, Progress, Divider, Collapse, Radio, Upload, Select, Modal, Drawer, theme } from 'antd';
 import {
   DatabaseOutlined,
   FileSearchOutlined,
@@ -47,6 +47,8 @@ const TARGET_OBJECT_TYPES = ['PetFoodProduct', 'Ingredient', 'Brand', 'RiskRule'
 const SOURCE_TYPE_LABELS = {
   sample: 'pipeline.sourceTypeSample',
   custom_csv: 'pipeline.sourceTypeCustomCSV',
+  custom_json: 'pipeline.sourceTypeCustomJSON',
+  custom_ndjson: 'pipeline.sourceTypeCustomNDJSON',
   build_scenario: 'pipeline.sourceTypeBuildScenario',
 };
 
@@ -75,7 +77,10 @@ export default function PipelinePage() {
   const [importPlan, setImportPlan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [recentPlans, setRecentPlans] = useState([]);
+  const [recentPlansLoading, setRecentPlansLoading] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [buildPlan, setBuildPlan] = useState(null);
+  const [buildOpen, setBuildOpen] = useState(false);
   const [buildPlanLoading, setBuildPlanLoading] = useState(false);
   const [demoState, setDemoState] = useState(null);
   const [sourceMode, setSourceMode] = useState('sample');
@@ -94,14 +99,13 @@ export default function PipelinePage() {
   useEffect(() => {
     if (previousStepRef.current === step) return;
     previousStepRef.current = step;
-    workflowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    workflowRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     stepperRef.current?.querySelector('.ant-steps-item-process')?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   }, [step]);
 
-  // Auto-load samples, recent plans, and demo state on mount
+  // Load only data needed by the active import workflow on mount.
   useEffect(() => {
     loadSamples();
-    loadRecentPlans();
     api.get('/demo/state').then(r => setDemoState(r.data)).catch(err => console.warn('[Pipeline] failed to load demo state', err));
     api.get('/pipeline/link-types/pet_food').then(r => setLinkTypes(r.data.link_types || {})).catch(err => console.warn('[Pipeline] failed to load link types', err));
     api.get('/pipeline/mapping-targets').then(r => setMappingTargets(r.data || {})).catch(err => console.warn('[Pipeline] failed to load mapping targets', err));
@@ -115,10 +119,12 @@ export default function PipelinePage() {
   };
 
   const loadRecentPlans = async () => {
+    setRecentPlansLoading(true);
     try {
       const { data } = await api.get('/pipeline/import-plans');
       setRecentPlans(data.plans || []);
     } catch (err) { console.warn('[Pipeline] failed to load recent plans', err); setRecentPlans([]); }
+    finally { setRecentPlansLoading(false); }
   };
 
   const handleProfile = async () => {
@@ -143,7 +149,8 @@ export default function PipelinePage() {
     setLoading(true);
     try {
       const content = await file.text();
-      const { data } = await api.post('/pipeline/profile/csv', { filename: file.name, content });
+      const format = file.name.toLowerCase().endsWith('.ndjson') ? 'ndjson' : file.name.toLowerCase().endsWith('.json') ? 'json' : 'csv';
+      const { data } = await api.post(`/pipeline/profile/${format}`, { filename: file.name, content });
       setProfile(data);
       setMappings(null);
       setLineage(null);
@@ -298,7 +305,8 @@ export default function PipelinePage() {
       setMappingOverrides({});
       setImportPlan(data);
       setStep(5);
-      workflowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setHistoryOpen(false);
+      workflowRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     } catch { message.error(t('common.loadFailed')); }
   };
 
@@ -333,7 +341,7 @@ export default function PipelinePage() {
       dataIndex: 'plan_id',
       key: 'plan_id',
       width: 130,
-      render: v => <Text code style={{ fontSize: 12 }}>{v}</Text>,
+      render: v => <Text code style={{ fontSize: 12, whiteSpace: 'nowrap' }}>{v}</Text>,
     },
     {
       title: t('pipeline.source'),
@@ -342,10 +350,10 @@ export default function PipelinePage() {
       render: (_, r) => {
         const st = r.metadata?.source_type || r.source_profile?.source_type;
         const importType = r.metadata?.import_type;
-        let color = st === 'custom_csv' ? 'orange' : st === 'sample' ? 'blue' : 'default';
+        let color = st?.startsWith('custom_') ? 'orange' : st === 'sample' ? 'blue' : 'default';
         let label;
-        if (st === 'custom_csv' && importType === 'relationship') {
-          label = t('pipeline.sourceTypeRelCSV');
+        if (st?.startsWith('custom_') && importType === 'relationship') {
+          label = st === 'custom_csv' ? t('pipeline.sourceTypeRelCSV') : `${st.slice(7).toUpperCase()} ${t('pipeline.relationshipCSV')}`;
           color = 'purple';
         } else if (st === 'custom_csv') {
           label = t('pipeline.sourceTypeObjectCSV');
@@ -556,24 +564,24 @@ export default function PipelinePage() {
   const previousAvailableStep = Array.from({ length: step }, (_, i) => step - i - 1).find(canVisitStep);
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <div className="pipeline-page">
       {/* Header */}
-      <div>
-        <Title level={3} style={{ margin: 0 }}>{t('pipeline.title')}</Title>
-        <Text type="secondary">{t('pipeline.subtitle')}</Text>
+      <div className="pipeline-page-header">
+        <div>
+          <Title level={3} style={{ margin: 0 }}>{t('pipeline.title')}</Title>
+          <Text type="secondary">{t('pipeline.subtitle')}</Text>
+        </div>
+        <Space wrap>
+          <Button icon={<HistoryOutlined />} onClick={() => { setHistoryOpen(true); loadRecentPlans(); }}>
+            {t('pipeline.planHistory')}
+          </Button>
+          <Button icon={<ExperimentOutlined />} onClick={() => setBuildOpen(true)}>
+            {t('pipeline.buildScenarioShort')}
+          </Button>
+        </Space>
       </div>
 
-      {/* Intro card */}
-      <Alert
-        type="info"
-        showIcon
-        icon={<InfoCircleOutlined />}
-        message={t('pipeline.intro')}
-        style={{ fontSize: 12 }}
-      />
-
-      <div className="pipeline-workflow" ref={workflowRef}>
-        <div className="pipeline-stepper" ref={stepperRef}>
+      <div className="pipeline-stepper" ref={stepperRef}>
           <div className="pipeline-stepper-heading">
             <div className="pipeline-stepper-title">
               <Text type="secondary">{t('pipeline.stepCount', { current: step + 1, total: stepItems.length })}</Text>
@@ -583,7 +591,9 @@ export default function PipelinePage() {
           <div className="pipeline-stepper-scroll">
             <Steps current={step} items={stepItems.map((item, index) => ({ ...item, disabled: !canVisitStep(index) }))} size="small" responsive={false} onChange={i => { if (canVisitStep(i)) setStep(i); }} />
           </div>
-        </div>
+      </div>
+
+      <div className="pipeline-workflow" ref={workflowRef}>
 
       {/* ── Step 0: Select Source ─────────────────────────────────── */}
       {step === 0 && <Card title={<><DatabaseOutlined /> {t('pipeline.s1')}</>}>
@@ -649,7 +659,7 @@ export default function PipelinePage() {
               <Card size="small" style={{ background: `color-mix(in srgb, ${token.colorPrimary} 3%, transparent)` }}>
                 <div style={{ textAlign: 'center', padding: '12px 0' }}>
                   <Upload.Dragger
-                    accept=".csv"
+                    accept=".csv,.json,.ndjson"
                     showUploadList={false}
                     beforeUpload={handleCSVUpload}
                     style={{ padding: '16px 0' }}
@@ -922,27 +932,23 @@ export default function PipelinePage() {
         </div>
       </div>
 
-      {/* Build Full Scenario */}
+      <Drawer
+        title={<><RocketOutlined /> {t('pipeline.buildScenarioTitle')}</>}
+        open={buildOpen}
+        onClose={() => setBuildOpen(false)}
+        size="min(800px, 100vw)"
+      >
+      {/* Optional full ontology demo, separate from the six-step import flow. */}
       {!buildPlan && (
-        <Card
-          style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${token.colorPrimary} 4%, transparent) 0%, color-mix(in srgb, ${token.colorPrimary} 4%, transparent) 100%)`, border: `1px solid color-mix(in srgb, ${token.colorPrimary} 15%, transparent)` }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>
-                <RocketOutlined style={{ marginRight: 8, color: token.colorPrimary }} />
-                {t('pipeline.buildScenarioTitle')}
-              </div>
-              <Text type="secondary" style={{ fontSize: 13 }}>{t('pipeline.buildScenarioDesc')}</Text>
-              {demoState?.mode === 'clean' && (
-                <div style={{ marginTop: 4 }}><Tag color="blue">{t('pipeline.buildScenarioRecommended')}</Tag></div>
-              )}
-            </div>
+        <Space orientation="vertical" size={18} style={{ width: '100%' }}>
+          <Text type="secondary">{t('pipeline.buildScenarioDesc')}</Text>
+          {demoState?.mode === 'clean' && <Tag color="blue">{t('pipeline.buildScenarioRecommended')}</Tag>}
+          <div>
             <Button type="primary" icon={<ExperimentOutlined />} loading={buildPlanLoading} onClick={handleCreateBuildPlan}>
               {t('pipeline.buildScenarioCTA')}
             </Button>
           </div>
-        </Card>
+        </Space>
       )}
 
       {/* Build Plan Preview */}
@@ -963,12 +969,12 @@ export default function PipelinePage() {
         >
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             {/* Summary */}
-            <Row gutter={16}>
-              <Col span={4}><Statistic title={t('pipeline.source')} value={buildPlan.summary?.sources || 0} prefix={<DatabaseOutlined />} /></Col>
-              <Col span={5}><Statistic title={t('pipeline.candidateObjects')} value={buildPlan.summary?.total_candidate_objects || 0} /></Col>
-              <Col span={5}><Statistic title={t('pipeline.candidateLinks')} value={buildPlan.summary?.total_candidate_links || 0} /></Col>
-              <Col span={5}><Statistic title={t('pipeline.valErrors')} value={buildPlan.summary?.total_validation_errors || 0} valueStyle={{ color: (buildPlan.summary?.total_validation_errors || 0) > 0 ? token.colorError : undefined }} /></Col>
-              <Col span={5}><Statistic title={t('pipeline.valWarnings')} value={buildPlan.summary?.total_validation_warnings || 0} /></Col>
+            <Row gutter={[16, 16]}>
+              <Col xs={12} md={8}><Statistic title={t('pipeline.source')} value={buildPlan.summary?.sources || 0} prefix={<DatabaseOutlined />} /></Col>
+              <Col xs={12} md={8}><Statistic title={t('pipeline.candidateObjects')} value={buildPlan.summary?.total_candidate_objects || 0} /></Col>
+              <Col xs={12} md={8}><Statistic title={t('pipeline.candidateLinks')} value={buildPlan.summary?.total_candidate_links || 0} /></Col>
+              <Col xs={12} md={8}><Statistic title={t('pipeline.valErrors')} value={buildPlan.summary?.total_validation_errors || 0} valueStyle={{ color: (buildPlan.summary?.total_validation_errors || 0) > 0 ? token.colorError : undefined }} /></Col>
+              <Col xs={12} md={8}><Statistic title={t('pipeline.valWarnings')} value={buildPlan.summary?.total_validation_warnings || 0} /></Col>
             </Row>
 
             {/* Validation */}
@@ -1012,25 +1018,30 @@ export default function PipelinePage() {
           </Space>
         </Card>
       )}
+      </Drawer>
 
-      {/* ── Recent Import Plans ───────────────────────────────────── */}
-      <Card
+      {/* Previous plans remain available when needed, without extending the active flow. */}
+      <Drawer
         title={<><HistoryOutlined /> {t('pipeline.recentPlans')}</>}
-        size="small"
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        size="min(1040px, 100vw)"
+        extra={<Button icon={<ReloadOutlined />} onClick={loadRecentPlans}>{t('common.refresh')}</Button>}
       >
-        {recentPlans.length > 0 ? (
+        {recentPlansLoading || recentPlans.length > 0 ? (
           <Table
             dataSource={recentPlans}
             columns={recentPlanColumns}
             rowKey="plan_id"
             size="small"
-            scroll={{ x: 1000 }}
+            loading={recentPlansLoading}
+            scroll={{ x: 1060 }}
             pagination={{ pageSize: 10, showSizeChanger: false }}
           />
         ) : (
           <Text type="secondary">{t('pipeline.noPlans')}</Text>
         )}
-      </Card>
-    </Space>
+      </Drawer>
+    </div>
   );
 }

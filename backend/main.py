@@ -13,7 +13,7 @@ load_dotenv()
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from database import init_db
 from neo4j_connector import get_driver
 from ontology import (
@@ -29,6 +29,7 @@ from ontology import (
 from agent import run_agent, execute_action
 from legacy_data_pipeline import DataValidator, import_objects, parse_csv, normalize_field_names
 from ontology_registry import OntologyRegistry
+from schema_drafts import delete_schema_draft, load_schema_drafts, save_schema_draft, validate_schema_draft
 from domain_config import list_domains, get_domain_config, get_default_domain
 
 app = FastAPI(
@@ -842,11 +843,43 @@ def api_ontology_domain_schema(domain: str):
         except Exception:
             pass  # Kernel is optional — don't break existing behavior
 
+        schema_data["drafts"] = load_schema_drafts(domain)
         return schema_data
     except FileNotFoundError as e:
         raise HTTPException(404, str(e))
     except Exception as e:
         raise HTTPException(500, f"Failed to load ontology for domain '{domain}': {e}")
+
+
+class SchemaDraftRequest(BaseModel):
+    definition: dict
+
+
+def _editable_schema(domain: str) -> dict:
+    if domain != "pet_food":
+        raise HTTPException(404, "Only the Pet Food reference schema supports local drafts")
+    return OntologyRegistry(domain=domain).get_schema()
+
+
+@app.put("/api/ontology/{domain}/drafts/{category}/{name}")
+def api_save_schema_draft(domain: str, category: str, name: str, request: SchemaDraftRequest):
+    """Save a local definition draft without changing checked-in YAML or graph data."""
+    schema = _editable_schema(domain)
+    try:
+        validate_schema_draft(schema, category, name, request.definition)
+    except (ValueError, ValidationError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+    save_schema_draft(domain, category, name, request.definition)
+    return {"status": "draft", "category": category, "name": name, "definition": request.definition}
+
+
+@app.delete("/api/ontology/{domain}/drafts/{category}/{name}")
+def api_delete_schema_draft(domain: str, category: str, name: str):
+    schema = _editable_schema(domain)
+    if category not in {"objectTypes", "linkTypes", "rules", "actionTypes", "metrics"} or name not in schema[category]:
+        raise HTTPException(404, "Unknown ontology definition")
+    delete_schema_draft(domain, category, name)
+    return {"status": "discarded", "category": category, "name": name}
 
 
 @app.get("/api/ontology/violations")
@@ -1183,6 +1216,67 @@ def api_pet_food_agent_chat(req: PetFoodChatRequest):
 
 # ── Data Pipeline API ───────────────────────────────────────────────────
 
+from pathlib import Path as _Path
+from verified_qa import VerifiedQAService
+from verified_qa.evaluation import VerifiedEvaluator
+
+verified_qa_service = VerifiedQAService(_Path(__file__).resolve().parent.parent)
+verified_evaluator = VerifiedEvaluator(_Path(__file__).resolve().parent.parent, _Path(__file__).resolve().parent / ".runtime/verified-evaluations.json")
+
+
+@app.get("/api/verified-qa/questions")
+def api_verified_questions():
+    """Public bounded question catalog; reference answers are never returned."""
+    return {"version": verified_qa_service.catalog_version, "questions": verified_qa_service.questions()}
+
+
+@app.post("/api/verified-qa/answer")
+def api_verified_answer(body: dict):
+    """Read-only deterministic answer over the current Pet Food sample files."""
+    question_id = body.get("question_id", "")
+    try:
+        return verified_qa_service.answer(question_id).model_dump(mode="json")
+    except ValueError as exc:
+        raise HTTPException(404, str(exc))
+
+
+@app.post("/api/verified-qa/evaluations")
+def api_run_verified_evaluation(body: dict):
+    try:
+        return verified_evaluator.run(body.get("changed_assets"))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
+@app.get("/api/verified-qa/evaluations")
+def api_list_verified_evaluations():
+    return {"runs": verified_evaluator.list_runs()}
+
+
+@app.get("/api/verified-qa/evaluations/compare")
+def api_compare_verified_evaluations(before: str, after: str):
+    try:
+        return verified_evaluator.compare(before, after)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc))
+
+
+@app.get("/api/verified-qa/evaluations/{run_id}")
+def api_get_verified_evaluation(run_id: str):
+    try:
+        return verified_evaluator.get(run_id)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc))
+
+
+@app.post("/api/verified-qa/feedback")
+def api_verified_feedback(body: dict):
+    try:
+        return verified_evaluator.propose_question(body.get("question", ""), body.get("reason", ""))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
 # Phase 28 uses in-memory storage. Future phases can persist pipeline runs.
 from data_pipeline import PipelineService
 pipeline_service = PipelineService()
@@ -1226,6 +1320,19 @@ def api_pipeline_profile_csv(body: dict):
         return profile.model_dump()
     except Exception as e:
         raise HTTPException(400, f"Failed to profile CSV: {e}")
+
+
+@app.post("/api/pipeline/profile/{fmt}")
+def api_pipeline_profile_structured(fmt: str, body: dict):
+    if fmt not in {"json", "ndjson"}:
+        raise HTTPException(404, "Unsupported format")
+    content = body.get("content", "")
+    if not content:
+        raise HTTPException(400, "content is required")
+    try:
+        return pipeline_service.profile_structured_content(body.get("filename", f"upload.{fmt}"), content, fmt).model_dump()
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
 
 @app.get("/api/pipeline/profile/{source_id}")
 def api_pipeline_get_profile(source_id: str):

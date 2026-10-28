@@ -39,9 +39,10 @@ def _schema_dict(schema: OntologySchema) -> dict:
             for k, v in sorted(schema.rules.items())
         },
         "actions": {
-            k: {"name": v.name}
+            k: v.model_dump(mode="json")
             for k, v in sorted(schema.actions.items())
         },
+        "metrics": {k: v.model_dump(mode="json") for k, v in sorted(schema.metrics.items())},
         "constraints": {
             k: {
                 "name": v.name,

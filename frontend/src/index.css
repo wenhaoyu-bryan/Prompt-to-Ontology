@@ -25,6 +25,36 @@
   --pto-scrollbar: #50627a;
 }
 
+/* Ontology Manager: the same affordance on every asset row and detail drawer. */
+.schema-asset-row {
+  cursor: pointer;
+}
+
+.schema-asset-row:hover > td {
+  background: var(--pto-hover) !important;
+}
+
+.schema-detail-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.schema-detail-json {
+  margin: 0;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.schema-detail-json-input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
 .app-sider .ant-layout-sider-children {
   height: 100%;
   min-height: 0;
@@ -173,15 +203,36 @@
 .trace-empty { padding: 36px 16px 40px; }
 .trace-empty .ant-empty-description { color: var(--pto-text-secondary); }
 
+.pipeline-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: calc(100dvh - 104px);
+  min-height: 0;
+}
+
+.pipeline-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  flex: none;
+}
+
 .pipeline-workflow {
+  flex: 1;
   min-width: 0;
-  scroll-margin-top: 68px;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0 2px 2px;
+  scrollbar-gutter: stable;
 }
 
 .pipeline-stepper {
-  position: sticky;
-  top: 56px;
-  z-index: 8;
+  flex: none;
+  min-width: 0;
   padding: 14px 18px 16px;
   border: 1px solid var(--pto-border);
   border-radius: 12px;
@@ -210,7 +261,6 @@
 
 .pipeline-workflow > .ant-card {
   min-height: 330px;
-  margin-top: 16px;
   border-bottom: 0;
   border-radius: 12px 12px 0 0;
 }
@@ -233,6 +283,14 @@
 }
 
 .pipeline-step-footer-hint { margin-inline: auto; text-align: center; }
+
+@media (min-width: 768px) and (max-width: 991px) {
+  .pipeline-page { height: calc(100dvh - 88px); }
+}
+
+@media (max-width: 767px) {
+  .pipeline-page { height: calc(100dvh - 80px); }
+}
 
 @media (max-width: 520px) {
   .theme-mode-options { gap: 8px; }

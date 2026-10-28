@@ -21,9 +21,13 @@ Ready Data → Data Pipeline → Import Plan → Review Queue → Graph Write
 
 Profiles CSV/sample data, maps fields to ontology object types and properties, generates candidate objects and links, validates against schema, and produces an Import Plan. Does NOT write to the graph.
 
+The page keeps the six-step workflow in focus. Previous Import Plans and the optional full-build demo are available from the header in on-demand drawers. A previous plan can be reopened at the Import Plan step. These are generated plans, not uploaded-file storage.
+
 ### 2. Ontology Manager (Schema)
 
-Defines the ontology structure: object types, properties, link types, rules, constraints, actions, and schema versioning. This is the schema layer that all data must conform to.
+Shows the checked-in Pet Food object types, properties, link types, rules, actions, and metrics. Constraints remain defined in YAML. Object types, relationship types, rules, actions, and metrics share a list-to-detail drawer interaction. Editing an existing definition saves a persistent local draft under the backend runtime directory. Drafts can be reviewed or discarded from the drawer; they do not change the checked-in YAML, runtime graph, schema hash, or Verified Questions evaluation. To change the active schema, update the YAML in a code change and run the relevant checks.
+
+The raw schema JSON remains available through `GET /api/ontology/pet_food/schema` for developer inspection. It is a read-only API representation, not an editing surface in Ontology Manager.
 
 ### 3. Review Queue
 
