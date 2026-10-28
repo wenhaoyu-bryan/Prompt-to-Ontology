@@ -99,7 +99,7 @@ export default function PipelinePage() {
   useEffect(() => {
     if (previousStepRef.current === step) return;
     previousStepRef.current = step;
-    workflowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    workflowRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     stepperRef.current?.querySelector('.ant-steps-item-process')?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   }, [step]);
 
@@ -306,7 +306,7 @@ export default function PipelinePage() {
       setImportPlan(data);
       setStep(5);
       setHistoryOpen(false);
-      workflowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      workflowRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     } catch { message.error(t('common.loadFailed')); }
   };
 
@@ -564,7 +564,7 @@ export default function PipelinePage() {
   const previousAvailableStep = Array.from({ length: step }, (_, i) => step - i - 1).find(canVisitStep);
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <div className="pipeline-page">
       {/* Header */}
       <div className="pipeline-page-header">
         <div>
@@ -581,8 +581,7 @@ export default function PipelinePage() {
         </Space>
       </div>
 
-      <div className="pipeline-workflow" ref={workflowRef}>
-        <div className="pipeline-stepper" ref={stepperRef}>
+      <div className="pipeline-stepper" ref={stepperRef}>
           <div className="pipeline-stepper-heading">
             <div className="pipeline-stepper-title">
               <Text type="secondary">{t('pipeline.stepCount', { current: step + 1, total: stepItems.length })}</Text>
@@ -592,7 +591,9 @@ export default function PipelinePage() {
           <div className="pipeline-stepper-scroll">
             <Steps current={step} items={stepItems.map((item, index) => ({ ...item, disabled: !canVisitStep(index) }))} size="small" responsive={false} onChange={i => { if (canVisitStep(i)) setStep(i); }} />
           </div>
-        </div>
+      </div>
+
+      <div className="pipeline-workflow" ref={workflowRef}>
 
       {/* ── Step 0: Select Source ─────────────────────────────────── */}
       {step === 0 && <Card title={<><DatabaseOutlined /> {t('pipeline.s1')}</>}>
@@ -1041,6 +1042,6 @@ export default function PipelinePage() {
           <Text type="secondary">{t('pipeline.noPlans')}</Text>
         )}
       </Drawer>
-    </Space>
+    </div>
   );
 }

@@ -49,3 +49,28 @@ test.describe('Responsive Smoke (390 × 844)', () => {
     });
   }
 });
+
+for (const viewport of [{ width: 1280, height: 800 }, MOBILE_VIEWPORT]) {
+  test(`pipeline keeps its heading and stepper visible while content scrolls at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto('/pipeline');
+    await page.locator('.pipeline-source-card').filter({ hasText: 'pet_food_products' }).click();
+    await page.locator('.pipeline-step-footer button').last().click();
+    await expect(page.getByText('Column Profiles')).toBeVisible();
+
+    const header = page.locator('.pipeline-page-header');
+    const stepper = page.locator('.pipeline-stepper');
+    const workflow = page.locator('.pipeline-workflow');
+    const before = await Promise.all([header.boundingBox(), stepper.boundingBox()]);
+
+    await workflow.evaluate(element => { element.scrollTop = element.scrollHeight; });
+    await expect.poll(() => workflow.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+
+    const after = await Promise.all([header.boundingBox(), stepper.boundingBox()]);
+    expect(after[0]?.y).toBeCloseTo(before[0]?.y ?? 0, 0);
+    expect(after[1]?.y).toBeCloseTo(before[1]?.y ?? 0, 0);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    await expect(header.getByText('Data Pipeline')).toBeVisible();
+    await expect(stepper.getByText('Profile Data', { exact: true }).first()).toBeVisible();
+  });
+}
