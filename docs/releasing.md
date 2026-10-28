@@ -7,6 +7,7 @@ GitHub Releases are versioned snapshots of this repository's runnable Pet Food r
 - Use `vMAJOR.MINOR.PATCH` Git tags. The `VERSION` file, `frontend/package.json`, and both root version fields in `frontend/package-lock.json` must contain the same version **without** `v`. The frontend settings screen and FastAPI OpenAPI metadata read those values.
 - From the next release onward, use SemVer: `MAJOR` for incompatible changes to documented user-facing contracts, `MINOR` for backward-compatible features, and `PATCH` for compatible fixes or documentation changes. A version such as `1.1.0-alpha.1` is a prerelease and should use the workflow's prerelease checkbox. Build metadata (`+...`) is deliberately not used in release tags.
 - Do not rewrite or move an existing tag. Fixes receive a new version. The release workflow requires a version newer than every existing SemVer tag and refuses a reused tag.
+- The repository's active **Protect version release tags** ruleset blocks updates and deletions of `v*` tags. It leaves creation available to the manual release workflow.
 - The `v1.0.0`–`v1.0.4` tags were created before this policy. `v1.0.4` is a valid historical release, but its `1.x` number should not be read as proof of a stable public API or production support. Keep those links and tags intact. The next feature-bearing Pet Food snapshot should be a **prerelease** (for example `v1.1.0-alpha.1`) until its documented contracts and end-to-end demo are reviewed. Do not use `v1.0.5` for new features.
 
 ## Prepare a release
