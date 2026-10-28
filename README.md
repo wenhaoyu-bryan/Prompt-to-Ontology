@@ -335,9 +335,9 @@ sample-data/           Demo CSV data
 
 Backend: run module checks from `backend/` with `python scripts/test_<module>.py`. Run the focused unit tests from the repository root with `PYTHONPATH=backend python -m unittest discover -s backend/tests`.
 
-Frontend: `npm run test:smoke` (Playwright route smoke tests).
+Frontend: `npm run test:smoke -- --workers=1` (Playwright route, responsive, and Pet Food workflow checks). Start the local Docker Compose stack first.
 
-GitHub Actions runs backend module checks, runs Neo4j integration checks against an ephemeral Neo4j 5 service, and builds the frontend on pushes to `main` and pull requests. The Playwright route smoke tests remain available for local runs.
+GitHub Actions runs backend unit/module checks, Neo4j integration checks, a frontend build, and Playwright UI smoke tests on pull requests and pushes to `main`. The browser job starts a disposable Docker Compose stack. This is CI only: it does not deploy the project. Repository branch protection must separately mark these checks as required to block a failing PR from merging.
 
 ---
 

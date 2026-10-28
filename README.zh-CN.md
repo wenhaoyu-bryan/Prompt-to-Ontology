@@ -89,7 +89,7 @@ Verified Questions 当前读取仓库中的 Pet Food CSV/YAML 样例文件，不
 PYTHONPATH=backend python -m unittest discover -s backend/tests
 ```
 
-在 `backend/` 运行已有 `python scripts/test_<module>.py` 模块检查；前端在 `frontend/` 运行 `npm run build`，本地可运行 `npm run test:smoke`。GitHub Actions 在 PR 中运行后端模块检查、Neo4j 集成检查与前端构建；Playwright smoke tests 尚未纳入 CI。
+在 `backend/` 运行已有 `python scripts/test_<module>.py` 模块检查；前端在 `frontend/` 运行 `npm run build`。启动本地 Docker Compose 服务后，可运行 `npm run test:smoke -- --workers=1`。GitHub Actions 在 PR 和 `main` 推送时运行后端单测及模块检查、Neo4j 集成检查、前端构建与 Playwright UI 点击测试。它目前只做 CI，不自动部署。若要阻止测试失败的 PR 合并，还需在 GitHub 为目标分支设置必过检查。
 
 ## 许可
 

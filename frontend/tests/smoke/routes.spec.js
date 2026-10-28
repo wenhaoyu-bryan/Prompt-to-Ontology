@@ -15,11 +15,12 @@ const ROUTES = [
   { path: '/pipeline',           titleKey: null,            fallback: 'Data Pipeline' },
   { path: '/schema',             titleKey: null,            fallback: 'Ontology Manager' },
   { path: '/review',             titleKey: null,            fallback: 'Review Queue' },
-  { path: '/objects',            titleKey: null,            fallback: 'Object Explorer' },
+  { path: '/objects',            titleKey: null,            fallback: 'Objects' },
   { path: '/graph',              titleKey: null,            fallback: 'Graph Explorer' },
   { path: '/rule-studio',        titleKey: null,            fallback: 'Rule Studio' },
   { path: '/agent',              titleKey: null,            fallback: 'Agent' },
   { path: '/agent-traces',       titleKey: null,            fallback: 'Agent Traces' },
+  { path: '/verified-qa',        titleKey: null,            fallback: 'Verified Questions' },
   { path: '/graph-governance',   titleKey: null,            fallback: 'Graph Governance' },
   { path: '/settings',           titleKey: null,            fallback: 'Settings' },
 ];
@@ -40,7 +41,7 @@ test.describe('Route Smoke Tests', () => {
       const errors = [];
       page.on('pageerror', (err) => errors.push(err.message));
 
-      const response = await page.goto(route.path, { waitUntil: 'networkidle', timeout: 20000 });
+      const response = await page.goto(route.path, { waitUntil: 'domcontentloaded', timeout: 20000 });
 
       // No HTTP error
       expect(response?.status()).toBeLessThan(500);
@@ -48,13 +49,10 @@ test.describe('Route Smoke Tests', () => {
       // No uncaught page errors
       expect(errors.filter(e => !e.includes('ResizeObserver'))).toEqual([]);
 
-      // Not a blank page
-      const body = await page.textContent('body');
-      expect(body?.length).toBeGreaterThan(10);
-
-      // Title or key text visible (use fallback since i18n may not be loaded)
-      const visible = await page.textContent('body');
-      expect(visible).toContain(route.fallback);
+      // Check the route content rather than a matching sidebar label.
+      const main = page.locator('main');
+      await expect(main).toBeVisible();
+      await expect(main).toContainText(route.fallback);
     });
   }
 });

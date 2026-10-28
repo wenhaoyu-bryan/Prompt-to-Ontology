@@ -1,0 +1,69 @@
+// @ts-check
+import { test, expect } from '@playwright/test';
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('pto-auth', JSON.stringify({ username: 'demo', name: 'Demo User' }));
+  });
+});
+
+test('verified answers expose evidence and abstain when a source field is absent', async ({ page }) => {
+  await page.goto('/verified-qa');
+  await expect(page.getByText('Question catalog')).toBeVisible();
+
+  await page.getByRole('row').filter({ hasText: 'Q03' }).getByRole('button', { name: 'Run read-only' }).click();
+  await expect(page.getByTestId('verified-answer')).toContainText('ING001 is first');
+  await page.getByRole('button', { name: 'View source' }).first().click();
+  await expect(page.getByRole('dialog', { name: 'Source record' })).toContainText('product_ingredients.csv');
+  await page.getByRole('dialog', { name: 'Source record' }).getByRole('button', { name: 'Close' }).click();
+
+  await page.getByRole('row').filter({ hasText: 'Q06' }).getByRole('button', { name: 'Run read-only' }).click();
+  await expect(page.getByTestId('verified-answer')).toContainText('source_field_missing');
+  await expect(page.getByTestId('verified-answer')).toContainText('Cannot confirm');
+});
+
+test('regression UI runs all questions, reruns affected cases, and compares runs', async ({ page }) => {
+  await page.goto('/verified-qa');
+  await page.getByRole('button', { name: 'Run all 22 questions' }).click();
+  await expect(page.getByText('conclusion: 22/22')).toBeVisible();
+  await expect(page.getByText('evidence: 22/22')).toBeVisible();
+  await expect(page.getByText('path: 22/22')).toBeVisible();
+  await expect(page.getByText('abstention: 22/22')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Rerun affected questions' }).click();
+  await expect(page.getByText('conclusion: 1/1')).toBeVisible();
+  await page.getByRole('button', { name: 'Compare latest two runs' }).click();
+  await expect(page.getByText('Per-question before / after')).toBeVisible();
+  await expect(page.getByRole('row').filter({ hasText: 'Q01' }).last()).toContainText('no');
+});
+
+test('metric and action contracts answer concrete questions in the UI', async ({ page }) => {
+  await page.goto('/schema');
+  await page.getByRole('tab', { name: 'Metric definitions (1)' }).click();
+  await expect(page.getByRole('cell', { name: 'ProductCountBySpecies' })).toBeVisible();
+  await page.getByRole('tab', { name: /Actions \(4\)/ }).click();
+  await page.getByRole('row').filter({ hasText: 'ExplainProductRisk' }).getByRole('button', { name: 'Expand row' }).click();
+  await expect(page.getByText('product_id: string *')).toBeVisible();
+
+  await page.goto('/verified-qa');
+  await page.getByRole('listitem', { name: '3' }).click();
+  await page.getByRole('row').filter({ hasText: 'Q21' }).getByRole('button', { name: 'Run read-only' }).click();
+  await expect(page.getByTestId('verified-answer')).toContainText('7 products');
+  await page.getByRole('row').filter({ hasText: 'Q22' }).getByRole('button', { name: 'Run read-only' }).click();
+  await expect(page.getByTestId('verified-answer')).toContainText('requires product_id');
+});
+
+test('JSON upload reaches the existing source and mapping workflow', async ({ page }) => {
+  await page.goto('/pipeline');
+  await page.getByText('Upload Custom Data').click();
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'ci-products.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from('[{"product_id":"CI001","fat_100g":21},{"product_id":"CI002","fat_100g":16}]'),
+  });
+  await expect(page.getByText('Profile Data — ci-products.json')).toBeVisible();
+  await expect(page.getByText('2 rows × 2 columns', { exact: true })).toBeVisible();
+  await page.locator('button').filter({ hasText: 'Map to Ontology' }).click();
+  await expect(page.getByText(/Source revision rev_/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Generate Import Plan' })).toBeVisible();
+});

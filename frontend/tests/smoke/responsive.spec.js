@@ -32,7 +32,8 @@ test.describe('Responsive Smoke (390 × 844)', () => {
       const errors = [];
       page.on('pageerror', (err) => errors.push(err.message));
 
-      await page.goto(route, { waitUntil: 'networkidle', timeout: 20000 });
+      await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 20000 });
+      await expect(page.locator('main')).toBeVisible();
 
       // No uncaught errors
       expect(errors.filter(e => !e.includes('ResizeObserver'))).toEqual([]);
