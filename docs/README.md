@@ -9,6 +9,7 @@
 | [Demo Script](demo-script.md) | Detailed demo walkthrough |
 | [PRD](PRD.md) | Product requirements document |
 | [Release Notes](release-notes.md) | Version history |
+| [Release Process](releasing.md) | Version policy and tag/Release publishing steps |
 
 ## Runtime & Governance
 
