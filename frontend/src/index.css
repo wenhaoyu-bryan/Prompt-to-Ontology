@@ -208,9 +208,11 @@
 .pipeline-stepper-scroll { overflow-x: auto; overflow-y: hidden; padding-bottom: 2px; }
 .pipeline-stepper-scroll .ant-steps { min-width: 790px; }
 
-.pipeline-step-card {
+.pipeline-workflow > .ant-card {
   min-height: 330px;
   margin-top: 16px;
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
 }
 
 .pipeline-source-col { display: flex; }
@@ -225,9 +227,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 14px 18px;
-  margin-top: 12px;
   border: 1px solid var(--pto-border);
-  border-radius: 10px;
+  border-radius: 0 0 12px 12px;
   background: var(--pto-card-bg);
 }
 
@@ -238,8 +239,6 @@
   .theme-mode-preview { height: 72px; }
   .theme-mode-preview-content { padding: 9px; }
   .pipeline-stepper { padding: 10px 12px 12px; }
-  .pipeline-stepper-heading { flex-wrap: wrap; }
-  .pipeline-stepper-heading > .ant-space { width: 100%; justify-content: space-between; }
   .pipeline-stepper-scroll .ant-steps { min-width: 700px; }
   .pipeline-step-footer { flex-wrap: wrap; padding: 12px; }
   .pipeline-step-footer-hint { display: none; }
