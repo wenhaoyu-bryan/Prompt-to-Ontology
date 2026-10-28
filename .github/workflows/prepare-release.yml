@@ -1,0 +1,135 @@
+name: Prepare Release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: prepare-product-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Propose the next version from merged PRs
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - name: Check out the tested main commit and tags
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+          fetch-depth: 0
+
+      - name: Require the current main commit
+        id: current
+        run: |
+          main_sha=$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.commit.sha')
+          if [[ "$RELEASE_SHA" != "$main_sha" ]]; then
+            echo "Main advanced; its newer CI run will prepare the release."
+            echo 'run=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'run=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Plan the release from merged PR decisions
+        if: steps.current.outputs.run == 'true'
+        id: plan
+        run: |
+          current=$(cat VERSION)
+          if ! git rev-parse -q --verify "refs/tags/v$current" >/dev/null; then
+            echo "VERSION $current has no tag yet; wait for the release workflow."
+            echo 'needed=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git rev-list "v$current..$RELEASE_SHA" > /tmp/release-commits.txt
+          gh pr list --repo "$GITHUB_REPOSITORY" --state merged --base main --limit 1000 \
+            --json number,body,mergeCommit > /tmp/merged-prs.json
+          python scripts/release_automation.py plan --current "$current" \
+            --prs /tmp/merged-prs.json --commits /tmp/release-commits.txt > /tmp/release-plan.json
+          cat /tmp/release-plan.json
+          target=$(jq -r '.version' /tmp/release-plan.json)
+          if [[ "$target" == "$current" ]]; then
+            echo 'No release-impacting merged PRs since the latest tag.'
+            echo 'needed=false' >> "$GITHUB_OUTPUT"
+          else
+            echo "version=$target" >> "$GITHUB_OUTPUT"
+            echo 'needed=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node for synchronized package versions
+        if: steps.plan.outputs.needed == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+
+      - name: Create or update the protected release PR
+        if: steps.plan.outputs.needed == 'true'
+        env:
+          TARGET_VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          branch=codex/release-next
+          git fetch origin main:refs/remotes/origin/main
+          previous_sha=$(git ls-remote --heads origin "$branch" | cut -f1)
+          if [[ -n "$previous_sha" ]]; then
+            git fetch origin "refs/heads/$branch:refs/remotes/origin/$branch"
+            git switch -c "$branch" --track "origin/$branch"
+            git merge --no-edit origin/main
+          else
+            git switch -c "$branch" origin/main
+          fi
+
+          if [[ "$(cat VERSION)" != "$TARGET_VERSION" ]]; then
+            printf '%s\n' "$TARGET_VERSION" > VERSION
+            npm version "$TARGET_VERSION" --no-git-tag-version --prefix frontend
+          fi
+          python scripts/release_version.py "$TARGET_VERSION" --files-only
+          git add VERSION frontend/package.json frontend/package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: prepare v$TARGET_VERSION release"
+          fi
+          new_sha=$(git rev-parse HEAD)
+          if [[ "$new_sha" != "$previous_sha" ]]; then
+            git push origin "HEAD:refs/heads/$branch"
+          fi
+
+          pr_number=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$branch" --state open --json number --jq '.[0].number // empty')
+          if [[ -z "$pr_number" ]]; then
+            cat > /tmp/release-pr-body.md <<'EOF'
+          ## Release preparation
+
+          Update the repository, frontend package, and lockfile versions together.
+          The highest release impact from merged PRs since the current tag determines this version. Review the included changes and generated release notes before merging.
+
+          After this PR passes the four required checks and is merged, a successful `main` CI run will publish the Git tag and GitHub Release automatically.
+
+          ## Release impact
+
+          - [x] None — version metadata only.
+          - [ ] Patch
+          - [ ] Minor
+          EOF
+            gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
+              --title "Prepare v$TARGET_VERSION release" --body-file /tmp/release-pr-body.md
+          else
+            gh pr edit "$pr_number" --repo "$GITHUB_REPOSITORY" --title "Prepare v$TARGET_VERSION release"
+          fi
+
+          # PRs created by GITHUB_TOKEN may require workflow approval. A separate
+          # workflow_dispatch run creates the required checks on this exact SHA.
+          if [[ "$new_sha" != "$previous_sha" ]]; then
+            gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$branch"
+          fi

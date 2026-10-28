@@ -47,7 +47,7 @@ def compare_versions(left, right):
 
 
 def validate(version, prerelease, files_only=False):
-    target_core, identifiers = parse_version(version)
+    _, identifiers = parse_version(version)
     if not files_only and bool(identifiers) != prerelease:
         raise ValueError("Prerelease checkbox must match the version suffix (e.g. -alpha.1)")
 
@@ -72,13 +72,8 @@ def validate(version, prerelease, files_only=False):
     existing = []
     for tag in tags:
         try:
-            core, _ = parse_version(tag[len(TAG_PREFIX):])
+            parse_version(tag[len(TAG_PREFIX):])
         except ValueError:
-            continue
-        # The old v1.0.0-v1.0.4 releases precede the one-time 0.x reset.
-        # Compare 0.x releases within the new line; a later 1.x release must
-        # still exceed all existing 1.x tags rather than reuse a historical tag.
-        if target_core[0] == 0 and core[0] != 0:
             continue
         existing.append(tag[len(TAG_PREFIX):])
     if existing:

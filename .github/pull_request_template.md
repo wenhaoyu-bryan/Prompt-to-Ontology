@@ -15,4 +15,4 @@ Describe the user-visible behavior and the evidence used to verify it.
 
 Why this level? Include any API, schema, data, or workflow migration users need to know.
 
-This PR's release decision is recorded here. A Git tag is created from `main` only after the intended PRs are merged, the version files are updated together, and the `main` CI run succeeds. See [the release process](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/blob/main/docs/releasing.md).
+CI requires exactly one checked impact. After a feature PR merges and `main` CI passes, automation prepares a version PR. Once that PR merges and `main` CI passes, automation creates the Git tag and GitHub Release. See [the release process](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/blob/main/docs/releasing.md).
