@@ -21,7 +21,9 @@
     "graphGovernance": "Graph Governance",
     "ruleStudio": "Rule Studio",
     "agentTrace": "Agent Traces",
-    "demoCenter": "Demo Center"
+    "demoCenter": "Demo Center",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar"
   },
   "common": {
     "loading": "Loading...",
@@ -326,11 +328,14 @@
     "language": "Language",
     "lightMode": "Light",
     "darkMode": "Dark",
+    "switchToLight": "Switch to light mode",
+    "switchToDark": "Switch to dark mode",
     "primaryColor": "Primary Color",
     "about": "About",
     "selected": "Selected: ",
     "chinese": "Chinese",
     "colorBlue": "Blue",
+    "colorIndigo": "Indigo",
     "colorCyan": "Cyan",
     "colorGreen": "Green",
     "colorPurple": "Purple",

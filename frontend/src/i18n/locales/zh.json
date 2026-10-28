@@ -21,7 +21,9 @@
     "graphGovernance": "图谱治理",
     "ruleStudio": "规则工作台",
     "agentTrace": "智能体追踪",
-    "demoCenter": "演示中心"
+    "demoCenter": "演示中心",
+    "collapseSidebar": "收起侧栏",
+    "expandSidebar": "展开侧栏"
   },
   "common": {
     "loading": "加载中...",
@@ -326,11 +328,14 @@
     "language": "语言",
     "lightMode": "浅色",
     "darkMode": "深色",
+    "switchToLight": "切换到浅色模式",
+    "switchToDark": "切换到深色模式",
     "primaryColor": "主色调",
     "about": "关于",
     "selected": "已选择：",
     "chinese": "中文",
     "colorBlue": "蓝色",
+    "colorIndigo": "靛蓝",
     "colorCyan": "青色",
     "colorGreen": "绿色",
     "colorPurple": "紫色",

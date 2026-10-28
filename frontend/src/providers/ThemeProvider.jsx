@@ -5,12 +5,12 @@ const STORAGE_MODE = 'pto-theme-mode';
 const STORAGE_COLOR = 'pto-theme-color';
 
 const COLOR_PRESETS = {
-  blue:   { primary: '#1677ff' },
-  cyan:   { primary: '#13c2c2' },
-  green:  { primary: '#52c41a' },
-  purple: { primary: '#722ed1' },
-  orange: { primary: '#fa8c16' },
-  indigo: { primary: '#6366F1' },
+  blue:   { primary: '#2869D8', darkPrimary: '#7BAAF7' },
+  cyan:   { primary: '#158A9A', darkPrimary: '#66CBD5' },
+  green:  { primary: '#28845C', darkPrimary: '#73CFA4' },
+  purple: { primary: '#7655C7', darkPrimary: '#B5A0EE' },
+  orange: { primary: '#C47A2B', darkPrimary: '#E9AD6E' },
+  indigo: { primary: '#5667D8', darkPrimary: '#98A5FF' },
 };
 
 const ThemeContext = createContext({
@@ -28,33 +28,56 @@ export default function ThemeProvider({ children }) {
   const [mode, setMode] = useState(() => localStorage.getItem(STORAGE_MODE) || 'light');
   const [color, setColor] = useState(() => localStorage.getItem(STORAGE_COLOR) || 'indigo');
 
-  useEffect(() => { localStorage.setItem(STORAGE_MODE, mode); }, [mode]);
-  useEffect(() => { localStorage.setItem(STORAGE_COLOR, color); }, [color]);
+  useEffect(() => {
+    localStorage.setItem(STORAGE_MODE, mode);
+    document.documentElement.dataset.theme = mode;
+    document.documentElement.style.colorScheme = mode;
+  }, [mode]);
+  useEffect(() => {
+    localStorage.setItem(STORAGE_COLOR, color);
+    const preset = COLOR_PRESETS[color] || COLOR_PRESETS.indigo;
+    document.documentElement.style.setProperty('--pto-primary', mode === 'dark' ? preset.darkPrimary : preset.primary);
+  }, [color, mode]);
 
   const themeConfig = useMemo(() => {
     const preset = COLOR_PRESETS[color] || COLOR_PRESETS.indigo;
 
+    const primary = mode === 'dark' ? preset.darkPrimary : preset.primary;
     const lightTokens = {
-      colorPrimary: preset.primary,
-      colorInfo: preset.primary,
-      colorBgLayout: '#F6F7FB',
+      colorPrimary: primary,
+      colorInfo: primary,
+      colorBgLayout: '#F3F6FA',
       colorBgContainer: '#FFFFFF',
       colorBgElevated: '#FFFFFF',
-      colorText: '#1F2937',
-      colorTextSecondary: '#6B7280',
-      colorTextTertiary: '#9CA3AF',
-      colorBorder: '#E5E7EB',
-      colorBorderSecondary: '#EEF0F4',
-      borderRadius: 6,
-      borderRadiusLG: 8,
+      colorText: '#202D3F',
+      colorTextSecondary: '#607084',
+      colorTextTertiary: '#8290A2',
+      colorBorder: '#DCE4EE',
+      colorBorderSecondary: '#E9EEF5',
+      colorFillAlter: '#F6F8FC',
+      borderRadius: 8,
+      borderRadiusLG: 12,
       fontSize: 14,
       controlHeight: 36,
     };
 
     const darkTokens = {
-      colorPrimary: preset.primary,
-      borderRadius: 6,
-      borderRadiusLG: 8,
+      colorPrimary: primary,
+      colorInfo: primary,
+      colorBgBase: '#101827',
+      colorBgLayout: '#101827',
+      colorBgContainer: '#192536',
+      colorBgElevated: '#213047',
+      colorText: '#EDF3FB',
+      colorTextSecondary: '#AFBED1',
+      colorTextTertiary: '#8A9BB0',
+      colorBorder: '#35465D',
+      colorBorderSecondary: '#2C3C51',
+      colorFillAlter: '#223248',
+      borderRadius: 8,
+      borderRadiusLG: 12,
+      fontSize: 14,
+      controlHeight: 36,
     };
 
     return {
@@ -62,24 +85,24 @@ export default function ThemeProvider({ children }) {
       token: mode === 'dark' ? darkTokens : lightTokens,
       components: {
         Layout: {
-          siderBg: mode === 'dark' ? '#141414' : '#FFFFFF',
-          headerBg: mode === 'dark' ? '#141414' : '#FFFFFF',
-          bodyBg: mode === 'dark' ? '#0F0F0F' : '#F6F7FB',
+          siderBg: mode === 'dark' ? '#172335' : '#FBFCFE',
+          headerBg: mode === 'dark' ? '#192536' : '#FFFFFF',
+          bodyBg: mode === 'dark' ? '#101827' : '#F3F6FA',
         },
         Menu: {
           itemBg: 'transparent',
-          itemSelectedBg: mode === 'dark' ? 'rgba(99, 102, 241, 0.16)' : '#EEF2FF',
-          itemSelectedColor: '#6366F1',
-          itemHoverBg: mode === 'dark' ? 'rgba(255,255,255,0.06)' : '#F4F5F8',
-          itemBorderRadius: 6,
+          itemSelectedBg: `color-mix(in srgb, ${primary} ${mode === 'dark' ? '14%' : '10%'}, transparent)`,
+          itemSelectedColor: primary,
+          itemHoverBg: mode === 'dark' ? 'rgba(255,255,255,0.065)' : '#F0F4FA',
+          itemBorderRadius: 8,
           itemHeight: 40,
           subMenuItemBg: 'transparent',
         },
         Card: {
-          borderRadiusLG: 8,
+          borderRadiusLG: 12,
         },
         Button: {
-          borderRadius: 6,
+          borderRadius: 8,
           controlHeight: 36,
         },
         Input: {
