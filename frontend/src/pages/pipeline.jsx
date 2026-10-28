@@ -613,13 +613,14 @@ export default function PipelinePage() {
                 <Text>{t('pipeline.selectSampleLabel')}</Text>
                 <Button size="small" icon={<ReloadOutlined />} onClick={loadSamples}>{t('common.refresh')}</Button>
               </div>
-              <Row gutter={[12, 12]}>
+              <Row gutter={[12, 12]} align="stretch">
                 {samples.map(s => {
                   const info = SAMPLE_INFO[s.name] || {};
                   const selected = selectedSample === s.name;
                   return (
-                    <Col xs={24} sm={12} md={6} key={s.name}>
+                    <Col xs={24} sm={12} xl={6} key={s.name} className="pipeline-source-col">
                       <Card
+                        className="pipeline-source-card"
                         size="small"
                         hoverable
                         onClick={() => { if (selectedSample !== s.name) { setSelectedSample(s.name); setProfile(null); setMappings(null); setLineage(null); setImportPlan(null); setMappingOverrides({}); } }}
@@ -630,7 +631,7 @@ export default function PipelinePage() {
                         <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
                           {isZh ? info.desc_zh : info.desc_en}
                         </Text>
-                        <div style={{ marginTop: 8 }}>
+                        <div className="pipeline-source-tags">
                           {info.objectType && <Tag color="blue" style={{ fontSize: 12 }}>{info.objectType}</Tag>}
                           {info.linkType && <Tag color="green" style={{ fontSize: 12 }}>{info.linkType}</Tag>}
                           <Tag style={{ fontSize: 12 }}>{t('common.demoData')}</Tag>

@@ -213,6 +213,12 @@
   margin-top: 16px;
 }
 
+.pipeline-source-col { display: flex; }
+.pipeline-source-card { display: flex; flex: 1; flex-direction: column; }
+.pipeline-source-card .ant-card-body { display: flex; flex: 1; flex-direction: column; }
+.pipeline-source-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: auto; padding-top: 8px; }
+.pipeline-source-tags .ant-tag { margin: 0; }
+
 .pipeline-step-footer {
   display: flex;
   align-items: center;
