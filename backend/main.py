@@ -7,6 +7,7 @@ separate local demo opt-in.
 import json
 import os
 import uuid
+from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -30,7 +31,10 @@ from legacy_data_pipeline import DataValidator, import_objects, parse_csv, norma
 from ontology_registry import OntologyRegistry
 from domain_config import list_domains, get_domain_config, get_default_domain
 
-app = FastAPI(title="Prompt-to-Ontology — Pet Food Reference", version="3.0.0")
+app = FastAPI(
+    title="Prompt-to-Ontology — Pet Food Reference",
+    version=(Path(__file__).resolve().parents[1] / "VERSION").read_text().strip(),
+)
 
 # CORS
 app.add_middleware(
@@ -164,7 +168,7 @@ def api_health():
         "status": "ok",
         "service": "backend",
         "neo4j": neo4j_status,
-        "version": "v1.0",
+        "version": f"v{app.version}",
     }
 
 

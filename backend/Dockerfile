@@ -6,6 +6,7 @@ COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ .
+COPY VERSION ../VERSION
 COPY sample-data/ ../sample-data/
 COPY ontology/ ../ontology/
 

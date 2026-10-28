@@ -2,9 +2,13 @@
 
 [![CI](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml)
 
+[Releases](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases) · [Release process](docs/releasing.md)
+
 > A learning-by-building project exploring how operational ontologies turn structured data into typed objects, evidence-backed rules, and reviewable agent workflows.
 
 **Status:** Learning project · Runnable Pet Food reference implementation
+
+**Version line:** `0.x` for the Pet Food reference implementation. Earlier `v1.x` releases remain available as historical snapshots; see the [release process](docs/releasing.md).
 
 ![MIT License](https://img.shields.io/badge/license-MIT-blue)
 ![Python](https://img.shields.io/badge/python-3.10+-3776ab)
