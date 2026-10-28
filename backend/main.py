@@ -1,6 +1,7 @@
-"""
-工业智能体本体系统 — FastAPI 主入口
-提供 RESTful API：图谱数据、节点详情、智能体推理、动作执行、链路分析
+"""Prompt-to-Ontology Pet Food reference API.
+
+The reviewed pipeline is the main path; legacy direct-write routes require a
+separate local demo opt-in.
 """
 
 import json
@@ -9,7 +10,7 @@ import uuid
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from database import init_db
@@ -29,7 +30,7 @@ from legacy_data_pipeline import DataValidator, import_objects, parse_csv, norma
 from ontology_registry import OntologyRegistry
 from domain_config import list_domains, get_domain_config, get_default_domain
 
-app = FastAPI(title="Ontology OS — 企业本体操作系统", version="3.0.0")
+app = FastAPI(title="Prompt-to-Ontology — Pet Food Reference", version="3.0.0")
 
 # CORS
 app.add_middleware(
@@ -39,6 +40,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def require_legacy_demo_writes() -> None:
+    """Keep direct-write demo APIs closed unless the operator opts in locally.
+
+    This is a demo safety switch, not authentication or approval. The reviewed
+    import path has separate endpoints below.
+    """
+    if os.getenv("ENABLE_LEGACY_DEMO_WRITES", "false").lower() != "true":
+        raise HTTPException(
+            status_code=403,
+            detail="Direct demo writes are disabled. Use Import Plan + Review Queue, or explicitly enable ENABLE_LEGACY_DEMO_WRITES for a local demo.",
+        )
 
 
 def _auto_import_pet_food(driver):
@@ -175,7 +189,7 @@ def api_list_datasets():
     return list_datasets()
 
 
-@app.post("/api/dataset/clear")
+@app.post("/api/dataset/clear", dependencies=[Depends(require_legacy_demo_writes)])
 def api_clear_dataset(request: dict):
     """清空指定数据集的数据"""
     dataset = request.get("dataset", "")
@@ -275,12 +289,9 @@ def api_chat(req: ChatRequest):
     return result
 
 
-@app.post("/api/action")
+@app.post("/api/action", dependencies=[Depends(require_legacy_demo_writes)])
 def api_action(req: ActionRequest):
-    """
-    执行人工审批通过的业务操作。
-    包含 SQLite Write-back + NetworkX 图谱同步刷新。
-    """
+    """Legacy direct action write; the demo flag does not prove approval."""
     result = execute_action(req.action_name, req.params)
     return result
 
@@ -366,7 +377,7 @@ async def api_preview_import(file: UploadFile = File(...)):
     }
 
 
-@app.post("/api/data/import/{object_type}")
+@app.post("/api/data/import/{object_type}", dependencies=[Depends(require_legacy_demo_writes)])
 async def api_import_data(object_type: str, file: UploadFile = File(...)):
     """导入数据到 Neo4j"""
     if not (file.filename.endswith('.csv') or file.filename.endswith('.json')):
@@ -431,7 +442,7 @@ async def api_export_data(object_type: str):
 # 通用导入端点 (Phase 5.4 — 两个 CSV 导入任意行业)
 # =====================================================
 
-@app.post("/api/data/import/nodes")
+@app.post("/api/data/import/nodes", dependencies=[Depends(require_legacy_demo_writes)])
 async def api_import_nodes(file: UploadFile = File(...)):
     """通用节点导入：Node_ID + Node_Label + Node_Type + 任意属性列"""
     if not file.filename.endswith('.csv'):
@@ -491,7 +502,7 @@ async def api_import_nodes(file: UploadFile = File(...)):
     return {"status": "success" if imported > 0 else "failed", "imported": imported, "errors": errors}
 
 
-@app.post("/api/data/import/edges")
+@app.post("/api/data/import/edges", dependencies=[Depends(require_legacy_demo_writes)])
 async def api_import_edges(file: UploadFile = File(...)):
     """通用关系导入：Source_Node_ID + Target_Node_ID + Relationship_Type + 任意属性"""
     if not file.filename.endswith('.csv'):
@@ -638,7 +649,7 @@ class MultiBatchImportRequest(BaseModel):
     dataset: str = "default"
 
 
-@app.post("/api/pipeline/batch-import")
+@app.post("/api/pipeline/batch-import", dependencies=[Depends(require_legacy_demo_writes)])
 async def api_batch_import(req: MultiBatchImportRequest):
     """多表 UNWIND 批量导入"""
     from legacy_data_pipeline import batch_import_nodes as _batch_nodes, batch_import_edges_multi
@@ -888,7 +899,7 @@ def api_get_constraints(class_name: str | None = None):
     return get_constraints(class_name)
 
 
-@app.post("/api/ontology/constraints")
+@app.post("/api/ontology/constraints", dependencies=[Depends(require_legacy_demo_writes)])
 def api_add_constraint(req: dict):
     from database import add_constraint
     add_constraint(
@@ -898,7 +909,7 @@ def api_add_constraint(req: dict):
     return {"status": "ok"}
 
 
-@app.delete("/api/ontology/constraints/{constraint_id}")
+@app.delete("/api/ontology/constraints/{constraint_id}", dependencies=[Depends(require_legacy_demo_writes)])
 def api_delete_constraint(constraint_id: int):
     from database import delete_constraint
     delete_constraint(constraint_id)
@@ -910,8 +921,8 @@ def api_delete_constraint(constraint_id: int):
 # =====================================================
 
 
-@app.post("/api/pet-food/import-sample")
-@app.post("/api/pet-food/demo/reset-and-import")
+@app.post("/api/pet-food/import-sample", dependencies=[Depends(require_legacy_demo_writes)])
+@app.post("/api/pet-food/demo/reset-and-import", dependencies=[Depends(require_legacy_demo_writes)])
 def api_pet_food_import_sample():
     """
     一键导入 Pet Food sample data:
@@ -1177,6 +1188,16 @@ def api_pipeline_samples():
     """List available built-in sample data sources."""
     return {"samples": pipeline_service.list_sample_sources()}
 
+
+@app.get("/api/pipeline/mapping-targets")
+def api_pipeline_mapping_targets(domain: str = "pet_food"):
+    """Return valid ontology properties for manual field mapping."""
+    try:
+        schema = pipeline_service._load_schema(domain)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    return {name: [p.name for p in obj.properties] for name, obj in schema.object_types.items()}
+
 @app.post("/api/pipeline/profile/sample")
 def api_pipeline_profile_sample(body: dict):
     """Profile a built-in sample data source."""
@@ -1221,6 +1242,35 @@ def api_pipeline_suggest_mappings(body: dict):
         return pipeline_service.suggest_mappings(source_id, domain)
     except ValueError as e:
         raise HTTPException(404, str(e))
+
+
+@app.get("/api/pipeline/sources/{revision_id}")
+def api_pipeline_source_lineage(revision_id: str):
+    """Trace a source revision to its fields and mapping decisions."""
+    try:
+        return pipeline_service.source_catalog.source(revision_id)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.get("/api/pipeline/lineage/target")
+def api_pipeline_target_lineage(object_type: str, property_name: str):
+    """Find confirmed source fields behind an ontology property."""
+    return {"object_type": object_type, "property_name": property_name,
+            "sources": pipeline_service.source_catalog.target(object_type, property_name)}
+
+
+@app.post("/api/pipeline/mappings/decision")
+def api_pipeline_mapping_decision(body: dict):
+    """Record a same, alias, or separate decision for a source field."""
+    try:
+        return pipeline_service.decide_mapping(
+            body.get("revision_id", ""), body.get("field_id", ""),
+            body.get("target_object_type", ""), body.get("target_property", ""),
+            body.get("resolution", ""), body.get("domain", "pet_food"),
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 @app.post("/api/pipeline/import-plan")
 def api_pipeline_create_import_plan(body: dict):
@@ -1494,7 +1544,7 @@ def api_demo_state():
     return svc.get_state().model_dump()
 
 
-@app.post("/api/demo/reset")
+@app.post("/api/demo/reset", dependencies=[Depends(require_legacy_demo_writes)])
 def api_demo_reset(body: dict):
     """Reset demo to seeded or clean mode. Requires confirm=true."""
     from demo_admin import DemoAdminService as _DAS
@@ -1510,7 +1560,7 @@ def api_demo_reset(body: dict):
     return svc.reset(mode).model_dump()
 
 
-@app.post("/api/demo/seed")
+@app.post("/api/demo/seed", dependencies=[Depends(require_legacy_demo_writes)])
 def api_demo_seed(body: dict):
     """Seed Pet Food demo graph. Requires confirm=true."""
     from demo_admin import DemoAdminService as _DAS
@@ -1522,7 +1572,7 @@ def api_demo_seed(body: dict):
     return svc.seed().model_dump()
 
 
-@app.post("/api/demo/clear")
+@app.post("/api/demo/clear", dependencies=[Depends(require_legacy_demo_writes)])
 def api_demo_clear(body: dict):
     """Clear graph and runtime review state. Requires confirm=true."""
     from demo_admin import DemoAdminService as _DAS
@@ -1655,7 +1705,7 @@ def api_get_diff(diff_id: str):
         raise HTTPException(404, f"Diff {diff_id} not found")
     return diff.model_dump()
 
-@app.post("/api/graph/snapshots/{snapshot_id}/restore")
+@app.post("/api/graph/snapshots/{snapshot_id}/restore", dependencies=[Depends(require_legacy_demo_writes)])
 def api_restore_snapshot(snapshot_id: str, body: dict):
     """Restore graph from a snapshot."""
     if not gs_is_restore_enabled():

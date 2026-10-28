@@ -1,231 +1,91 @@
-# Prompt-to-Ontology — 企业本体平台学习项目
+# Prompt-to-Ontology
 
-[![GitHub Stars](https://img.shields.io/github/stars/wenhaoyu-bryan/Prompt-to-Ontology?style=social)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology)
-[![GitHub Last Commit](https://img.shields.io/github/last-commit/wenhaoyu-bryan/Prompt-to-Ontology)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology)
 [![CI](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml)
 
-**[English](README.md)** | **中文**
+**[English](README.md) | 中文**
 
-**项目状态：学习型项目 · 可运行参考实现 · 目前以维护和文档完善为主**
+> 用一个可运行的 Pet Food 参考实现，研究如何从问题与原始数据出发，构建可检查、可追溯、可审核的业务本体。
 
-> 一个通过可运行参考实现学习企业本体平台的开源项目：探索结构化数据如何转化为类型化对象、规则证据和可审核的 Agent 工作流。
+**项目状态：学习项目 · 可运行参考实现 · 单一 Pet Food 样例**
 
----
+![Dashboard](media/dashboard.png)
 
-## 一、项目定位与边界
+## 项目定位
 
-Prompt-to-Ontology 是一个通过构建来学习本体平台的开源项目。它用一个可运行的参考实现，把产品和架构问题变成可以动手验证的流程：数据如何映射到类型化对象与关系，规则如何产生证据，Agent 如何基于本体工具查询并提出可审核的变更。
+本仓库展示从 CSV 到类型化对象、关系、规则证据和 Review Queue 的构建过程。它用于检验产品与架构设计，不代表企业平台能力、跨领域通用性或生产就绪。Pet Food 是唯一的主示例；规则结果仅说明样例数据是否满足仓库里的配置条件，不能当作兽医建议。
 
-这个项目的目标是沉淀对本体平台的理解，不是复刻某家厂商的产品或声称还原其内部架构。它不代表生产就绪，也不证明完整的跨行业支持。
+设计参考包括公开的 [Palantir Foundry Ontology 文档](https://www.palantir.com/docs/foundry/ontologies/ontologies-overview) 和开源 [Semantica](https://github.com/semantica-agi/semantica)。本项目是独立的学习实践，不声称与它们的功能等价，也不包含公司内部资料。
 
-仓库目前只包含 Pet Food 演示领域。核心模块按 YAML Schema 组织，但这份代码还没有通过多个业务领域验证通用性。演示使用样例数据，也没有提供企业级身份认证与权限、生产部署或服务等级保证。
+## 核心构建思路：Prompt 是问题起点
 
-仓库包含后端模块级测试脚本和前端 smoke tests。GitHub Actions 会在推送到 `main` 和 Pull Request 时运行后端模块检查、使用临时 Neo4j 5 服务运行集成检查，并构建前端；前端 smoke tests 仍可在本地运行。可运行的演示说明核心路径可以被检查，不等于生产环境的安全性、可靠性或性能已经得到验证。
+这里的 Prompt 不等于“一句话自动生成最终图谱”。它首先提出需要回答的业务问题与建模假设，再通过以下闭环逐步验证：
 
-项目主要由产品经理定义目标、架构边界和设计约束，并通过 Vibe Coding 与大语言模型协作实现。代码是学习工具；更重要的产出是对本体建模、运行语义和治理边界的理解。
+1. **定义问题**：明确要判断或解释什么，例如“某个样例产品是否满足一条已配置规则”。
+2. **盘点证据**：记录 CSV 来源、字段、空值与内容版本；缺少供应商或时间字段时，明确标记无法回答。
+3. **提出语义映射**：将字段建议映射到对象、属性、关系。建议不自动等于确认；可确认一致、标记别名，或保持独立。
+4. **定义可执行规则**：用 Pet Food YAML Schema 声明类型、约束和规则，让结果附带可检查的依据。
+5. **审核后应用**：由 Import Plan 生成候选对象与关系，经 Review Queue 审核后写入图谱。
+6. **检查与迭代**：浏览图谱、规则证据和 Agent Trace，针对无答案或冲突修正来源映射和 Schema。
 
-设计参考来自公开资料和开源项目：包括 [Palantir Foundry Ontology](https://www.palantir.com/docs/foundry/ontologies/ontologies-overview) 中对象、关系与动作等本体资源，以及 [Semantica](https://github.com/semantica-agi/semantica) 的图谱、本体与溯源工具。这里记录的是独立的学习和验证，不代表与这些产品功能等价。
-
----
-
-## 二、核心架构大图
+[Pet Food 八个固定问题](sample-data/pet-food/question-set.v1.json)覆盖规则触发、未触发、关系来源、字段来源、数据缺口及冲突处理，并使用 SHA-256 固定 CSV 与规则输入。这是可复现的设计及后续评估基线，**尚不是 Agent 正确率报告**。
 
 ```mermaid
-graph TB
-    subgraph Frontend ["前端交互层 — React 18 + D3.js + Tailwind CSS 4"]
-        Pipeline["数据流水线<br/>PapaParse 多行表头解析 + 多文件上传"]
-        GraphCanvas["知识图谱画布<br/>D3.js 力导向图 (Canvas 节点 + SVG 连线)"]
-        SchemaView["本体 Schema 概览<br/>类卡片 + 关系链 + 约束状态"]
-        AgentUI["智能体工作台<br/>ReAct 推理日志 + HITL 审批"]
-    end
-
-    subgraph Backend ["后端中枢层 — FastAPI 0.115"]
-        API["REST API 网关<br/>14+ 端点"]
-        PipelineEngine["数据流水线引擎<br/>AI Schema 推断 + UNWIND 批量导入"]
-        AgentEngine["ReAct 智能体<br/>Tool-Calling + 多步推理"]
-        LLMRouter["LLM 路由层<br/>MiniMax / OpenAI / Anthropic 三后端热切换"]
-        SchemaEngine["本体 Schema 引擎<br/>自动提取 + 约束检查"]
-    end
-
-    subgraph Storage ["存储底座"]
-        Neo4j["Neo4j 5<br/>图数据库 (持久化)"]
-        NetworkX["NetworkX 3.4<br/>内存图引擎 (实时计算)"]
-        SQLite["SQLite<br/>种子数据 + 约束规则"]
-    end
-
-    Pipeline -->|"FieldMetadata + 样本数据"| API
-    API -->|"推断请求"| LLMRouter
-    LLMRouter -->|"MappingSchema JSON"| API
-    API -->|"UNWIND 批量写入"| Neo4j
-    Neo4j -->|"Cypher 查询"| NetworkX
-    NetworkX -->|"节点 + 链路"| API
-    API -->|"图谱数据"| GraphCanvas
-    API -->|"Schema 结构"| SchemaView
-    GraphCanvas -->|"点击节点 / 触发 Agent"| API
-    API -->|"推理请求"| AgentEngine
-    AgentEngine -->|"工具调用"| NetworkX
-    AgentEngine -->|"LLM 推理"| LLMRouter
-    LLMRouter -->|"决策 + 推理链"| AgentEngine
-    AgentEngine -->|"需人工审批"| AgentUI
-    SchemaEngine -->|"类定义 + 约束"| Neo4j
-    SchemaEngine -->|"规则存储"| SQLite
-
-    style Frontend fill:#0f172a,stroke:#22d3ee,color:#e2e8f0
-    style Backend fill:#0f172a,stroke:#a78bfa,color:#e2e8f0
-    style Storage fill:#0f172a,stroke:#34d399,color:#e2e8f0
+flowchart LR
+  Q[问题] --> S[来源与字段画像]
+  S --> M[映射建议与人工确认]
+  M --> P[Import Plan]
+  P --> R[Review Queue]
+  R --> G[类型化图谱与规则证据]
+  G --> E[检查与评估]
+  E --> Q
 ```
 
-**数据流自下而上贯穿**：原始 CSV 文件从浏览器进入，被 PapaParse 解析为富语义的 FieldMetadata（中文字段名、英文 ID、数据类型），发送给 LLM 做语义推断，映射为本体 Schema，通过 UNWIND 批量写入 Neo4j，加载到 NetworkX 内存图，最终渲染为可交互的力导向图谱。Agent 层坐在图谱之上，通过结构化工具调用查询图谱，提出需要人工审批的业务操作建议。
+## 已实现与边界
 
-**关键架构决策**：Neo4j 是数据源，NetworkX 是计算引擎，LLM 是推理层。三者解耦——可以独立替换任何一个而不影响其他。
+| 能力 | 当前状态 |
+|---|---|
+| Pet Food CSV 画像、映射建议、Import Plan | 可运行 |
+| 来源资产 ID、内容版本 ID、字段 ID、映射决定与双向追溯 | 可运行；来源目录只存元数据和决定。Import Plan 仍可能保存来源画像中的样例行 |
+| Review Queue 审核及应用 | 可运行的演示工作流；并非后端权限系统 |
+| 对象、图谱、规则、Agent、Trace、快照与回滚 | 可在样例中检查；Agent Trace 的启发式分数不等于答案正确率 |
+| 八个固定问题 | 有事实与来源检查；尚未自动跑 Agent 答案评估 |
+| 其他行业、生产权限、性能与稳定性 | 未验证 |
 
----
+来源状态需区分：**已解析、建议映射、人工确认、图谱可查询**。确认字段映射并不证明数据已经写入 Neo4j；生成 Import Plan 也只产生候选。
 
-## 三、认知演进与复盘
-
-### 阶段一：打破"静态图谱"的幻觉
-
-第一个版本是一个经典的知识图谱 Demo：拖数据进来，渲染一个好看的力导向图，点节点看属性。在 Keynote 里很惊艳，在实际业务中毫无用处。
-
-核心认知：**没有 Action 的图谱只是一张好看的网。**
-
-图谱里的节点不是一个数据点——它是一个带有状态、关系和**动词**的业务实体。Supplier 节点不只有名字和风险等级；它可以被"审计"、被"升级"、被"替换"。库存节点不只是一个数字；当它跌破阈值时，它应该能触发"创建采购订单"的动作。
-
-这引出了**动作系统（Action System）**：每种对象类型可以声明与当前状态相关的动作契约。库存低了，可以提出"创建采购订单"；缺陷率高了，可以提出"升级到 QA"。动作契约描述可做什么、需要什么条件和参数；实际业务写操作仍需由执行系统处理，并按场景经过人工确认。这里验证的是一种产品设计思路，不是对任何厂商内部机制的复刻。
-
-图谱从"看这个网络"变成了"操作这个业务"。
-
-### 阶段二：理解"Ontology 即 Runtime"
-
-第二个突破发生在我不再把本体当作一个**数据结构**，而是当作一个**运行时环境**的时候。
-
-在传统应用里，数据模型是被动的——它躺在数据库里等着被查询。在本体驱动的系统里，Schema *就是*执行上下文。当 Agent 推理一个问题时，它不是直接查询原始数据——它是**通过本体查询**，本体提供：
-
-- **类型语义**："这是一个 Supplier，这意味着它有这些属性、这些约束、这些关系类型。"
-- **推理上下文**："如果 Supplier A 供应 Material B，Material B 被用于 Product C，那么 A 的中断会传播到 C。"
-- **动作可能性**："因为这个节点是一个 status='pending' 的 SalesOrder，可用的动作是确认、取消或修改。"
-
-本体不是文档。它是操作系统。Agent 不是"知道"业务逻辑——它是通过遍历 Schema 来**发现**业务逻辑的。这就是一个查询数据库的 Chatbot 和一个基于知识图谱推理的智能体之间的区别。
-
-### 阶段三：打通数据流水线
-
-第三个阶段——也是让这个项目真正有用的阶段——解决了冷启动问题：如何从一堆杂乱的 CSV 文件变成一个可用的知识图谱，而不需要一队数据工程师写 ETL 管道？
-
-答案是 **LLM 结构化推断**。把一张表的元数据（字段名、数据类型、样本行）喂给模型，让它输出一个结构化的 `MappingSchema` JSON，定义：
-
-- 这张表里有哪些实体类型
-- 哪列是主键，哪些是属性
-- 表与表之间有哪些外键关系
-- 这是事实表（订单、库存）还是维度表（产品、客户）
-
-关键的 Prompt Engineering 洞察：**你必须告诉模型，事实表是节点（Node），不是边（Edge）**。一张订单不是客户和产品之间的关系——它本身就是一个独立实体，通过两条边分别关联到客户和产品。搞错这一点，整个图谱拓扑就塌了。
-
-通过多表联合推断（同时分析多张 CSV），系统可以自动发现跨表关系，在一次 LLM 调用中生成完整的本体 Schema。整条管道——从原始 CSV 到可交互的知识图谱——大约 30 秒完成。
-
----
-
-## 四、技术栈与展望
-
-### 核心技术栈
-
-| 层 | 技术 | 职责 |
-|---|------|------|
-| 前端框架 | React 18 + Vite 6 | 组件架构、热重载 |
-| 样式 | Tailwind CSS 4 | 工具优先的暗黑工业风主题 |
-| 图谱渲染 | D3.js (Canvas + SVG 混合) | 力导向布局，5000+ 节点性能优化 |
-| CSV 解析 | PapaParse (浏览器端) | 多行表头提取、类型推断 |
-| 后端框架 | FastAPI 0.115 | 异步 REST API，14+ 端点 |
-| 图数据库 | Neo4j 5 | 持久化图存储、Cypher 查询 |
-| 内存图引擎 | NetworkX 3.4 | 路径分析、影响传播、实时图计算 |
-| 数据校验 | Pydantic v2 | 请求/响应模型、类型安全 |
-| LLM 集成 | MiniMax / OpenAI / Anthropic | ReAct 推理、Schema 推断、Tool Calling |
-| 轻量数据库 | SQLite | 种子数据、本体约束规则 |
-
-### 项目目录
-
-```
-Prompt to Ontology/
-├── README.md                    ← 你正在读的文件
-├── .gitignore
-├── demo.mp4                     ← 产品演示视频
-├── backend/
-│   ├── main.py                  ← FastAPI 主入口 (14+ 端点)
-│   ├── ontology.py              ← 语义层：NetworkX 图引擎
-│   ├── agent.py                 ← 智能体：ReAct 推理入口
-│   ├── llm_client.py            ← LLM 路由：三后端热切换
-│   ├── data_pipeline.py         ← 数据管道：校验 + 批量导入
-│   ├── neo4j_connector.py       ← Neo4j 连接层
-│   ├── database.py              ← SQLite 种子数据
-│   ├── migrate_to_neo4j.py      ← 数据迁移脚本
-│   ├── reset_neo4j.py           ← 清空/重置脚本
-│   ├── minimax_client.py        ← MiniMax API 客户端
-│   ├── requirements.txt
-│   └── .env.example             ← 环境变量模板
-├── frontend/
-│   ├── package.json
-│   ├── vite.config.js
-│   ├── index.html
-│   └── src/
-│       ├── App.jsx              ← 全局状态 + 导航 + 视图路由
-│       ├── api.js               ← Axios API 封装
-│       ├── index.css            ← 暗黑工业风全局样式
-│       └── components/
-│           ├── DataPipeline.jsx         ← 多表数据流水线
-│           ├── GlobalSchemaMapper.jsx   ← 全局映射校准编辑器
-│           ├── D3GraphCanvas.jsx        ← D3 图谱画布
-│           ├── OntologySchemaOverview.jsx ← 本体 Schema 概览
-│           ├── EntityInspector.jsx      ← 节点 360° 详情面板
-│           ├── OntologyBrowser.jsx      ← 本体浏览器
-│           ├── AgentWorkshop.jsx        ← Agent 推理日志
-│           ├── AgentStudio.jsx          ← 智能体工作台原型
-│           ├── ReasoningView.jsx        ← 模型推理原型
-│           ├── AnalysisView.jsx         ← 数据分析原型
-│           └── LinkTooltip.jsx          ← 链路悬停提示
-├── sample-data/                 ← 演示用 CSV 数据集
-├── docs/
-│   ├── PRD.md                   ← 产品需求文档
-│   ├── ARCHITECTURE.md          ← 架构设计文档
-│   └── phases/                  ← 开发阶段规划文档
-└── CLAUDE.md                    ← Vibe Coding 开发记忆（不上传）
-```
-
-### 本地运行
+## 本地运行
 
 ```bash
-# 1. 启动 Neo4j（需要 Docker 或本地安装）
-docker run -d --name neo4j \
-  -p 7474:7474 -p 7687:7687 \
-  -e NEO4J_AUTH=*** \
-  neo4j:5
-
-# 2. 后端
-cd backend
-cp .env.example .env             # 填入你的 API Key
-pip install -r requirements.txt
-python main.py                   # → localhost:8765
-
-# 3. 前端（新终端）
-cd frontend
-npm install
-npm run dev                      # → localhost:5173
+git clone https://github.com/wenhaoyu-bryan/Prompt-to-Ontology.git
+cd Prompt-to-Ontology
+cp .env.example .env
+docker compose up --build
 ```
 
-### 演示视频
+前端：<http://localhost:5173>；API：<http://localhost:8765>；Neo4j Browser：<http://localhost:7474>。前端演示登录为 `demo` / `demo`，**不是后端身份认证**。请在可信的本地网络运行。首次启动默认自动导入 Pet Food 样例；可设置 `AUTO_SEED_DEMO_DATA=false` 关闭自动导入。
 
-项目根目录的 `demo.mp4` 包含完整的产品演示，展示从 CSV 导入到知识图谱生成的全流程。
+Compose 使用命名卷 `backend_runtime` 保存来源目录、Import Plan 和审核状态，容器重建后仍可读取；执行明确的演示重置会清理这些状态。
 
-### Vibe Coding 的收获
+旧版直接写入接口（如 `/api/action`、`/api/pipeline/batch-import`、直接 CSV 导入、演示重置、快照恢复）默认返回 HTTP 403。只有在可丢弃的本地演示中才在 `.env` 设置 `ENABLE_LEGACY_DEMO_WRITES=true` 并重启后端。常规构建路径请使用 Import Plan → Review Queue。Review Queue 本身不是权限边界。
 
-构建这个项目是一次产品经理直接接触实现的实验。重点不是通过传统意义上的"学编程"，而是练习**架构思维**——定义边界、指定层间契约、推理数据流——同时让 LLM 协助处理代码实现。Vibe Coding 是本项目的开发方式，不是生产工程质量的证明。
+无需 LLM 密钥即可使用确定性回退模式。需要外部模型时，可通过 Settings → LLM Config 配置；不要提交 `.env`。
 
-最有价值的认知不是关于任何具体技术，而是：**构建本体系统最难的部分不是代码，是心智模型。** 理解图数据库不是本体，本体不是 Schema，Schema 不是数据模型——这些是同心圆的抽象层级，搞对它们是产品问题，不是工程问题。
+## 推荐体验路径
 
-这个项目让我获得了参与企业 AI 系统架构讨论的词汇和直觉——不是作为一个读文档的人，而是作为一个搭过原型、感受过接缝应该在哪里的人。
+Dashboard → Data Pipeline（选择样例、检查来源 ID、确认字段、生成 Import Plan）→ Review Queue → Object Explorer → Graph Explorer → Rule Studio → Analyst Agent → Agent Trace → Graph Governance。
 
-## 贡献方式
+图谱视图当前用于浏览运行时对象与关系。按 Schema 结构与运行时实例分层、显示来源及证据的视觉升级尚未纳入此阶段，见英文 README 的后续方向。
 
-欢迎聚焦的文档改进、可复现问题、测试和独立领域样例。较大的功能建议先开 Issue 讨论，确认符合项目的学习范围后再开 PR。项目优先验证核心概念，不以堆叠平台功能为目标。
+## 测试
 
----
+在仓库根目录运行新增单元测试：
 
-*Built with Vibe Coding — 一个产品经理、一个模型、和一种执念：产品经理应该理解底层是怎么工作的。*
+```bash
+PYTHONPATH=backend python -m unittest discover -s backend/tests
+```
+
+在 `backend/` 运行已有 `python scripts/test_<module>.py` 模块检查；前端在 `frontend/` 运行 `npm run build`，本地可运行 `npm run test:smoke`。GitHub Actions 在 PR 中运行后端模块检查、Neo4j 集成检查与前端构建；Playwright smoke tests 尚未纳入 CI。
+
+## 许可
+
+MIT

@@ -652,7 +652,16 @@ export default function AgentTracePage() {
         size="small"
       >
         {traces.length === 0 ? (
-          <Empty description={t('agentTrace.noTraces', 'No agent traces recorded yet. Use the Analyst Agent to create traces.')} />
+          <div className="trace-empty">
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={t('agentTrace.noTraces', 'No agent traces recorded yet. Use the Analyst Agent to create traces.')}
+            >
+              <Button type="primary" icon={<RobotOutlined />} onClick={() => navigate('/agent')}>
+                {t('dashboard.askAgent')}
+              </Button>
+            </Empty>
+          </div>
         ) : (
           <Table
             dataSource={traces}

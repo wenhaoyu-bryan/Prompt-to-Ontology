@@ -4,7 +4,7 @@
 
 > A learning-by-building project exploring how operational ontologies turn structured data into typed objects, evidence-backed rules, and reviewable agent workflows.
 
-**Status:** Learning project · Runnable reference implementation · Maintenance-focused
+**Status:** Learning project · Runnable Pet Food reference implementation
 
 ![MIT License](https://img.shields.io/badge/license-MIT-blue)
 ![Python](https://img.shields.io/badge/python-3.10+-3776ab)
@@ -43,6 +43,19 @@ This project explores three questions:
 
 Pet Food is the only domain example included in this repository. The schema-driven components are designed to make other domains possible, but this project does not prove cross-domain or production readiness. The guided demo uses sample data and is not a production deployment.
 
+## How to Build an Ontology from a Prompt
+
+The prompt is a **question and modeling hypothesis**, not an instruction to generate a final graph in one step. The project follows this loop:
+
+1. **Start with a decision question.** Identify what the user must be able to inspect, such as whether a sample product meets a configured rule.
+2. **Inventory the evidence.** Profile source files, field types, missing values, and the exact source revision. Record when the evidence needed to answer is absent.
+3. **Propose semantics.** Map source fields to typed objects, relationships, and properties. Suggestions are candidates; a person can confirm a match, mark an alias, or keep a field separate.
+4. **Define executable meaning.** Declare constraints and explicit rules in the Pet Food YAML schema, including the evidence required for each result.
+5. **Review before applying.** Generate an Import Plan, inspect candidate objects and links, then approve and apply through Review Queue.
+6. **Inspect and improve.** Browse the graph and rule evidence, note questions that cannot be answered, and revise the source mapping or schema. An answer is only as strong as its recorded evidence.
+
+The [eight-question Pet Food set](sample-data/pet-food/question-set.v1.json) freezes its CSV and rule inputs with SHA-256 hashes. It is a reproducible design and evaluation baseline, not a claim that the Analyst Agent already answers all eight correctly.
+
 ## Design References
 
 The project learns from publicly documented ontology concepts in [Palantir Foundry](https://www.palantir.com/docs/foundry/ontologies/ontologies-overview) and open-source graph and ontology tooling in [Semantica](https://github.com/semantica-agi/semantica). These are design references; this project does not claim access to vendor internals or feature equivalence.
@@ -54,7 +67,7 @@ The project learns from publicly documented ontology concepts in [Palantir Found
 - **Fragmented business meaning.** A typed ontology gives structure to objects, relationships, and rules.
 - **Hidden rules.** Explicit rule definitions with 4-state evaluation make logic inspectable and simulatable.
 - **Unverifiable agent answers.** The Analyst Agent operates through ontology tools and produces traceable evidence edges.
-- **Unreviewed model suggestions.** Every proposed update passes through the Review Queue before touching the graph.
+- **Unreviewed model suggestions.** Import Plans and agent suggestions use Review Queue. Older direct-write demo APIs are disabled by default and require an explicit local opt-in.
 - **Untraceable graph changes.** Graph Governance provides snapshot, diff, and rollback.
 
 ---
@@ -65,8 +78,9 @@ The project learns from publicly documented ontology concepts in [Palantir Found
 - Schema-first modeling — object types, link types, constraints, rules, and actions are declared in YAML
 - Rules produce explicit evidence — 4-state evaluation (triggered / passed / not_evaluable / not_applicable)
 - Agents operate through ontology tools — not free-form text generation
-- Suggestions require human review — no autonomous graph modification
-- Graph changes remain traceable and reversible — snapshots, diffs, and rollback
+- Import Plan and agent suggestions require human review before graph application
+- Source identity is versioned by content; confirmed field mappings can be traced in both directions
+- Snapshots, diffs, and rollback are available for demo graph inspection; snapshots are not automatically created for every mutation
 
 ---
 
@@ -145,7 +159,7 @@ flowchart LR
   >
 </p>
 
-The Analyst Agent answers through ontology tools rather than free-form guessing. It can retrieve objects, query relationships, evaluate rules, inspect evidence, detect data limitations, and propose reviewable updates. The Analyst Agent cannot directly modify the graph — all suggestions pass through the Review Queue.
+The Analyst Agent can retrieve objects, query relationships, evaluate rules, inspect evidence, detect data limitations, and propose reviewable updates. Its suggestions pass through Review Queue. The heuristic trace scores do not measure answer correctness, and the fixed question set has not yet been run as an automated accuracy benchmark.
 
 ---
 
@@ -175,6 +189,12 @@ docker compose up --build
 | Neo4j Browser | http://localhost:7474 |
 
 Default login: `demo` / `demo`
+
+This login is a frontend demo affordance, **not backend authentication**. Run the stack locally on trusted networks only. The backend auto-seeds sample data on first startup unless `AUTO_SEED_DEMO_DATA=false` is set.
+
+Docker Compose keeps the source catalog, import plans, and review state in a named `backend_runtime` volume so they survive container replacement. The explicit demo reset can clear this state.
+
+Legacy direct-write endpoints (such as `/api/action`, `/api/pipeline/batch-import`, direct CSV import, demo reset, and snapshot restore) return HTTP 403 by default. For a disposable local demo only, set `ENABLE_LEGACY_DEMO_WRITES=true` in `.env` and restart the backend. The Review Queue API is an inspectable demo workflow, not an authorization boundary.
 
 <details>
 <summary>Manual Development</summary>
@@ -225,7 +245,7 @@ Open http://localhost:5173.
 Quick Demo steps:
 
 1. **Dashboard** — overview of runtime state
-2. **Data Pipeline** — profile sample CSV, review mappings, generate import plan
+2. **Data Pipeline** — profile sample CSV, inspect source IDs, confirm mappings, generate an import plan
 3. **Review Queue** — review candidates, approve or reject, apply to graph
 4. **Object Explorer** — browse products, inspect evidence and risk edges
 5. **Graph Explorer** — explore the local and global evidence network
@@ -241,7 +261,8 @@ Quick Demo steps:
 | Feature | Status | Description |
 |---|---|---|
 | Ontology Manager | ✅ Available | Object types, link types, rules, actions, constraints |
-| Data Pipeline | ✅ Available | Profile, map, validate, generate import plans |
+| Data Pipeline | ✅ Available | Profile, suggest and confirm field mappings, inspect source lineage, generate import plans; confirmed decisions affect subsequent plans |
+| Pet Food question set | ✅ Fixture | Eight evidence-backed questions with fixed input hashes; no automated answer accuracy score yet |
 | Custom Object CSV | ✅ Available | Upload object CSV with type inference |
 | Relationship CSV | ✅ Available | Upload relationship CSV with validation |
 | Review Queue | ✅ Available | Human-in-the-loop approve / reject / apply |
@@ -288,6 +309,7 @@ To enable LLM-powered reasoning:
 backend/
   ontology_kernel/     Schema-driven runtime and validation
   data_pipeline/       CSV profiling, mapping, import plans
+                       Persistent source revision and mapping catalog
   review_queue/        HITL review workflow
   graph_snapshot/      Snapshot, diff, rollback
   rule_studio/         Rule definitions and simulation
@@ -302,13 +324,14 @@ docs/                  Product docs, architecture, demo scripts
 media/                 Screenshots and demo video
 ontology/pet_food/     Pet Food domain schema (YAML)
 sample-data/           Demo CSV data
+  pet-food/question-set.v1.json  Fixed Pet Food question baseline
 ```
 
 ---
 
 ## Testing
 
-Backend: run module checks from `backend/` with `python scripts/test_<module>.py`.
+Backend: run module checks from `backend/` with `python scripts/test_<module>.py`. Run the focused unit tests from the repository root with `PYTHONPATH=backend python -m unittest discover -s backend/tests`.
 
 Frontend: `npm run test:smoke` (Playwright route smoke tests).
 
@@ -320,7 +343,7 @@ GitHub Actions runs backend module checks, runs Neo4j integration checks against
 
 Prompt-to-Ontology is a learning project with a runnable reference implementation. The included Pet Food demo makes the design choices and workflow inspectable.
 
-The repository includes module-level backend test scripts and frontend smoke tests, but does not provide a production deployment, enterprise identity and access management, or validation across multiple business domains. Future work will focus on maintenance, documentation, and small examples that test the learning goals rather than broad platform expansion.
+The repository includes backend checks and frontend smoke tests, but does not provide a production deployment, enterprise identity and access management, or validation across multiple business domains. Source mapping decisions are persisted as metadata; they do not prove that an imported value is queryable in Neo4j. The next steps are question-based answer evaluation and a clearer schema/runtime graph view.
 
 ## Contributing
 

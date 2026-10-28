@@ -18,8 +18,9 @@ from ontology_kernel.models import OntologySchema
 
 from .import_plan import create_import_plan
 from .mapper import suggest_field_mappings, suggest_object_mappings
-from .models import CandidateLink, DataSourceProfile, ImportPlan, ImportPlanSummary, MappingSuggestion, ObjectMapping, FieldMapping, LinkMapping, PlanStatus
+from .models import CandidateLink, DataSourceProfile, ImportPlan, ImportPlanSummary, MappingSuggestion, ObjectMapping, FieldMapping, LinkMapping, MappingType, PlanStatus
 from .profiler import profile_csv, profile_rows
+from .source_catalog import SourceCatalog
 
 # Sample data paths
 _SAMPLE_DIR = Path(__file__).resolve().parent.parent.parent / "sample-data" / "pet-food"
@@ -47,6 +48,7 @@ _SAMPLE_LINK_MAPPINGS: dict[str, list[dict]] = {
 # Persistence path
 _RUNTIME_DIR = Path(__file__).resolve().parent.parent / ".runtime"
 _PLANS_FILE = _RUNTIME_DIR / "import_plans.json"
+_SOURCES_FILE = _RUNTIME_DIR / "source_catalog.json"
 
 
 class PipelineService:
@@ -56,6 +58,7 @@ class PipelineService:
         self._profiles: dict[str, DataSourceProfile] = {}
         self._plans: dict[str, ImportPlan] = {}
         self._rows: dict[str, list[dict[str, Any]]] = {}
+        self.source_catalog = SourceCatalog(_SOURCES_FILE)
         self._load_plans_from_disk()
 
     # ── Persistence ────────────────────────────────────────────────────
@@ -87,6 +90,7 @@ class PipelineService:
         self._profiles.clear()
         self._plans.clear()
         self._rows.clear()
+        self.source_catalog.reset()
         self._save_plans_to_disk()
 
     # ── Sample sources ─────────────────────────────────────────────────
@@ -110,6 +114,10 @@ class PipelineService:
             raise FileNotFoundError(f"Sample file not found: {path}")
 
         profile = profile_csv(path, sample_name)
+        profile.source_type = "sample"
+        revision = self.source_catalog.register(sample_name, "sample", Path(path).read_bytes(), [c.name for c in profile.columns])
+        profile.source_asset_id = revision["asset_id"]
+        profile.source_revision_id = revision["revision_id"]
         self._profiles[profile.source_id] = profile
 
         # Cache rows
@@ -123,6 +131,9 @@ class PipelineService:
         from .profiler import profile_csv_content as _profile_content
         profile = _profile_content(content, filename)
         profile.source_type = "custom_csv"
+        revision = self.source_catalog.register(filename, "custom_csv", content.encode("utf-8"), [c.name for c in profile.columns])
+        profile.source_asset_id = revision["asset_id"]
+        profile.source_revision_id = revision["revision_id"]
         self._profiles[profile.source_id] = profile
 
         import io
@@ -146,13 +157,93 @@ class PipelineService:
         field_suggestions = suggest_field_mappings(profile, schema)
         object_mappings, unmapped = suggest_object_mappings(profile, schema)
 
+        revision = self.source_catalog.source(profile.source_revision_id)
+        fields_by_name = {f["source_column"]: f for f in revision["fields"]}
+        enriched_suggestions = []
+        for suggestion in field_suggestions:
+            field = fields_by_name[suggestion.source_column]
+            mapping = self.source_catalog.propose(
+                profile.source_revision_id, field["field_id"],
+                suggestion.suggested_object_type, suggestion.suggested_property,
+                suggestion.confidence,
+            )
+            enriched_suggestions.append({**suggestion.model_dump(), "source_field_id": field["field_id"],
+                                         "mapping_status": mapping["status"], "resolution": mapping["resolution"],
+                                         "recorded_mapping": mapping})
+
         return {
             "source_id": source_id,
+            "source_asset_id": profile.source_asset_id,
+            "source_revision_id": profile.source_revision_id,
             "domain": domain,
-            "field_suggestions": [s.model_dump() for s in field_suggestions],
+            "field_suggestions": enriched_suggestions,
             "object_mappings": [m.model_dump() for m in object_mappings],
             "unmapped_fields": [f.model_dump() for f in unmapped],
         }
+
+    def decide_mapping(self, revision_id: str, field_id: str, object_type: str,
+                       property_name: str, resolution: str, domain: str = "pet_food") -> dict:
+        """Confirm or separate a source field after checking the ontology target."""
+        if resolution != "separate":
+            schema = self._load_schema(domain)
+            obj = schema.object_types.get(object_type)
+            if obj is None or property_name not in {p.name for p in obj.properties}:
+                raise ValueError(f"Unknown ontology property: {object_type}.{property_name}")
+        return self.source_catalog.decide(revision_id, field_id, object_type, property_name, resolution)
+
+    def _apply_source_decisions(self, profile: DataSourceProfile, mappings: list[ObjectMapping], schema: OntologySchema) -> list[ObjectMapping]:
+        """Honor confirmed mappings and exclusions when producing a plan."""
+        fields = self.source_catalog.source(profile.source_revision_id)["fields"]
+        decisions = {f["source_column"]: f["mapping"] for f in fields if f["mapping"] and f["mapping"]["status"] != "suggested"}
+        if not decisions:
+            return mappings
+
+        grouped: dict[str, list[FieldMapping]] = {}
+        present_columns: set[str] = set()
+        fallback_ids = {m.object_type: m.id_column for m in mappings}
+        for object_mapping in mappings:
+            for field in object_mapping.field_mappings:
+                present_columns.add(field.source_column)
+                decision = decisions.get(field.source_column)
+                if decision and decision["status"] == "separate":
+                    continue
+                if decision and decision["status"] == "confirmed":
+                    field = field.model_copy(update={
+                        "target_object_type": decision["target_object_type"],
+                        "target_property": decision["target_property"],
+                        "confidence": 1.0,
+                        "mapping_type": MappingType.MANUAL,
+                        "reason": f"confirmed source mapping ({decision['resolution']})",
+                    })
+                grouped.setdefault(field.target_object_type, []).append(field)
+
+        for source_column, decision in decisions.items():
+            if source_column in present_columns or decision["status"] != "confirmed":
+                continue
+            grouped.setdefault(decision["target_object_type"], []).append(FieldMapping(
+                source_column=source_column,
+                target_object_type=decision["target_object_type"],
+                target_property=decision["target_property"],
+                confidence=1.0, mapping_type=MappingType.MANUAL,
+                reason=f"confirmed source mapping ({decision['resolution']})",
+            ))
+
+        result = []
+        for object_type, fields_for_type in grouped.items():
+            type_def = schema.object_types.get(object_type)
+            if type_def is None:
+                raise ValueError(f"Unknown object type in mapping decision: {object_type}")
+            id_column = next((f.source_column for f in fields_for_type if f.target_property == type_def.primary_key), "")
+            if not id_column:
+                fallback = fallback_ids.get(object_type)
+                id_column = fallback if fallback in {f.source_column for f in fields_for_type} else fields_for_type[0].source_column
+            display_column = next((f.source_column for f in fields_for_type if "name" in f.target_property.lower()), id_column)
+            result.append(ObjectMapping(
+                object_type=object_type, id_column=id_column, display_name_column=display_column,
+                field_mappings=fields_for_type,
+                confidence=sum(f.confidence for f in fields_for_type) / len(fields_for_type),
+            ))
+        return result
 
     # ── Import plan ────────────────────────────────────────────────────
 
@@ -172,10 +263,11 @@ class PipelineService:
         schema = self._load_schema(domain)
 
         # Use provided mappings or auto-suggest
-        if object_mappings:
+        if object_mappings is not None:
             obj_maps = [ObjectMapping(**m) for m in object_mappings]
         else:
             obj_maps, _ = suggest_object_mappings(profile, schema)
+        obj_maps = self._apply_source_decisions(profile, obj_maps, schema)
 
         lnk_maps = []
         if link_mappings:
@@ -191,6 +283,13 @@ class PipelineService:
             link_mappings=lnk_maps,
             schema=schema,
         )
+
+        plan.metadata["source_asset_id"] = profile.source_asset_id
+        plan.metadata["source_revision_id"] = profile.source_revision_id
+        plan.metadata["mapping_decisions"] = [
+            f["mapping"] for f in self.source_catalog.source(profile.source_revision_id)["fields"]
+            if f["mapping"] is not None
+        ]
 
         # Add source metadata for custom CSV uploads
         if profile.source_type == "custom_csv":

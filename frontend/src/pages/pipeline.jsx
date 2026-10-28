@@ -1,16 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Card, Button, Space, Typography, Tag, Steps, Table, Alert, Row, Col, Statistic, message, Progress, Divider, Collapse, Radio, Upload, Select, theme } from 'antd';
+import { useState, useEffect, useRef } from 'react';
+import { Card, Button, Space, Typography, Tag, Steps, Table, Alert, Row, Col, Statistic, message, Progress, Divider, Collapse, Radio, Upload, Select, Modal, theme } from 'antd';
 import {
   DatabaseOutlined,
   FileSearchOutlined,
   SwapOutlined,
   ImportOutlined,
-  PlayCircleOutlined,
   EyeOutlined,
   SafetyCertificateOutlined,
   InfoCircleOutlined,
   TableOutlined,
   LinkOutlined,
+  LeftOutlined,
   RightOutlined,
   SendOutlined,
   CheckCircleOutlined,
@@ -20,11 +20,10 @@ import {
   RocketOutlined,
   ApartmentOutlined,
   UploadOutlined,
-  InboxOutlined,
   CloudUploadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../providers/dataProvider';
 
 const { Title, Text } = Typography;
@@ -64,11 +63,15 @@ export default function PipelinePage() {
   const { t, i18n } = useTranslation();
   const { token } = theme.useToken();
   const navigate = useNavigate();
-  const [step, setStep] = useState(-1);
+  const [step, setStep] = useState(0);
+  const workflowRef = useRef(null);
+  const stepperRef = useRef(null);
+  const previousStepRef = useRef(0);
   const [samples, setSamples] = useState([]);
   const [selectedSample, setSelectedSample] = useState('');
   const [profile, setProfile] = useState(null);
   const [mappings, setMappings] = useState(null);
+  const [lineage, setLineage] = useState(null);
   const [importPlan, setImportPlan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [recentPlans, setRecentPlans] = useState([]);
@@ -78,6 +81,7 @@ export default function PipelinePage() {
   const [sourceMode, setSourceMode] = useState('sample');
   const [targetObjectType, setTargetObjectType] = useState('PetFoodProduct');
   const [mappingOverrides, setMappingOverrides] = useState({});
+  const [mappingTargets, setMappingTargets] = useState({});
   const [csvImportType, setCsvImportType] = useState('object');
   const [linkTypes, setLinkTypes] = useState({});
   const [relLinkType, setRelLinkType] = useState('CONTAINS');
@@ -87,12 +91,20 @@ export default function PipelinePage() {
 
   const isZh = i18n.language === 'zh';
 
+  useEffect(() => {
+    if (previousStepRef.current === step) return;
+    previousStepRef.current = step;
+    workflowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    stepperRef.current?.querySelector('.ant-steps-item-process')?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [step]);
+
   // Auto-load samples, recent plans, and demo state on mount
   useEffect(() => {
     loadSamples();
     loadRecentPlans();
     api.get('/demo/state').then(r => setDemoState(r.data)).catch(err => console.warn('[Pipeline] failed to load demo state', err));
     api.get('/pipeline/link-types/pet_food').then(r => setLinkTypes(r.data.link_types || {})).catch(err => console.warn('[Pipeline] failed to load link types', err));
+    api.get('/pipeline/mapping-targets').then(r => setMappingTargets(r.data || {})).catch(err => console.warn('[Pipeline] failed to load mapping targets', err));
   }, []);
 
   const loadSamples = async () => {
@@ -116,8 +128,12 @@ export default function PipelinePage() {
       const { data } = await api.post('/pipeline/profile/sample', { sample_name: selectedSample });
       setProfile(data);
       setMappings(null);
+      setLineage(null);
       setImportPlan(null);
       setMappingOverrides({});
+      setRelSourceIdCol('');
+      setRelTargetIdCol('');
+      setRelPropertyCols([]);
       setStep(1);
     } catch { message.error(t('pipeline.profileFailed')); }
     finally { setLoading(false); }
@@ -130,8 +146,12 @@ export default function PipelinePage() {
       const { data } = await api.post('/pipeline/profile/csv', { filename: file.name, content });
       setProfile(data);
       setMappings(null);
+      setLineage(null);
       setImportPlan(null);
       setMappingOverrides({});
+      setRelSourceIdCol('');
+      setRelTargetIdCol('');
+      setRelPropertyCols([]);
       setStep(1);
       message.success(`${file.name} — ${data.row_count} rows × ${data.column_count} columns`);
     } catch { message.error(t('pipeline.profileFailed')); }
@@ -151,8 +171,52 @@ export default function PipelinePage() {
     finally { setLoading(false); }
   };
 
+  const handleMappingDecision = async (record, resolution) => {
+    if (!profile?.source_revision_id) return;
+    const override = mappingOverrides[record.source_column];
+    const targetObjectType = override?.objectType || (record.recorded_mapping?.status === 'confirmed' ? record.recorded_mapping.target_object_type : record.suggested_object_type);
+    const targetProperty = override?.objectType ? override.property : (record.recorded_mapping?.status === 'confirmed' ? record.recorded_mapping.target_property : record.suggested_property);
+    if (resolution !== 'separate' && (!targetObjectType || !targetProperty)) {
+      message.warning(isZh ? '请先选择有效的目标属性' : 'Choose a valid target property first');
+      return;
+    }
+    try {
+      const { data } = await api.post('/pipeline/mappings/decision', {
+        revision_id: profile.source_revision_id,
+        field_id: record.source_field_id,
+        target_object_type: resolution === 'separate' ? '' : targetObjectType,
+        target_property: resolution === 'separate' ? '' : targetProperty,
+        resolution,
+      });
+      setMappings(prev => ({
+        ...prev,
+        field_suggestions: prev.field_suggestions.map(item => item.source_field_id === record.source_field_id
+          ? { ...item, mapping_status: data.status, resolution: data.resolution, recorded_mapping: data }
+          : item),
+      }));
+      setImportPlan(null);
+      message.success(isZh ? '映射决定已保存' : 'Mapping decision saved');
+    } catch (err) {
+      message.error(err?.response?.data?.detail || (isZh ? '保存失败' : 'Could not save decision'));
+    }
+  };
+
+  const handleTargetLineage = async (record) => {
+    const targetObjectType = record.recorded_mapping?.target_object_type || record.suggested_object_type;
+    const targetProperty = record.recorded_mapping?.target_property || record.suggested_property;
+    if (!targetObjectType || !targetProperty) return;
+    try {
+      const { data } = await api.get('/pipeline/lineage/target', { params: { object_type: targetObjectType, property_name: targetProperty } });
+      setLineage(data);
+    } catch { message.error(isZh ? '来源查询失败' : 'Could not load source lineage'); }
+  };
+
   const handleCreatePlan = async () => {
     if (!profile) return;
+    if (Object.values(mappingOverrides).some(value => value !== 'ignore' && value.objectType && !value.property)) {
+      message.warning(isZh ? '请为手动映射选择目标属性' : 'Choose a target property for each manual mapping');
+      return;
+    }
     setLoading(true);
     try {
       const body = { source_id: profile.source_id, domain: 'pet_food' };
@@ -165,8 +229,8 @@ export default function PipelinePage() {
           const override = mappingOverrides[fs.source_column];
           if (override === 'ignore') { ignored.add(fs.source_column); continue; }
           const objType = override?.objectType || fs.suggested_object_type;
-          const prop = override?.property || fs.suggested_property;
-          if (!objType) continue;
+          const prop = override?.objectType ? override.property : fs.suggested_property;
+          if (!objType || !prop) continue;
           if (!objMappingGroups[objType]) objMappingGroups[objType] = { object_type: objType, id_column: '', field_mappings: [] };
           const ID_PROPS = { PetFoodProduct: 'product_id', Ingredient: 'ingredient_id', Brand: 'brand_id', RiskRule: 'rule_id', Species: 'species_id', LifeStage: 'stage_id' };
           if (ID_PROPS[objType] === prop) {
@@ -178,7 +242,7 @@ export default function PipelinePage() {
       }
       const { data } = await api.post('/pipeline/import-plan', body);
       setImportPlan(data);
-      setStep(4);
+      setStep(3);
       loadRecentPlans();
     } catch { message.error(t('pipeline.planFailed')); }
     finally { setLoading(false); }
@@ -201,7 +265,7 @@ export default function PipelinePage() {
         property_columns: relPropertyCols,
       });
       setImportPlan(data);
-      setStep(4);
+      setStep(3);
       loadRecentPlans();
     } catch (err) { message.error(err?.response?.data?.detail || t('pipeline.planFailed')); }
     finally { setLoading(false); }
@@ -228,9 +292,13 @@ export default function PipelinePage() {
   const handleViewPlan = async (planId) => {
     try {
       const { data } = await api.get(`/pipeline/import-plan/${planId}`);
+      setProfile(null);
+      setMappings(null);
+      setLineage(null);
+      setMappingOverrides({});
       setImportPlan(data);
-      setStep(4);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setStep(5);
+      workflowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch { message.error(t('common.loadFailed')); }
   };
 
@@ -381,17 +449,19 @@ export default function PipelinePage() {
   ];
 
   const mappingColumns = [
-    { title: t('pipeline.sourceColumn'), dataIndex: 'source_column', key: 'src', render: v => <Text code>{v}</Text> },
+    { title: t('pipeline.sourceColumn'), dataIndex: 'source_column', key: 'src', render: (v, record) => <Space direction="vertical" size={0}><Text code>{v}</Text><Text type="secondary" style={{ fontSize: 11 }}>{record.source_field_id}</Text></Space> },
     { title: t('pipeline.targetType'), dataIndex: 'suggested_object_type', key: 'type', render: (v, record) => {
       const override = mappingOverrides[record.source_column];
       if (override === 'ignore') return <Tag>—</Tag>;
       if (override?.objectType) return <Tag color="blue">{override.objectType}</Tag>;
+      if (record.recorded_mapping?.status === 'confirmed') return <Tag color="green">{record.recorded_mapping.target_object_type}</Tag>;
       return v ? <Tag color="blue">{v}</Tag> : <Tag>—</Tag>;
     }},
     { title: t('pipeline.targetProperty'), dataIndex: 'suggested_property', key: 'prop', render: (v, record) => {
       const override = mappingOverrides[record.source_column];
       if (override === 'ignore') return <Text type="secondary">{t('pipeline.ignoreColumn')}</Text>;
       if (override?.property) return <Text code>{override.property}</Text>;
+      if (record.recorded_mapping?.status === 'confirmed') return <Text code>{record.recorded_mapping.target_property}</Text>;
       return v ? <Text code>{v}</Text> : '—';
     }},
     { title: t('pipeline.confidence'), dataIndex: 'confidence', key: 'conf', render: (v, record) => {
@@ -399,18 +469,40 @@ export default function PipelinePage() {
       return <Tag color={v >= 0.8 ? 'green' : v >= 0.5 ? 'orange' : 'red'}>{(v * 100).toFixed(0)}%</Tag>;
     }},
     { title: t('pipeline.reason'), dataIndex: 'reason', key: 'reason', ellipsis: true },
+    { title: isZh ? '来源映射' : 'Source mapping', key: 'mappingDecision', width: 270, render: (_, record) => {
+      const override = mappingOverrides[record.source_column];
+      const effectiveType = override?.objectType || (record.recorded_mapping?.status === 'confirmed' ? record.recorded_mapping.target_object_type : record.suggested_object_type);
+      const effectiveProperty = override?.objectType ? override.property : (record.recorded_mapping?.status === 'confirmed' ? record.recorded_mapping.target_property : record.suggested_property);
+      const saved = record.recorded_mapping;
+      const changed = override && override !== 'ignore' && saved?.status === 'confirmed'
+        && (saved.target_object_type !== effectiveType || saved.target_property !== effectiveProperty);
+      return <Space direction="vertical" size={4}>
+        <Space wrap size={4}>
+          <Tag color={changed ? 'orange' : record.mapping_status === 'confirmed' ? 'green' : record.mapping_status === 'separate' ? 'default' : 'orange'}>
+            {changed ? (isZh ? '待重新确认' : 'Reconfirm') : record.mapping_status === 'confirmed' ? (isZh ? '已确认' : 'Confirmed') : record.mapping_status === 'separate' ? (isZh ? '保持独立' : 'Separate') : (isZh ? '仅建议' : 'Suggested')}
+          </Tag>
+          {record.mapping_status === 'confirmed' && <Button type="link" size="small" onClick={() => handleTargetLineage(record)}>{isZh ? '反查来源' : 'Sources'}</Button>}
+        </Space>
+        <Space wrap size={4}>
+          <Button size="small" onClick={() => handleMappingDecision(record, 'same')}>{isZh ? '确认映射' : 'Confirm'}</Button>
+          <Button size="small" onClick={() => handleMappingDecision(record, 'alias')}>{isZh ? '标为别名' : 'Alias'}</Button>
+          <Button size="small" onClick={() => handleMappingDecision(record, 'separate')}>{isZh ? '不映射' : 'Separate'}</Button>
+        </Space>
+      </Space>;
+    } },
     ...(sourceMode === 'custom' ? [{
       title: t('pipeline.mappingOverride'),
       key: 'override',
-      width: 160,
+      width: 260,
       render: (_, record) => (
-        <Select size="small" style={{ width: '100%' }} placeholder={t('pipeline.overrideMapping')}
+        <Space direction="vertical" size={4} style={{ width: '100%' }}><Select size="small" style={{ width: '100%' }} placeholder={t('pipeline.overrideMapping')}
           allowClear value={mappingOverrides[record.source_column] === 'ignore' ? 'ignore' : mappingOverrides[record.source_column]?.objectType || undefined}
           onChange={(val) => {
+            setImportPlan(null);
             setMappingOverrides(prev => {
               const next = { ...prev };
               if (val === 'ignore') { next[record.source_column] = 'ignore'; }
-              else if (val) { next[record.source_column] = { objectType: val, property: record.suggested_property }; }
+              else if (val) { next[record.source_column] = { objectType: val, property: (mappingTargets[val] || []).includes(record.suggested_property) ? record.suggested_property : '' }; }
               else { delete next[record.source_column]; }
               return next;
             });
@@ -418,6 +510,9 @@ export default function PipelinePage() {
           {TARGET_OBJECT_TYPES.map(ot => <Select.Option key={ot} value={ot}>{ot}</Select.Option>)}
           <Select.Option value="ignore">{t('pipeline.ignoreColumn')}</Select.Option>
         </Select>
+        {mappingOverrides[record.source_column]?.objectType && <Select size="small" style={{ width: '100%' }} placeholder={isZh ? '目标属性' : 'Target property'} value={mappingOverrides[record.source_column]?.property || undefined} onChange={val => { setMappingOverrides(prev => ({ ...prev, [record.source_column]: { ...prev[record.source_column], property: val } })); setImportPlan(null); }}>
+          {(mappingTargets[mappingOverrides[record.source_column].objectType] || []).map(prop => <Select.Option key={prop} value={prop}>{prop}</Select.Option>)}
+        </Select>}</Space>
       ),
     }] : []),
   ];
@@ -433,6 +528,32 @@ export default function PipelinePage() {
     { title: t('common.type'), dataIndex: 'type', key: 'type', render: v => <Tag color="green">{v}</Tag> },
     { title: t('pipeline.targetId'), dataIndex: 'target_id', key: 'tgt', render: v => <Text code style={{ fontSize: 12 }}>{v}</Text> },
   ];
+
+  const canVisitStep = index => index === 0
+    || (index === 1 && !!profile)
+    || (index === 2 && !!mappings)
+    || (index >= 3 && !!importPlan);
+
+  const handleNextStep = () => {
+    if (step === 0) {
+      if (sourceMode === 'sample') handleProfile();
+      else if (profile) setStep(1);
+      return;
+    }
+    if (step === 1) handleSuggestMappings();
+    else if (step === 2) {
+      if (sourceMode === 'custom' && csvImportType === 'relationship') handleCreateRelationshipPlan();
+      else handleCreatePlan();
+    } else if (step < 5 && canVisitStep(step + 1)) setStep(step + 1);
+  };
+
+  const nextStepLabel = step === 0 ? t('pipeline.profileButton')
+    : step === 1 ? t('pipeline.suggestMappings')
+    : step === 2 ? t('pipeline.previewCandidatesAction')
+    : step === 3 ? t('pipeline.viewValidation')
+    : t('pipeline.viewImportPlan');
+  const nextDisabled = step === 0 && (sourceMode === 'sample' ? !selectedSample : !profile);
+  const previousAvailableStep = Array.from({ length: step }, (_, i) => step - i - 1).find(canVisitStep);
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -450,6 +571,356 @@ export default function PipelinePage() {
         message={t('pipeline.intro')}
         style={{ fontSize: 12 }}
       />
+
+      <div className="pipeline-workflow" ref={workflowRef}>
+        <div className="pipeline-stepper" ref={stepperRef}>
+          <div className="pipeline-stepper-heading">
+            <div className="pipeline-stepper-title">
+              <Text type="secondary">{t('pipeline.stepCount', { current: step + 1, total: stepItems.length })}</Text>
+              <Text strong>{stepItems[step].title}</Text>
+            </div>
+          </div>
+          <div className="pipeline-stepper-scroll">
+            <Steps current={step} items={stepItems.map((item, index) => ({ ...item, disabled: !canVisitStep(index) }))} size="small" responsive={false} onChange={i => { if (canVisitStep(i)) setStep(i); }} />
+          </div>
+        </div>
+
+      {/* ── Step 0: Select Source ─────────────────────────────────── */}
+      {step === 0 && <Card title={<><DatabaseOutlined /> {t('pipeline.s1')}</>}>
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          {/* Source Mode Switch */}
+          <div>
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('pipeline.dataSourceMode')}</Text>
+            <Radio.Group value={sourceMode} onChange={e => { setSourceMode(e.target.value); setCsvImportType('object'); setStep(0); setProfile(null); setMappings(null); setLineage(null); setImportPlan(null); setMappingOverrides({}); setRelSourceIdCol(''); setRelTargetIdCol(''); setRelPropertyCols([]); }}>
+              <Radio.Button value="sample"><DatabaseOutlined /> {t('pipeline.sampleData')}</Radio.Button>
+              <Radio.Button value="custom"><UploadOutlined /> {t('pipeline.customCSV')}</Radio.Button>
+            </Radio.Group>
+          </div>
+
+          {/* Sample Data Mode */}
+          {sourceMode === 'sample' && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text>{t('pipeline.selectSampleLabel')}</Text>
+                <Button size="small" icon={<ReloadOutlined />} onClick={loadSamples}>{t('common.refresh')}</Button>
+              </div>
+              <Row gutter={[12, 12]} align="stretch">
+                {samples.map(s => {
+                  const info = SAMPLE_INFO[s.name] || {};
+                  const selected = selectedSample === s.name;
+                  return (
+                    <Col xs={24} sm={12} xl={6} key={s.name} className="pipeline-source-col">
+                      <Card
+                        className="pipeline-source-card"
+                        size="small"
+                        hoverable
+                        onClick={() => { if (selectedSample !== s.name) { setSelectedSample(s.name); setProfile(null); setMappings(null); setLineage(null); setImportPlan(null); setMappingOverrides({}); } }}
+                        style={{ borderColor: selected ? token.colorPrimary : undefined, cursor: 'pointer' }}
+                      >
+                        <div style={{ fontSize: 24, marginBottom: 8 }}>{info.icon || '📋'}</div>
+                        <Text strong style={{ display: 'block', fontSize: 13 }}>{s.name}</Text>
+                        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
+                          {isZh ? info.desc_zh : info.desc_en}
+                        </Text>
+                        <div className="pipeline-source-tags">
+                          {info.objectType && <Tag color="blue" style={{ fontSize: 12 }}>{info.objectType}</Tag>}
+                          {info.linkType && <Tag color="green" style={{ fontSize: 12 }}>{info.linkType}</Tag>}
+                          <Tag style={{ fontSize: 12 }}>{t('common.demoData')}</Tag>
+                        </div>
+                      </Card>
+                    </Col>
+                  );
+                })}
+              </Row>
+            </>
+          )}
+
+          {/* Custom CSV Mode */}
+          {sourceMode === 'custom' && (
+            <>
+              <div>
+                <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('pipeline.csvImportType')}</Text>
+                <Radio.Group value={csvImportType} onChange={e => { setCsvImportType(e.target.value); setProfile(null); setMappings(null); setLineage(null); setImportPlan(null); setMappingOverrides({}); setRelSourceIdCol(''); setRelTargetIdCol(''); setRelPropertyCols([]); setStep(0); }}>
+                  <Radio.Button value="object"><TableOutlined /> {t('pipeline.objectCSV')}</Radio.Button>
+                  <Radio.Button value="relationship"><LinkOutlined /> {t('pipeline.relationshipCSV')}</Radio.Button>
+                </Radio.Group>
+              </div>
+              <Alert type="info" showIcon icon={<InfoCircleOutlined />} message={csvImportType === 'object' ? t('pipeline.objectCSVDesc') : t('pipeline.relationshipCSVDesc')} style={{ fontSize: 12 }} />
+              <Card size="small" style={{ background: `color-mix(in srgb, ${token.colorPrimary} 3%, transparent)` }}>
+                <div style={{ textAlign: 'center', padding: '12px 0' }}>
+                  <Upload.Dragger
+                    accept=".csv"
+                    showUploadList={false}
+                    beforeUpload={handleCSVUpload}
+                    style={{ padding: '16px 0' }}
+                  >
+                    <p className="ant-upload-drag-icon"><CloudUploadOutlined style={{ fontSize: 40, color: token.colorPrimary }} /></p>
+                    <p className="ant-upload-text" style={{ fontSize: 14 }}>{t('pipeline.dropCSV')}</p>
+                    <p className="ant-upload-hint" style={{ fontSize: 12 }}>{t('pipeline.csvUploadHint')}</p>
+                  </Upload.Dragger>
+                </div>
+              </Card>
+              {csvImportType === 'object' && (
+                <div>
+                  <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('pipeline.targetObjectType')}</Text>
+                  <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t('pipeline.targetObjectTypeDesc')}</Text>
+                  <Select style={{ width: 240 }} value={targetObjectType} onChange={value => { setTargetObjectType(value); setImportPlan(null); }}>
+                    {TARGET_OBJECT_TYPES.map(ot => <Select.Option key={ot} value={ot}>{ot}</Select.Option>)}
+                  </Select>
+                </div>
+              )}
+              {csvImportType === 'relationship' && demoState?.mode === 'clean' && (demoState?.graph?.node_count || 0) === 0 && (
+                <Alert type="warning" showIcon message={t('pipeline.relationshipRequiresObjects')} />
+              )}
+              {csvImportType === 'relationship' && (
+                <Card size="small" title={t('pipeline.targetLinkType')}>
+                  <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                    <div>
+                      <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t('pipeline.targetLinkTypeDesc')}</Text>
+                      <Select style={{ width: '100%' }} value={relLinkType} onChange={value => { setRelLinkType(value); setImportPlan(null); }}>
+                        {Object.entries(linkTypes).map(([name, lt]) => (
+                          <Select.Option key={name} value={name}>{name} ({lt.source_type} → {lt.target_type})</Select.Option>
+                        ))}
+                      </Select>
+                      {relLinkType && linkTypes[relLinkType] && (
+                        <div style={{ marginTop: 8 }}>
+                          <Tag color="blue">{linkTypes[relLinkType].source_type}</Tag>
+                          <RightOutlined style={{ margin: '0 8px', fontSize: 12 }} />
+                          <Tag color="green">{linkTypes[relLinkType].target_type}</Tag>
+                        </div>
+                      )}
+                    </div>
+                  </Space>
+                </Card>
+              )}
+            </>
+          )}
+        </Space>
+      </Card>}
+
+      {/* ── Step 1: Profile Data ──────────────────────────────────── */}
+      {step === 1 && profile && (
+        <Card
+          title={<><FileSearchOutlined /> {t('pipeline.s2')} — {profile.source_name}</>}
+          extra={<Tag>{profile.row_count} {t('pipeline.rows').toLowerCase()} × {profile.column_count} {t('pipeline.cols').toLowerCase()}</Tag>}
+        >
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Row gutter={[12, 12]}>
+              <Col xs={12} md={6}><Card size="small"><Statistic title={t('pipeline.rowCount')} value={profile.row_count} prefix={<TableOutlined />} /></Card></Col>
+              <Col xs={12} md={6}><Card size="small"><Statistic title={t('pipeline.columnCount')} value={profile.column_count} prefix={<TableOutlined />} /></Card></Col>
+              <Col xs={12} md={6}><Card size="small"><Statistic title={t('pipeline.sampleRows')} value={profile.sample_rows?.length || 0} /></Card></Col>
+            </Row>
+            <Divider style={{ margin: '8px 0' }} />
+            <Text strong>{t('pipeline.columnProfiles')}</Text>
+            <Table dataSource={profile.columns} columns={profileColumns} rowKey="name" size="small" pagination={false} scroll={{ x: 600 }} />
+            {profile.sample_rows?.length > 0 && (
+              <>
+                <Text strong>{t('pipeline.sampleRows')}</Text>
+                <Table
+                  dataSource={profile.sample_rows}
+                  columns={Object.keys(profile.sample_rows[0] || {}).map(k => ({ title: k, dataIndex: k, key: k, ellipsis: true }))}
+                  rowKey={(_, i) => i}
+                  size="small"
+                  pagination={false}
+                  scroll={{ x: true }}
+                />
+              </>
+            )}
+          </Space>
+        </Card>
+      )}
+
+      {/* ── Step 2: Map to Ontology ──────────────────────────────── */}
+      {step === 2 && mappings && (
+        <Card title={<><SwapOutlined /> {t('pipeline.s3')}</>}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Alert type="info" showIcon message={isZh ? '字段建议需要人工确认' : 'Field suggestions need review'} description={isZh ? `来源版本 ${mappings.source_revision_id}。生成 Import Plan 只生成候选；已确认的字段映射可从目标属性反查到来源，不能据此推断图谱已可查询。` : `Source revision ${mappings.source_revision_id}. An Import Plan contains candidates; confirmed mappings can be traced back to source fields and do not imply graph queryability.`} />
+            {sourceMode === 'custom' && csvImportType === 'relationship' && profile && (
+              <Card size="small" title={t('pipeline.targetLinkType')}>
+                <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                  <Select style={{ width: '100%' }} value={relLinkType} onChange={value => { setRelLinkType(value); setImportPlan(null); }}>
+                    {Object.entries(linkTypes).map(([name, lt]) => (
+                      <Select.Option key={name} value={name}>{name} ({lt.source_type} → {lt.target_type})</Select.Option>
+                    ))}
+                  </Select>
+                  <Row gutter={[12, 12]}>
+                    <Col xs={24} md={8}>
+                      <Text strong style={{ display: 'block', marginBottom: 4 }}>{t('pipeline.sourceIdColumn')}</Text>
+                      <Select style={{ width: '100%' }} placeholder={t('pipeline.sourceIdColumn')} value={relSourceIdCol || undefined} onChange={value => { setRelSourceIdCol(value); setImportPlan(null); }}>
+                        {profile.columns?.map(c => <Select.Option key={c.name} value={c.name}>{c.name}</Select.Option>)}
+                      </Select>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Text strong style={{ display: 'block', marginBottom: 4 }}>{t('pipeline.targetIdColumn')}</Text>
+                      <Select style={{ width: '100%' }} placeholder={t('pipeline.targetIdColumn')} value={relTargetIdCol || undefined} onChange={value => { setRelTargetIdCol(value); setImportPlan(null); }}>
+                        {profile.columns?.map(c => <Select.Option key={c.name} value={c.name}>{c.name}</Select.Option>)}
+                      </Select>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Text strong style={{ display: 'block', marginBottom: 4 }}>{t('pipeline.propertyColumns')}</Text>
+                      <Select mode="multiple" style={{ width: '100%' }} placeholder={t('pipeline.propertyColumns')} value={relPropertyCols} onChange={value => { setRelPropertyCols(value); setImportPlan(null); }}>
+                        {profile.columns?.filter(c => c.name !== relSourceIdCol && c.name !== relTargetIdCol).map(c => <Select.Option key={c.name} value={c.name}>{c.name}</Select.Option>)}
+                      </Select>
+                    </Col>
+                  </Row>
+                </Space>
+              </Card>
+            )}
+            {mappings.object_mappings?.length > 0 && (
+              <div>
+                <Text strong>{t('pipeline.objectMappings')}:</Text>
+                <div style={{ marginTop: 8 }}>
+                  {mappings.object_mappings.map((m, i) => (
+                    <Tag key={i} color="blue" style={{ margin: 2 }}>
+                      {m.object_type} ({m.field_mappings?.length} {t('pipeline.fields')})
+                    </Tag>
+                  ))}
+                </div>
+              </div>
+            )}
+            <Table dataSource={mappings.field_suggestions} columns={mappingColumns} rowKey="source_column" size="small" pagination={false} scroll={{ x: 900 }} />
+          </Space>
+        </Card>
+      )}
+
+      <Modal title={lineage ? `${lineage.object_type}.${lineage.property_name}` : ''} open={!!lineage} footer={null} onCancel={() => setLineage(null)}>
+        {lineage?.sources?.length ? lineage.sources.map(source => <div key={source.mapping_id} style={{ marginBottom: 8 }}><Text code>{source.source_name}.{source.source_column}</Text> <Tag color={source.is_latest ? 'green' : 'default'}>{source.is_latest ? (isZh ? '当前版本' : 'Current') : (isZh ? '历史版本' : 'Historical')}</Tag><br /><Text type="secondary">{source.revision_id} · {source.resolution}</Text></div>) : <Text type="secondary">{isZh ? '暂无已确认的来源映射' : 'No confirmed source mapping'}</Text>}
+      </Modal>
+
+      {/* ── Step 3: Candidate Preview ─────────────────────────────── */}
+      {step === 3 && importPlan && (
+        <Card title={<><EyeOutlined /> {t('pipeline.s4')}</>}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Row gutter={[12, 12]}>
+              <Col xs={12} sm={8}>
+                <Card size="small">
+                  <Statistic title={t('pipeline.candidateObjects')} value={importPlan.candidate_objects?.length || 0} prefix={<TableOutlined style={{ color: token.colorPrimary }} />} />
+                </Card>
+              </Col>
+              <Col xs={12} sm={8}>
+                <Card size="small">
+                  <Statistic title={t('pipeline.candidateLinks')} value={importPlan.candidate_links?.length || 0} prefix={<LinkOutlined style={{ color: token.colorSuccess }} />} />
+                </Card>
+              </Col>
+            </Row>
+            {importPlan.candidate_objects?.length > 0 && (
+              <>
+                <Text strong>{t('pipeline.candidateObjects')}:</Text>
+                <Table dataSource={importPlan.candidate_objects.slice(0, 10)} columns={candidateObjColumns} rowKey="id" size="small" pagination={false} scroll={{ x: 500 }} />
+              </>
+            )}
+            {importPlan.candidate_links?.length > 0 && (
+              <>
+                <Text strong>{t('pipeline.candidateLinks')}:</Text>
+                <Table dataSource={importPlan.candidate_links.slice(0, 10)} columns={candidateLinkColumns} rowKey={(_, i) => i} size="small" pagination={false} scroll={{ x: 500 }} />
+              </>
+            )}
+          </Space>
+        </Card>
+      )}
+
+      {/* ── Step 4: Validation ────────────────────────────────────── */}
+      {step === 4 && importPlan && (
+        <Card title={<><SafetyCertificateOutlined /> {t('pipeline.s5')}</>}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            {(() => {
+              const issues = importPlan.validation_issues || [];
+              const critical = issues.filter(i => i.level === 'critical');
+              const errors = issues.filter(i => i.level === 'error');
+              const warnings = issues.filter(i => i.level === 'warning');
+              const infos = issues.filter(i => i.level === 'info');
+              return (
+                <>
+                  <Row gutter={[12, 12]}>
+                    <Col xs={12} md={6}><Card size="small"><Statistic title={t('pipeline.critical')} value={critical.length} valueStyle={{ color: critical.length > 0 ? token.colorError : undefined }} /></Card></Col>
+                    <Col xs={12} md={6}><Card size="small"><Statistic title={t('pipeline.valErrors')} value={errors.length} valueStyle={{ color: errors.length > 0 ? token.colorError : undefined }} /></Card></Col>
+                    <Col xs={12} md={6}><Card size="small"><Statistic title={t('pipeline.valWarnings')} value={warnings.length} valueStyle={{ color: warnings.length > 0 ? token.colorWarning : undefined }} /></Card></Col>
+                    <Col xs={12} md={6}><Card size="small"><Statistic title={t('pipeline.info')} value={infos.length} /></Card></Col>
+                  </Row>
+                  {issues.length === 0 ? (
+                    <Alert type="success" showIcon message={t('pipeline.noCriticalIssues')} />
+                  ) : (
+                    <Table
+                      dataSource={issues}
+                      rowKey={(_, i) => i}
+                      size="small"
+                      scroll={{ x: 480 }}
+                      pagination={{ pageSize: 10 }}
+                      columns={[
+                        { title: t('common.level'), dataIndex: 'level', key: 'level', width: 80, render: v => <Tag color={v === 'critical' ? 'red' : v === 'error' ? 'red' : v === 'warning' ? 'orange' : 'default'}>{v}</Tag> },
+                        { title: 'Code', dataIndex: 'code', key: 'code', width: 200 },
+                        { title: t('common.description'), dataIndex: 'message', key: 'msg', ellipsis: true },
+                      ]}
+                    />
+                  )}
+                </>
+              );
+            })()}
+          </Space>
+        </Card>
+      )}
+
+      {/* ── Step 5: Import Plan ──────────────────────────────────── */}
+      {step === 5 && importPlan && (
+        <Card
+          title={<><ImportOutlined /> {t('pipeline.s6')} — {importPlan.plan_id}</>}
+          extra={<Tag color={STATUS_COLORS[importPlan.status]}>{t('common.statusLabels.' + importPlan.status, importPlan.status)}</Tag>}
+        >
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Row gutter={[16, 16]}>
+              <Col xs={12} md={6}><Card size="small"><Statistic title={t('pipeline.newObjects')} value={importPlan.summary?.new_objects || 0} /></Card></Col>
+              <Col xs={12} md={6}><Card size="small"><Statistic title={t('pipeline.newLinks')} value={importPlan.summary?.new_links || 0} /></Card></Col>
+              <Col xs={12} md={6}><Card size="small"><Statistic title={t('pipeline.valErrors')} value={importPlan.summary?.validation_errors || 0} valueStyle={{ color: importPlan.summary?.validation_errors > 0 ? token.colorError : undefined }} /></Card></Col>
+              <Col xs={12} md={6}><Card size="small"><Statistic title={t('pipeline.avgConfidence')} value={`${((importPlan.summary?.confidence_avg || 0) * 100).toFixed(1)}%`} /></Card></Col>
+            </Row>
+            <Row gutter={[12, 12]}>
+              <Col xs={12} md={8}><Card size="small"><Statistic title={t('pipeline.valWarnings')} value={importPlan.summary?.validation_warnings || 0} /></Card></Col>
+              <Col xs={12} md={8}><Card size="small"><Statistic title={t('pipeline.reviewRequired')} value={importPlan.summary?.review_required || 0} /></Card></Col>
+              <Col xs={12} md={8}><Card size="small"><Statistic title={t('common.status')} value={importPlan.status} /></Card></Col>
+            </Row>
+            <Alert type="info" showIcon message={t('pipeline.importNote')} />
+            {importPlan.submitted_to_review && importPlan.review_batch_id ? (
+              <Alert
+                type="success"
+                showIcon
+                message={t('pipeline.alreadySubmitted')}
+                description={
+                  <span>
+                    {t('pipeline.batchId')}: <Text code>{importPlan.review_batch_id}</Text>
+                    {' '}
+                    <Button type="link" size="small" onClick={() => navigate(`/review?batch_id=${importPlan.review_batch_id}`)}>
+                      {t('pipeline.goToReview')} <RightOutlined />
+                    </Button>
+                  </span>
+                }
+              />
+            ) : importPlan.summary?.validation_errors > 0 ? (
+              <Alert type="warning" showIcon message={t('pipeline.cannotSubmit')}
+                action={mappings && <Button size="small" onClick={() => setStep(2)}>{t('pipeline.reviewMapping')}</Button>} />
+            ) : (
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                onClick={() => handleSubmitToReview()}
+                loading={loading}
+              >
+                {t('pipeline.submitToReview')}
+              </Button>
+            )}
+          </Space>
+        </Card>
+      )}
+
+        <div className="pipeline-step-footer">
+          <Button icon={<LeftOutlined />} disabled={previousAvailableStep === undefined || loading} onClick={() => setStep(previousAvailableStep)}>{t('pipeline.previousStep')}</Button>
+          <Text type="secondary" className="pipeline-step-footer-hint">
+            {step === 0 && sourceMode === 'custom' && !profile ? t('pipeline.uploadToContinue') : t('pipeline.stepCount', { current: step + 1, total: stepItems.length })}
+          </Text>
+          {step < 5 && <Button type="primary" loading={loading} disabled={nextDisabled} onClick={handleNextStep}>
+            {nextStepLabel} <RightOutlined />
+          </Button>}
+        </div>
+      </div>
 
       {/* Build Full Scenario */}
       {!buildPlan && (
@@ -538,337 +1009,6 @@ export default function PipelinePage() {
                 ),
               }))}
             />
-          </Space>
-        </Card>
-      )}
-
-      {/* Steps */}
-      <Steps current={step < 0 ? 0 : step} items={stepItems} size="small" onChange={i => { if (i <= step) setStep(i); }} />
-
-      {/* ── Step 0: Select Source ─────────────────────────────────── */}
-      <Card title={<><DatabaseOutlined /> {t('pipeline.s1')}</>}>
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          {/* Source Mode Switch */}
-          <div>
-            <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('pipeline.dataSourceMode')}</Text>
-            <Radio.Group value={sourceMode} onChange={e => { setSourceMode(e.target.value); setCsvImportType('object'); setStep(-1); setProfile(null); setMappings(null); setImportPlan(null); setMappingOverrides({}); setRelSourceIdCol(''); setRelTargetIdCol(''); setRelPropertyCols([]); }}>
-              <Radio.Button value="sample"><DatabaseOutlined /> {t('pipeline.sampleData')}</Radio.Button>
-              <Radio.Button value="custom"><UploadOutlined /> {t('pipeline.customCSV')}</Radio.Button>
-            </Radio.Group>
-          </div>
-
-          {/* Sample Data Mode */}
-          {sourceMode === 'sample' && (
-            <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text>{t('pipeline.selectSampleLabel')}</Text>
-                <Button size="small" icon={<ReloadOutlined />} onClick={loadSamples}>{t('common.refresh')}</Button>
-              </div>
-              <Row gutter={[12, 12]}>
-                {samples.map(s => {
-                  const info = SAMPLE_INFO[s.name] || {};
-                  const selected = selectedSample === s.name;
-                  return (
-                    <Col xs={24} sm={12} md={6} key={s.name}>
-                      <Card
-                        size="small"
-                        hoverable
-                        onClick={() => setSelectedSample(s.name)}
-                        style={{ borderColor: selected ? token.colorPrimary : undefined, cursor: 'pointer' }}
-                      >
-                        <div style={{ fontSize: 24, marginBottom: 8 }}>{info.icon || '📋'}</div>
-                        <Text strong style={{ display: 'block', fontSize: 13 }}>{s.name}</Text>
-                        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
-                          {isZh ? info.desc_zh : info.desc_en}
-                        </Text>
-                        <div style={{ marginTop: 8 }}>
-                          {info.objectType && <Tag color="blue" style={{ fontSize: 12 }}>{info.objectType}</Tag>}
-                          {info.linkType && <Tag color="green" style={{ fontSize: 12 }}>{info.linkType}</Tag>}
-                          <Tag style={{ fontSize: 12 }}>{t('common.demoData')}</Tag>
-                        </div>
-                      </Card>
-                    </Col>
-                  );
-                })}
-              </Row>
-              {selectedSample && (
-                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleProfile} loading={loading}>
-                  {t('pipeline.profileButton')}
-                </Button>
-              )}
-            </>
-          )}
-
-          {/* Custom CSV Mode */}
-          {sourceMode === 'custom' && (
-            <>
-              <div>
-                <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('pipeline.csvImportType')}</Text>
-                <Radio.Group value={csvImportType} onChange={e => { setCsvImportType(e.target.value); setProfile(null); setMappings(null); setImportPlan(null); setMappingOverrides({}); setRelSourceIdCol(''); setRelTargetIdCol(''); setRelPropertyCols([]); setStep(-1); }}>
-                  <Radio.Button value="object"><TableOutlined /> {t('pipeline.objectCSV')}</Radio.Button>
-                  <Radio.Button value="relationship"><LinkOutlined /> {t('pipeline.relationshipCSV')}</Radio.Button>
-                </Radio.Group>
-              </div>
-              <Alert type="info" showIcon icon={<InfoCircleOutlined />} message={csvImportType === 'object' ? t('pipeline.objectCSVDesc') : t('pipeline.relationshipCSVDesc')} style={{ fontSize: 12 }} />
-              <Card size="small" style={{ background: `color-mix(in srgb, ${token.colorPrimary} 3%, transparent)` }}>
-                <div style={{ textAlign: 'center', padding: '12px 0' }}>
-                  <Upload.Dragger
-                    accept=".csv"
-                    showUploadList={false}
-                    beforeUpload={handleCSVUpload}
-                    style={{ padding: '16px 0' }}
-                  >
-                    <p className="ant-upload-drag-icon"><CloudUploadOutlined style={{ fontSize: 40, color: token.colorPrimary }} /></p>
-                    <p className="ant-upload-text" style={{ fontSize: 14 }}>{t('pipeline.dropCSV')}</p>
-                    <p className="ant-upload-hint" style={{ fontSize: 12 }}>{t('pipeline.csvUploadHint')}</p>
-                  </Upload.Dragger>
-                </div>
-              </Card>
-              {csvImportType === 'object' && (
-                <div>
-                  <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('pipeline.targetObjectType')}</Text>
-                  <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t('pipeline.targetObjectTypeDesc')}</Text>
-                  <Select style={{ width: 240 }} value={targetObjectType} onChange={setTargetObjectType}>
-                    {TARGET_OBJECT_TYPES.map(ot => <Select.Option key={ot} value={ot}>{ot}</Select.Option>)}
-                  </Select>
-                </div>
-              )}
-              {csvImportType === 'relationship' && demoState?.mode === 'clean' && (demoState?.graph?.node_count || 0) === 0 && (
-                <Alert type="warning" showIcon message={t('pipeline.relationshipRequiresObjects')} />
-              )}
-              {csvImportType === 'relationship' && (
-                <Card size="small" title={t('pipeline.targetLinkType')}>
-                  <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                    <div>
-                      <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{t('pipeline.targetLinkTypeDesc')}</Text>
-                      <Select style={{ width: '100%' }} value={relLinkType} onChange={setRelLinkType}>
-                        {Object.entries(linkTypes).map(([name, lt]) => (
-                          <Select.Option key={name} value={name}>{name} ({lt.source_type} → {lt.target_type})</Select.Option>
-                        ))}
-                      </Select>
-                      {relLinkType && linkTypes[relLinkType] && (
-                        <div style={{ marginTop: 8 }}>
-                          <Tag color="blue">{linkTypes[relLinkType].source_type}</Tag>
-                          <RightOutlined style={{ margin: '0 8px', fontSize: 12 }} />
-                          <Tag color="green">{linkTypes[relLinkType].target_type}</Tag>
-                        </div>
-                      )}
-                    </div>
-                    {profile && (
-                      <>
-                        <Divider style={{ margin: '8px 0' }} />
-                        <Row gutter={16}>
-                          <Col span={8}>
-                            <Text strong style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>{t('pipeline.sourceIdColumn')}</Text>
-                            <Select style={{ width: '100%' }} placeholder={t('pipeline.sourceIdColumn')} value={relSourceIdCol || undefined} onChange={setRelSourceIdCol}>
-                              {profile.columns?.map(c => <Select.Option key={c.name} value={c.name}>{c.name}</Select.Option>)}
-                            </Select>
-                          </Col>
-                          <Col span={8}>
-                            <Text strong style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>{t('pipeline.targetIdColumn')}</Text>
-                            <Select style={{ width: '100%' }} placeholder={t('pipeline.targetIdColumn')} value={relTargetIdCol || undefined} onChange={setRelTargetIdCol}>
-                              {profile.columns?.map(c => <Select.Option key={c.name} value={c.name}>{c.name}</Select.Option>)}
-                            </Select>
-                          </Col>
-                          <Col span={8}>
-                            <Text strong style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>{t('pipeline.propertyColumns')}</Text>
-                            <Select mode="multiple" style={{ width: '100%' }} placeholder={t('pipeline.propertyColumns')} value={relPropertyCols} onChange={setRelPropertyCols}>
-                              {profile.columns?.filter(c => c.name !== relSourceIdCol && c.name !== relTargetIdCol).map(c => <Select.Option key={c.name} value={c.name}>{c.name}</Select.Option>)}
-                            </Select>
-                          </Col>
-                        </Row>
-                      </>
-                    )}
-                  </Space>
-                </Card>
-              )}
-            </>
-          )}
-        </Space>
-      </Card>
-
-      {/* ── Step 1: Profile Data ──────────────────────────────────── */}
-      {step >= 1 && profile && (
-        <Card
-          title={<><FileSearchOutlined /> {t('pipeline.s2')} — {profile.source_name}</>}
-          extra={<Tag>{profile.row_count} {t('pipeline.rows').toLowerCase()} × {profile.column_count} {t('pipeline.cols').toLowerCase()}</Tag>}
-        >
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <Row gutter={16}>
-              <Col span={6}><Card size="small"><Statistic title={t('pipeline.rowCount')} value={profile.row_count} prefix={<TableOutlined />} /></Card></Col>
-              <Col span={6}><Card size="small"><Statistic title={t('pipeline.columnCount')} value={profile.column_count} prefix={<TableOutlined />} /></Card></Col>
-              <Col span={6}><Card size="small"><Statistic title={t('pipeline.sampleRows')} value={profile.sample_rows?.length || 0} /></Card></Col>
-            </Row>
-            <Divider style={{ margin: '8px 0' }} />
-            <Text strong>{t('pipeline.columnProfiles')}</Text>
-            <Table dataSource={profile.columns} columns={profileColumns} rowKey="name" size="small" pagination={false} scroll={{ x: 600 }} />
-            {profile.sample_rows?.length > 0 && (
-              <>
-                <Text strong>{t('pipeline.sampleRows')}</Text>
-                <Table
-                  dataSource={profile.sample_rows}
-                  columns={Object.keys(profile.sample_rows[0] || {}).map(k => ({ title: k, dataIndex: k, key: k, ellipsis: true }))}
-                  rowKey={(_, i) => i}
-                  size="small"
-                  pagination={false}
-                  scroll={{ x: true }}
-                />
-              </>
-            )}
-            {step === 1 && (
-              <Button type="primary" icon={<SwapOutlined />} onClick={handleSuggestMappings} loading={loading}>
-                {t('pipeline.suggestMappings')}
-              </Button>
-            )}
-          </Space>
-        </Card>
-      )}
-
-      {/* ── Step 2: Map to Ontology ──────────────────────────────── */}
-      {step >= 2 && mappings && (
-        <Card title={<><SwapOutlined /> {t('pipeline.s3')}</>}>
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            {mappings.object_mappings?.length > 0 && (
-              <div>
-                <Text strong>{t('pipeline.objectMappings')}:</Text>
-                <div style={{ marginTop: 8 }}>
-                  {mappings.object_mappings.map((m, i) => (
-                    <Tag key={i} color="blue" style={{ margin: 2 }}>
-                      {m.object_type} ({m.field_mappings?.length} {t('pipeline.fields')})
-                    </Tag>
-                  ))}
-                </div>
-              </div>
-            )}
-            <Table dataSource={mappings.field_suggestions} columns={mappingColumns} rowKey="source_column" size="small" pagination={false} scroll={{ x: 900 }} />
-            {step === 2 && (
-              <Button type="primary" icon={<EyeOutlined />} onClick={csvImportType === 'relationship' && sourceMode === 'custom' ? handleCreateRelationshipPlan : handleCreatePlan} loading={loading}>
-                {t('pipeline.generatePlan')}
-              </Button>
-            )}
-          </Space>
-        </Card>
-      )}
-
-      {/* ── Step 3: Candidate Preview ─────────────────────────────── */}
-      {importPlan && (
-        <Card title={<><EyeOutlined /> {t('pipeline.s4')}</>}>
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <Row gutter={16}>
-              <Col span={8}>
-                <Card size="small">
-                  <Statistic title={t('pipeline.candidateObjects')} value={importPlan.candidate_objects?.length || 0} prefix={<TableOutlined style={{ color: token.colorPrimary }} />} />
-                </Card>
-              </Col>
-              <Col span={8}>
-                <Card size="small">
-                  <Statistic title={t('pipeline.candidateLinks')} value={importPlan.candidate_links?.length || 0} prefix={<LinkOutlined style={{ color: token.colorSuccess }} />} />
-                </Card>
-              </Col>
-            </Row>
-            {importPlan.candidate_objects?.length > 0 && (
-              <>
-                <Text strong>{t('pipeline.candidateObjects')}:</Text>
-                <Table dataSource={importPlan.candidate_objects.slice(0, 10)} columns={candidateObjColumns} rowKey="id" size="small" pagination={false} scroll={{ x: 500 }} />
-              </>
-            )}
-            {importPlan.candidate_links?.length > 0 && (
-              <>
-                <Text strong>{t('pipeline.candidateLinks')}:</Text>
-                <Table dataSource={importPlan.candidate_links.slice(0, 10)} columns={candidateLinkColumns} rowKey={(_, i) => i} size="small" pagination={false} scroll={{ x: 500 }} />
-              </>
-            )}
-          </Space>
-        </Card>
-      )}
-
-      {/* ── Step 4: Validation ────────────────────────────────────── */}
-      {importPlan && (
-        <Card title={<><SafetyCertificateOutlined /> {t('pipeline.s5')}</>}>
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            {(() => {
-              const issues = importPlan.validation_issues || [];
-              const critical = issues.filter(i => i.level === 'critical');
-              const errors = issues.filter(i => i.level === 'error');
-              const warnings = issues.filter(i => i.level === 'warning');
-              const infos = issues.filter(i => i.level === 'info');
-              return (
-                <>
-                  <Row gutter={16}>
-                    <Col span={6}><Card size="small"><Statistic title={t('pipeline.critical')} value={critical.length} valueStyle={{ color: critical.length > 0 ? token.colorError : undefined }} /></Card></Col>
-                    <Col span={6}><Card size="small"><Statistic title={t('pipeline.valErrors')} value={errors.length} valueStyle={{ color: errors.length > 0 ? token.colorError : undefined }} /></Card></Col>
-                    <Col span={6}><Card size="small"><Statistic title={t('pipeline.valWarnings')} value={warnings.length} valueStyle={{ color: warnings.length > 0 ? token.colorWarning : undefined }} /></Card></Col>
-                    <Col span={6}><Card size="small"><Statistic title={t('pipeline.info')} value={infos.length} /></Card></Col>
-                  </Row>
-                  {issues.length === 0 ? (
-                    <Alert type="success" showIcon message={t('pipeline.noCriticalIssues')} />
-                  ) : (
-                    <Table
-                      dataSource={issues}
-                      rowKey={(_, i) => i}
-                      size="small"
-                      scroll={{ x: 480 }}
-                      pagination={{ pageSize: 10 }}
-                      columns={[
-                        { title: t('common.level'), dataIndex: 'level', key: 'level', width: 80, render: v => <Tag color={v === 'critical' ? 'red' : v === 'error' ? 'red' : v === 'warning' ? 'orange' : 'default'}>{v}</Tag> },
-                        { title: 'Code', dataIndex: 'code', key: 'code', width: 200 },
-                        { title: t('common.description'), dataIndex: 'message', key: 'msg', ellipsis: true },
-                      ]}
-                    />
-                  )}
-                </>
-              );
-            })()}
-          </Space>
-        </Card>
-      )}
-
-      {/* ── Step 5: Import Plan ──────────────────────────────────── */}
-      {importPlan && (
-        <Card
-          title={<><ImportOutlined /> {t('pipeline.s6')} — {importPlan.plan_id}</>}
-          extra={<Tag color={STATUS_COLORS[importPlan.status]}>{t('common.statusLabels.' + importPlan.status, importPlan.status)}</Tag>}
-        >
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <Row gutter={[16, 16]}>
-              <Col span={6}><Card size="small"><Statistic title={t('pipeline.newObjects')} value={importPlan.summary?.new_objects || 0} /></Card></Col>
-              <Col span={6}><Card size="small"><Statistic title={t('pipeline.newLinks')} value={importPlan.summary?.new_links || 0} /></Card></Col>
-              <Col span={6}><Card size="small"><Statistic title={t('pipeline.valErrors')} value={importPlan.summary?.validation_errors || 0} valueStyle={{ color: importPlan.summary?.validation_errors > 0 ? token.colorError : undefined }} /></Card></Col>
-              <Col span={6}><Card size="small"><Statistic title={t('pipeline.avgConfidence')} value={`${((importPlan.summary?.confidence_avg || 0) * 100).toFixed(1)}%`} /></Card></Col>
-            </Row>
-            <Row gutter={16}>
-              <Col span={8}><Card size="small"><Statistic title={t('pipeline.valWarnings')} value={importPlan.summary?.validation_warnings || 0} /></Card></Col>
-              <Col span={8}><Card size="small"><Statistic title={t('pipeline.reviewRequired')} value={importPlan.summary?.review_required || 0} /></Card></Col>
-              <Col span={8}><Card size="small"><Statistic title={t('common.status')} value={importPlan.status} /></Card></Col>
-            </Row>
-            <Alert type="info" showIcon message={t('pipeline.importNote')} />
-            {importPlan.submitted_to_review && importPlan.review_batch_id ? (
-              <Alert
-                type="success"
-                showIcon
-                message={t('pipeline.alreadySubmitted')}
-                description={
-                  <span>
-                    {t('pipeline.batchId')}: <Text code>{importPlan.review_batch_id}</Text>
-                    {' '}
-                    <Button type="link" size="small" onClick={() => navigate(`/review?batch_id=${importPlan.review_batch_id}`)}>
-                      {t('pipeline.goToReview')} <RightOutlined />
-                    </Button>
-                  </span>
-                }
-              />
-            ) : importPlan.summary?.validation_errors > 0 ? (
-              <Alert type="warning" showIcon message={t('pipeline.cannotSubmit')} />
-            ) : (
-              <Button
-                type="primary"
-                icon={<SendOutlined />}
-                onClick={() => handleSubmitToReview()}
-                loading={loading}
-              >
-                {t('pipeline.submitToReview')}
-              </Button>
-            )}
           </Space>
         </Card>
       )}
