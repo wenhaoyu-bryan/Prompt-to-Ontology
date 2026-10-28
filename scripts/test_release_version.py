@@ -30,10 +30,10 @@ class ReleaseVersionTests(unittest.TestCase):
             lock = {"version": "0.1.0", "packages": {"": {"version": "0.1.0"}}}
             (frontend / "package-lock.json").write_text(json.dumps(lock))
             with patch.object(release_version, "ROOT", root), patch.object(
-                release_version.subprocess, "check_output", return_value=""
+                release_version.subprocess, "check_output", return_value="v1.0.4\n"
             ):
                 release_version.validate("0.1.0", False)
-                with patch.object(release_version.subprocess, "check_output", return_value="p2o-v0.1.0\n"):
+                with patch.object(release_version.subprocess, "check_output", return_value="v1.0.4\nv0.1.0\n"):
                     with self.assertRaisesRegex(ValueError, "newer than"):
                         release_version.validate("0.1.0", False)
                 with self.assertRaisesRegex(ValueError, "checkbox"):

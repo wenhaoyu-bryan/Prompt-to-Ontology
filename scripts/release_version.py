@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-TAG_PREFIX = "p2o-v"
+TAG_PREFIX = "v"
 SEMVER = re.compile(
     r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
     r"(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$"
@@ -47,7 +47,7 @@ def compare_versions(left, right):
 
 
 def validate(version, prerelease):
-    _, identifiers = parse_version(version)
+    target_core, identifiers = parse_version(version)
     if bool(identifiers) != prerelease:
         raise ValueError("Prerelease checkbox must match the version suffix (e.g. -alpha.1)")
 
@@ -68,8 +68,13 @@ def validate(version, prerelease):
     existing = []
     for tag in tags:
         try:
-            parse_version(tag[len(TAG_PREFIX):])
+            core, _ = parse_version(tag[len(TAG_PREFIX):])
         except ValueError:
+            continue
+        # The old v1.0.0-v1.0.4 releases precede the one-time 0.x reset.
+        # Compare 0.x releases within the new line; a later 1.x release must
+        # still exceed all existing 1.x tags rather than reuse a historical tag.
+        if target_core[0] == 0 and core[0] != 0:
             continue
         existing.append(tag[len(TAG_PREFIX):])
     if existing:

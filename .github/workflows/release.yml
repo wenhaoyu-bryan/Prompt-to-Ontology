@@ -67,7 +67,7 @@ jobs:
       - name: Publish GitHub Release and tag
         run: |
           flags=(--target "$GITHUB_SHA" --title "Prompt-to-Ontology $RELEASE_VERSION — Pet Food reference" --generate-notes --fail-on-no-commits)
-          previous=$(git tag --list 'p2o-v*' --sort=-version:refname | head -n 1)
+          previous=$(git tag --list 'v0.*' --sort=-version:refname | head -n 1)
           if [[ -n "$previous" ]]; then
             flags+=(--notes-start-tag "$previous")
           else
@@ -78,4 +78,4 @@ jobs:
           else
             flags+=(--latest)
           fi
-          gh release create "p2o-v$RELEASE_VERSION" "${flags[@]}"
+          gh release create "v$RELEASE_VERSION" "${flags[@]}"
