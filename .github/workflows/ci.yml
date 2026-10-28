@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, edited]
   workflow_dispatch:
 
 permissions:
@@ -49,7 +50,13 @@ jobs:
         working-directory: backend
 
       - name: Check release version rules
-        run: python scripts/test_release_version.py
+        run: |
+          python scripts/test_release_version.py
+          python scripts/test_release_automation.py
+
+      - name: Require one release impact on pull requests
+        if: github.event_name == 'pull_request'
+        run: python scripts/release_automation.py validate-pr "$GITHUB_EVENT_PATH"
 
       - name: Check version files agree
         run: python scripts/release_version.py "$(cat VERSION)" --files-only

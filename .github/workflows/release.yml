@@ -1,6 +1,10 @@
 name: Release
 
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       version:
@@ -24,54 +28,89 @@ concurrency:
 jobs:
   release:
     name: Verify and publish tag release
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_VERSION: ${{ inputs.version }}
-      RELEASE_PRERELEASE: ${{ inputs.prerelease }}
+      RELEASE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      INPUT_VERSION: ${{ inputs.version }}
+      INPUT_PRERELEASE: ${{ inputs.prerelease }}
     steps:
-      - name: Require main branch
-        run: |
-          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
-            echo "Run this workflow from main." >&2
-            exit 1
-          fi
-
       - name: Check out exact main commit and tags
         uses: actions/checkout@v7
         with:
+          ref: ${{ env.RELEASE_SHA }}
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Select version from the tested commit
+        id: version
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == 'workflow_dispatch' ]]; then
+            if [[ "$GITHUB_REF" != 'refs/heads/main' ]]; then
+              echo 'Run this workflow from main.' >&2
+              exit 1
+            fi
+            version=$INPUT_VERSION
+            prerelease=$INPUT_PRERELEASE
+          else
+            version=$(cat VERSION)
+            prerelease=false
+            if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+              gh release view "v$version" >/dev/null || {
+                echo "Tag v$version exists without a GitHub Release; inspect before retrying." >&2
+                exit 1
+              }
+              echo "v$version is already released; no new version files on this commit."
+              echo 'needed=false' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo 'needed=true' >> "$GITHUB_OUTPUT"
+
       - name: Validate version files and tag order
+        if: steps.version.outputs.needed == 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_PRERELEASE: ${{ steps.version.outputs.prerelease }}
         run: |
           args=("$RELEASE_VERSION")
           if [[ "$RELEASE_PRERELEASE" == "true" ]]; then args+=(--prerelease); fi
           python scripts/release_version.py "${args[@]}"
 
       - name: Verify current main and successful CI on this commit
+        if: steps.version.outputs.needed == 'true'
         run: |
           main_sha=$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.commit.sha')
-          if [[ "$GITHUB_SHA" != "$main_sha" ]]; then
+          if [[ "$RELEASE_SHA" != "$main_sha" ]]; then
             echo "Main advanced after this workflow started; rerun from the new main commit." >&2
             exit 1
           fi
-          passed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&branch=main&per_page=100" \
-            --jq '[.workflow_runs[] | select(.head_sha == env.GITHUB_SHA and .event == "push" and .status == "completed" and .conclusion == "success")] | length')
+          passed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$RELEASE_SHA&branch=main&per_page=100" \
+            --jq '[.workflow_runs[] | select(.head_sha == env.RELEASE_SHA and .event == "push" and .status == "completed" and .conclusion == "success")] | length')
           if [[ "$passed" -lt 1 ]]; then
-            echo "No successful main push CI run exists for $GITHUB_SHA." >&2
+            echo "No successful main push CI run exists for $RELEASE_SHA." >&2
             exit 1
           fi
 
       - name: Publish GitHub Release and tag
+        if: steps.version.outputs.needed == 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_PRERELEASE: ${{ steps.version.outputs.prerelease }}
         run: |
-          flags=(--target "$GITHUB_SHA" --title "Prompt-to-Ontology $RELEASE_VERSION — Pet Food reference" --generate-notes --fail-on-no-commits)
-          previous=$(git tag --list 'v0.*' --sort=-version:refname | head -n 1)
+          main_sha=$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.commit.sha')
+          if [[ "$RELEASE_SHA" != "$main_sha" ]]; then
+            echo 'Main advanced before publication; let its newer CI run publish.' >&2
+            exit 1
+          fi
+          flags=(--target "$RELEASE_SHA" --title "Prompt-to-Ontology $RELEASE_VERSION — Pet Food reference" --generate-notes --fail-on-no-commits)
+          previous=$(git tag --list 'v*' --sort=-version:refname | head -n 1)
           if [[ -n "$previous" ]]; then
             flags+=(--notes-start-tag "$previous")
-          else
-            flags+=(--notes-start-tag v1.0.4)
           fi
           if [[ "$RELEASE_PRERELEASE" == "true" ]]; then
             flags+=(--prerelease --latest=false)

@@ -8,9 +8,9 @@
 
 **Status:** Learning project · Runnable Pet Food reference implementation
 
-**Version line:** `0.x` for the Pet Food reference implementation. Earlier `v1.x` releases remain available as historical snapshots; see the [release process](docs/releasing.md).
+**Version line:** `0.x` for the Pet Food reference implementation. The earlier `v1.0.0`–`v1.0.4` tags and Releases were retired after the version-policy reset; see the [release process](docs/releasing.md).
 
-Each feature PR records its release impact (none, patch, or minor). Releases are tagged from a green `main` commit after the version files are updated together; see the [version decision guide](docs/releasing.md#decide-the-version-for-every-feature-pr).
+Each feature PR records its release impact (none, patch, or minor). After the merged `main` commit passes CI, automation proposes a version PR; its merge and a green `main` CI run publish the tag and Release. See the [version decision guide](docs/releasing.md#decide-the-version-for-every-feature-pr).
 
 ![MIT License](https://img.shields.io/badge/license-MIT-blue)
 ![Python](https://img.shields.io/badge/python-3.10+-3776ab)
