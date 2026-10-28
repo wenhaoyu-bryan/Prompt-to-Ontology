@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Row, Col, Typography, Space, Radio, Switch, Divider, Tag, Descriptions, List, Button, Modal, message, Statistic, Spin, theme } from 'antd';
+import { Card, Row, Col, Typography, Space, Radio, Divider, Tag, Descriptions, List, Button, Modal, message, Statistic, Spin, theme } from 'antd';
 import {
   BulbOutlined,
   GlobalOutlined,
@@ -13,6 +13,9 @@ import {
   PlayCircleOutlined,
   ReloadOutlined,
   ExperimentOutlined,
+  SunOutlined,
+  MoonOutlined,
+  CheckOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useThemeContext } from '../providers/ThemeProvider';
@@ -22,11 +25,12 @@ import frontendPackage from '../../package.json';
 const { Title, Text, Link } = Typography;
 
 const COLOR_OPTIONS = [
-  { key: 'blue',   labelKey: 'settings.colorBlue',   color: '#1677ff' },
-  { key: 'cyan',   labelKey: 'settings.colorCyan',   color: '#13c2c2' },
-  { key: 'green',  labelKey: 'settings.colorGreen',  color: '#52c41a' },
-  { key: 'purple', labelKey: 'settings.colorPurple', color: '#722ed1' },
-  { key: 'orange', labelKey: 'settings.colorOrange', color: '#fa8c16' },
+  { key: 'indigo', labelKey: 'settings.colorIndigo', color: '#5667D8' },
+  { key: 'blue',   labelKey: 'settings.colorBlue',   color: '#2869D8' },
+  { key: 'cyan',   labelKey: 'settings.colorCyan',   color: '#158A9A' },
+  { key: 'green',  labelKey: 'settings.colorGreen',  color: '#28845C' },
+  { key: 'purple', labelKey: 'settings.colorPurple', color: '#7655C7' },
+  { key: 'orange', labelKey: 'settings.colorOrange', color: '#C47A2B' },
 ];
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -100,42 +104,51 @@ export default function SettingsPage() {
 
       {/* Theme */}
       <Card title={<><BulbOutlined /> {t('settings.theme')}</>}>
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text>{mode === 'dark' ? t('settings.darkMode') : t('settings.lightMode')}</Text>
-            <Switch
-              checked={mode === 'dark'}
-              onChange={checked => setMode(checked ? 'dark' : 'light')}
-              checkedChildren={t('settings.darkMode')}
-              unCheckedChildren={t('settings.lightMode')}
-            />
-          </div>
-        </Space>
+        <div className="theme-mode-options" role="group" aria-label={t('settings.theme')}>
+          {['light', 'dark'].map(option => (
+            <button
+              key={option}
+              type="button"
+              className={`theme-mode-option ${mode === option ? 'is-active' : ''}`}
+              aria-pressed={mode === option}
+              onClick={() => setMode(option)}
+            >
+              <span className={`theme-mode-preview theme-mode-preview-${option}`} aria-hidden="true">
+                <span className="theme-mode-preview-rail" />
+                <span className="theme-mode-preview-content">
+                  <span className="theme-mode-preview-heading" />
+                  <span className="theme-mode-preview-card" />
+                </span>
+              </span>
+              <span className="theme-mode-option-label">
+                {option === 'light' ? <SunOutlined /> : <MoonOutlined />}
+                {t(option === 'light' ? 'settings.lightMode' : 'settings.darkMode')}
+                {mode === option && <CheckOutlined className="theme-mode-selected" />}
+              </span>
+            </button>
+          ))}
+        </div>
       </Card>
 
       {/* Primary Color */}
       <Card title={<><BgColorsOutlined /> {t('settings.primaryColor')}</>}>
-        <div style={{ display: 'flex', gap: 12 }}>
+        <div className="theme-color-options" role="group" aria-label={t('settings.primaryColor')}>
           {COLOR_OPTIONS.map(opt => (
-            <div
+            <button
               key={opt.key}
+              type="button"
+              aria-label={t(opt.labelKey)}
+              aria-pressed={color === opt.key}
+              className={`theme-color-option ${color === opt.key ? 'is-active' : ''}`}
               onClick={() => setColor(opt.key)}
-              style={{
-                width: 48, height: 48, borderRadius: 8,
-                background: opt.color,
-                cursor: 'pointer',
-                border: color === opt.key ? '3px solid #fff' : '3px solid transparent',
-                boxShadow: color === opt.key ? `0 0 0 2px ${opt.color}` : 'none',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.2s',
-              }}
+              style={{ '--swatch': opt.color }}
             >
-              {color === opt.key && <Text style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>✓</Text>}
-            </div>
+              {color === opt.key && <CheckOutlined />}
+            </button>
           ))}
         </div>
         <Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
-          {t('settings.selected')}{t(COLOR_OPTIONS.find(c => c.key === color)?.labelKey || 'settings.colorBlue')}
+          {t('settings.selected')}{t(COLOR_OPTIONS.find(c => c.key === color)?.labelKey || 'settings.colorIndigo')}
         </Text>
       </Card>
 

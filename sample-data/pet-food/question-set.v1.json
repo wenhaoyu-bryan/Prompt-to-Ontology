@@ -1,0 +1,91 @@
+{
+  "id": "pet-food-questions-v1",
+  "purpose": "Fixed, evidence-backed questions for the Pet Food reference implementation; not veterinary advice or an agent accuracy claim.",
+  "snapshot": {
+    "sample-data/pet-food/pet_food_products.csv": "996d32cbc937a838d99d6d40a6a8131588c065b8fc307ff7e3679c4374e6e215",
+    "sample-data/pet-food/pet_food_ingredients.csv": "c6dcefc316a923f375961d4b14758eae9f24f65a33d77c5c7781298a1d569116",
+    "sample-data/pet-food/product_ingredients.csv": "1ce7627fdd06bf28f689c885b61850f7f94ed6fd782ba96c6aa4d89aea316328",
+    "sample-data/pet-food/risk_rules.csv": "c3e9f7d5d7835613539b09da3def507023a793c5f3aae81af331561230d30dbe",
+    "ontology/pet_food/rules.yaml": "2c659491d0118eecda472f696b8088cc8fa09b1fb326713b2f1bc73fd0ba2f3b"
+  },
+  "questions": [
+    {
+      "id": "Q01",
+      "category": "rule_trigger",
+      "question": "Which sample senior cat product meets the RR004 phosphorus condition?",
+      "expected": "PF003 meets the sample rule condition: cat, senior, phosphorus_100g 1.0 > 0.8.",
+      "evidence": [
+        {"file": "sample-data/pet-food/pet_food_products.csv", "key_column": "product_id", "key": "PF003", "fields": {"target_species": "cat", "life_stage": "senior", "phosphorus_100g": "1.0"}},
+        {"file": "sample-data/pet-food/risk_rules.csv", "key_column": "rule_id", "key": "RR004", "fields": {"condition_type": "compound_senior_phosphorus_gt", "threshold": "0.8"}}
+      ],
+      "limit": "A rule condition on sample data is not a veterinary diagnosis."
+    },
+    {
+      "id": "Q02",
+      "category": "rule_trigger",
+      "question": "Does PF002 meet the sample RR005 low-protein condition?",
+      "expected": "Yes: PF002 is a kitten cat food with protein_100g 28, below the sample threshold 30.",
+      "evidence": [
+        {"file": "sample-data/pet-food/pet_food_products.csv", "key_column": "product_id", "key": "PF002", "fields": {"target_species": "cat", "life_stage": "kitten", "protein_100g": "28"}},
+        {"file": "sample-data/pet-food/risk_rules.csv", "key_column": "rule_id", "key": "RR005", "fields": {"condition_type": "compound_kitten_protein_lt", "threshold": "30"}}
+      ],
+      "limit": "Report the configured rule outcome only."
+    },
+    {
+      "id": "Q03",
+      "category": "relationship",
+      "question": "Which ingredient is listed first for PF001, and where does that name come from?",
+      "expected": "ING001 is first (ingredient_order 1), and its name is chicken.",
+      "evidence": [
+        {"file": "sample-data/pet-food/product_ingredients.csv", "key_column": "product_id", "key": "PF001", "fields": {"ingredient_id": "ING001", "ingredient_order": "1"}},
+        {"file": "sample-data/pet-food/pet_food_ingredients.csv", "key_column": "ingredient_id", "key": "ING001", "fields": {"ingredient_name": "chicken"}}
+      ],
+      "limit": "The first listed ingredient is not proof of its quantity."
+    },
+    {
+      "id": "Q04",
+      "category": "rule_not_triggered",
+      "question": "Does PF001 exceed the sample RR001 fat threshold?",
+      "expected": "No: PF001 fat_100g is 15 and the rule threshold is greater than 20.",
+      "evidence": [
+        {"file": "sample-data/pet-food/pet_food_products.csv", "key_column": "product_id", "key": "PF001", "fields": {"fat_100g": "15"}},
+        {"file": "sample-data/pet-food/risk_rules.csv", "key_column": "rule_id", "key": "RR001", "fields": {"condition_type": "nutrition_threshold_fat_100g_gt", "threshold": "20"}}
+      ],
+      "limit": "This only evaluates one configured threshold."
+    },
+    {
+      "id": "Q05",
+      "category": "source_mapping",
+      "question": "Which source column supports the PetFoodProduct phosphorus_100g property?",
+      "expected": "The pet_food_products.csv phosphorus_100g column is the candidate source; a mapping decision must be confirmed separately.",
+      "evidence": [
+        {"file": "sample-data/pet-food/pet_food_products.csv", "key_column": "product_id", "key": "PF003", "fields": {"phosphorus_100g": "1.0"}}
+      ],
+      "limit": "A matching column name alone does not prove the mapping is confirmed or the graph is queryable."
+    },
+    {
+      "id": "Q06",
+      "category": "data_gap",
+      "question": "Which supplier made PF003?",
+      "expected": "Cannot answer from this snapshot: no supplier field or supplier relationship is provided.",
+      "evidence": [],
+      "limit": "Do not infer a supplier from brand or country."
+    },
+    {
+      "id": "Q07",
+      "category": "data_gap",
+      "question": "Was PF003 phosphorus_100g updated this week?",
+      "expected": "Cannot answer from this snapshot: no observation or update timestamp is provided.",
+      "evidence": [],
+      "limit": "Do not infer recency from file modification time or repository commit time."
+    },
+    {
+      "id": "Q08",
+      "category": "source_conflict",
+      "question": "If an uploaded CSV labels a value protein but uses a different unit than protein_100g, can the fields be merged automatically?",
+      "expected": "No. Preserve separate source fields and require a reviewed mapping or an explicit unit conversion rule.",
+      "evidence": [],
+      "limit": "This is a mapping policy question, not a fact in the sample CSV."
+    }
+  ]
+}

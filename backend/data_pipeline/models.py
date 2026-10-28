@@ -48,6 +48,8 @@ class ColumnProfile(BaseModel):
 class DataSourceProfile(BaseModel):
     source_id: str
     source_name: str
+    source_asset_id: str = ""
+    source_revision_id: str = ""
     source_type: str = "csv"  # csv, sample, json
     row_count: int = 0
     column_count: int = 0
