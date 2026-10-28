@@ -25,7 +25,7 @@ A `0.x` breaking change is Minor and must explain the migration. The highest imp
 
 1. Merge a feature PR through the protected `main` branch after its four required checks pass.
 2. When the `main` **push** CI run succeeds, **Prepare Release** checks that the tested commit is still current, finds merged PRs since the latest tag, and creates or updates one `codex/release-next` PR. It updates `VERSION` and both frontend package files together. If there is no Patch or Minor impact, it does nothing.
-3. The bot dispatches CI on the version PR's exact head commit. Review the release contents and merge that PR through the normal branch protection. GitHub may also show an approval request for the PR-triggered run created by `GITHUB_TOKEN`; the separately dispatched CI run supplies the required checks.
+3. GitHub puts the PR-triggered CI run for a `GITHUB_TOKEN`-created PR in an approval-required state. A maintainer must approve that run, review the release contents, wait for the four required checks, and merge the version PR through normal branch protection. A branch-only CI run does not satisfy this PR gate.
 4. When the version PR's `main` **push** CI run succeeds, **Release** verifies that the commit is still current `main`, all version files match, the tag is new and newer than existing tags, and CI passed on that exact commit. It creates the protected `vX.Y.Z` tag and a GitHub Release with generated notes. A normal release becomes Latest.
 5. Read back the Release and tag target. If publication fails after tag creation, inspect the partial state before retrying; never retarget an existing tag.
 
