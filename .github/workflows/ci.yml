@@ -35,6 +35,7 @@ jobs:
 
       - name: Run backend unit checks
         run: |
+          PYTHONPATH=. python -m unittest discover -s tests
           python scripts/test_ontology_kernel.py
           python scripts/test_data_pipeline.py
           python scripts/test_custom_csv_pipeline.py

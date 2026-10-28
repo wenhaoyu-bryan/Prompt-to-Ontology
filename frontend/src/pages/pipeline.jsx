@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Button, Space, Typography, Tag, Steps, Table, Alert, Row, Col, Statistic, message, Progress, Divider, Collapse, Radio, Upload, Select, theme } from 'antd';
+import { Card, Button, Space, Typography, Tag, Steps, Table, Alert, Row, Col, Statistic, message, Progress, Divider, Collapse, Radio, Upload, Select, Modal, theme } from 'antd';
 import {
   DatabaseOutlined,
   FileSearchOutlined,
@@ -69,6 +69,7 @@ export default function PipelinePage() {
   const [selectedSample, setSelectedSample] = useState('');
   const [profile, setProfile] = useState(null);
   const [mappings, setMappings] = useState(null);
+  const [lineage, setLineage] = useState(null);
   const [importPlan, setImportPlan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [recentPlans, setRecentPlans] = useState([]);
@@ -78,6 +79,7 @@ export default function PipelinePage() {
   const [sourceMode, setSourceMode] = useState('sample');
   const [targetObjectType, setTargetObjectType] = useState('PetFoodProduct');
   const [mappingOverrides, setMappingOverrides] = useState({});
+  const [mappingTargets, setMappingTargets] = useState({});
   const [csvImportType, setCsvImportType] = useState('object');
   const [linkTypes, setLinkTypes] = useState({});
   const [relLinkType, setRelLinkType] = useState('CONTAINS');
@@ -93,6 +95,7 @@ export default function PipelinePage() {
     loadRecentPlans();
     api.get('/demo/state').then(r => setDemoState(r.data)).catch(err => console.warn('[Pipeline] failed to load demo state', err));
     api.get('/pipeline/link-types/pet_food').then(r => setLinkTypes(r.data.link_types || {})).catch(err => console.warn('[Pipeline] failed to load link types', err));
+    api.get('/pipeline/mapping-targets').then(r => setMappingTargets(r.data || {})).catch(err => console.warn('[Pipeline] failed to load mapping targets', err));
   }, []);
 
   const loadSamples = async () => {
@@ -116,6 +119,7 @@ export default function PipelinePage() {
       const { data } = await api.post('/pipeline/profile/sample', { sample_name: selectedSample });
       setProfile(data);
       setMappings(null);
+      setLineage(null);
       setImportPlan(null);
       setMappingOverrides({});
       setStep(1);
@@ -130,6 +134,7 @@ export default function PipelinePage() {
       const { data } = await api.post('/pipeline/profile/csv', { filename: file.name, content });
       setProfile(data);
       setMappings(null);
+      setLineage(null);
       setImportPlan(null);
       setMappingOverrides({});
       setStep(1);
@@ -151,8 +156,51 @@ export default function PipelinePage() {
     finally { setLoading(false); }
   };
 
+  const handleMappingDecision = async (record, resolution) => {
+    if (!profile?.source_revision_id) return;
+    const override = mappingOverrides[record.source_column];
+    const targetObjectType = override?.objectType || (record.recorded_mapping?.status === 'confirmed' ? record.recorded_mapping.target_object_type : record.suggested_object_type);
+    const targetProperty = override?.objectType ? override.property : (record.recorded_mapping?.status === 'confirmed' ? record.recorded_mapping.target_property : record.suggested_property);
+    if (resolution !== 'separate' && (!targetObjectType || !targetProperty)) {
+      message.warning(isZh ? '请先选择有效的目标属性' : 'Choose a valid target property first');
+      return;
+    }
+    try {
+      const { data } = await api.post('/pipeline/mappings/decision', {
+        revision_id: profile.source_revision_id,
+        field_id: record.source_field_id,
+        target_object_type: resolution === 'separate' ? '' : targetObjectType,
+        target_property: resolution === 'separate' ? '' : targetProperty,
+        resolution,
+      });
+      setMappings(prev => ({
+        ...prev,
+        field_suggestions: prev.field_suggestions.map(item => item.source_field_id === record.source_field_id
+          ? { ...item, mapping_status: data.status, resolution: data.resolution, recorded_mapping: data }
+          : item),
+      }));
+      message.success(isZh ? '映射决定已保存' : 'Mapping decision saved');
+    } catch (err) {
+      message.error(err?.response?.data?.detail || (isZh ? '保存失败' : 'Could not save decision'));
+    }
+  };
+
+  const handleTargetLineage = async (record) => {
+    const targetObjectType = record.recorded_mapping?.target_object_type || record.suggested_object_type;
+    const targetProperty = record.recorded_mapping?.target_property || record.suggested_property;
+    if (!targetObjectType || !targetProperty) return;
+    try {
+      const { data } = await api.get('/pipeline/lineage/target', { params: { object_type: targetObjectType, property_name: targetProperty } });
+      setLineage(data);
+    } catch { message.error(isZh ? '来源查询失败' : 'Could not load source lineage'); }
+  };
+
   const handleCreatePlan = async () => {
     if (!profile) return;
+    if (Object.values(mappingOverrides).some(value => value !== 'ignore' && value.objectType && !value.property)) {
+      message.warning(isZh ? '请为手动映射选择目标属性' : 'Choose a target property for each manual mapping');
+      return;
+    }
     setLoading(true);
     try {
       const body = { source_id: profile.source_id, domain: 'pet_food' };
@@ -165,8 +213,8 @@ export default function PipelinePage() {
           const override = mappingOverrides[fs.source_column];
           if (override === 'ignore') { ignored.add(fs.source_column); continue; }
           const objType = override?.objectType || fs.suggested_object_type;
-          const prop = override?.property || fs.suggested_property;
-          if (!objType) continue;
+          const prop = override?.objectType ? override.property : fs.suggested_property;
+          if (!objType || !prop) continue;
           if (!objMappingGroups[objType]) objMappingGroups[objType] = { object_type: objType, id_column: '', field_mappings: [] };
           const ID_PROPS = { PetFoodProduct: 'product_id', Ingredient: 'ingredient_id', Brand: 'brand_id', RiskRule: 'rule_id', Species: 'species_id', LifeStage: 'stage_id' };
           if (ID_PROPS[objType] === prop) {
@@ -381,17 +429,19 @@ export default function PipelinePage() {
   ];
 
   const mappingColumns = [
-    { title: t('pipeline.sourceColumn'), dataIndex: 'source_column', key: 'src', render: v => <Text code>{v}</Text> },
+    { title: t('pipeline.sourceColumn'), dataIndex: 'source_column', key: 'src', render: (v, record) => <Space direction="vertical" size={0}><Text code>{v}</Text><Text type="secondary" style={{ fontSize: 11 }}>{record.source_field_id}</Text></Space> },
     { title: t('pipeline.targetType'), dataIndex: 'suggested_object_type', key: 'type', render: (v, record) => {
       const override = mappingOverrides[record.source_column];
       if (override === 'ignore') return <Tag>—</Tag>;
       if (override?.objectType) return <Tag color="blue">{override.objectType}</Tag>;
+      if (record.recorded_mapping?.status === 'confirmed') return <Tag color="green">{record.recorded_mapping.target_object_type}</Tag>;
       return v ? <Tag color="blue">{v}</Tag> : <Tag>—</Tag>;
     }},
     { title: t('pipeline.targetProperty'), dataIndex: 'suggested_property', key: 'prop', render: (v, record) => {
       const override = mappingOverrides[record.source_column];
       if (override === 'ignore') return <Text type="secondary">{t('pipeline.ignoreColumn')}</Text>;
       if (override?.property) return <Text code>{override.property}</Text>;
+      if (record.recorded_mapping?.status === 'confirmed') return <Text code>{record.recorded_mapping.target_property}</Text>;
       return v ? <Text code>{v}</Text> : '—';
     }},
     { title: t('pipeline.confidence'), dataIndex: 'confidence', key: 'conf', render: (v, record) => {
@@ -399,18 +449,39 @@ export default function PipelinePage() {
       return <Tag color={v >= 0.8 ? 'green' : v >= 0.5 ? 'orange' : 'red'}>{(v * 100).toFixed(0)}%</Tag>;
     }},
     { title: t('pipeline.reason'), dataIndex: 'reason', key: 'reason', ellipsis: true },
+    { title: isZh ? '来源映射' : 'Source mapping', key: 'mappingDecision', width: 270, render: (_, record) => {
+      const override = mappingOverrides[record.source_column];
+      const effectiveType = override?.objectType || (record.recorded_mapping?.status === 'confirmed' ? record.recorded_mapping.target_object_type : record.suggested_object_type);
+      const effectiveProperty = override?.objectType ? override.property : (record.recorded_mapping?.status === 'confirmed' ? record.recorded_mapping.target_property : record.suggested_property);
+      const saved = record.recorded_mapping;
+      const changed = override && override !== 'ignore' && saved?.status === 'confirmed'
+        && (saved.target_object_type !== effectiveType || saved.target_property !== effectiveProperty);
+      return <Space direction="vertical" size={4}>
+        <Space wrap size={4}>
+          <Tag color={changed ? 'orange' : record.mapping_status === 'confirmed' ? 'green' : record.mapping_status === 'separate' ? 'default' : 'orange'}>
+            {changed ? (isZh ? '待重新确认' : 'Reconfirm') : record.mapping_status === 'confirmed' ? (isZh ? '已确认' : 'Confirmed') : record.mapping_status === 'separate' ? (isZh ? '保持独立' : 'Separate') : (isZh ? '仅建议' : 'Suggested')}
+          </Tag>
+          {record.mapping_status === 'confirmed' && <Button type="link" size="small" onClick={() => handleTargetLineage(record)}>{isZh ? '反查来源' : 'Sources'}</Button>}
+        </Space>
+        <Space wrap size={4}>
+          <Button size="small" onClick={() => handleMappingDecision(record, 'same')}>{isZh ? '确认映射' : 'Confirm'}</Button>
+          <Button size="small" onClick={() => handleMappingDecision(record, 'alias')}>{isZh ? '标为别名' : 'Alias'}</Button>
+          <Button size="small" onClick={() => handleMappingDecision(record, 'separate')}>{isZh ? '不映射' : 'Separate'}</Button>
+        </Space>
+      </Space>;
+    } },
     ...(sourceMode === 'custom' ? [{
       title: t('pipeline.mappingOverride'),
       key: 'override',
-      width: 160,
+      width: 260,
       render: (_, record) => (
-        <Select size="small" style={{ width: '100%' }} placeholder={t('pipeline.overrideMapping')}
+        <Space direction="vertical" size={4} style={{ width: '100%' }}><Select size="small" style={{ width: '100%' }} placeholder={t('pipeline.overrideMapping')}
           allowClear value={mappingOverrides[record.source_column] === 'ignore' ? 'ignore' : mappingOverrides[record.source_column]?.objectType || undefined}
           onChange={(val) => {
             setMappingOverrides(prev => {
               const next = { ...prev };
               if (val === 'ignore') { next[record.source_column] = 'ignore'; }
-              else if (val) { next[record.source_column] = { objectType: val, property: record.suggested_property }; }
+              else if (val) { next[record.source_column] = { objectType: val, property: (mappingTargets[val] || []).includes(record.suggested_property) ? record.suggested_property : '' }; }
               else { delete next[record.source_column]; }
               return next;
             });
@@ -418,6 +489,9 @@ export default function PipelinePage() {
           {TARGET_OBJECT_TYPES.map(ot => <Select.Option key={ot} value={ot}>{ot}</Select.Option>)}
           <Select.Option value="ignore">{t('pipeline.ignoreColumn')}</Select.Option>
         </Select>
+        {mappingOverrides[record.source_column]?.objectType && <Select size="small" style={{ width: '100%' }} placeholder={isZh ? '目标属性' : 'Target property'} value={mappingOverrides[record.source_column]?.property || undefined} onChange={val => setMappingOverrides(prev => ({ ...prev, [record.source_column]: { ...prev[record.source_column], property: val } }))}>
+          {(mappingTargets[mappingOverrides[record.source_column].objectType] || []).map(prop => <Select.Option key={prop} value={prop}>{prop}</Select.Option>)}
+        </Select>}</Space>
       ),
     }] : []),
   ];
@@ -728,6 +802,7 @@ export default function PipelinePage() {
       {step >= 2 && mappings && (
         <Card title={<><SwapOutlined /> {t('pipeline.s3')}</>}>
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Alert type="info" showIcon message={isZh ? '字段建议需要人工确认' : 'Field suggestions need review'} description={isZh ? `来源版本 ${mappings.source_revision_id}。生成 Import Plan 只生成候选；已确认的字段映射可从目标属性反查到来源，不能据此推断图谱已可查询。` : `Source revision ${mappings.source_revision_id}. An Import Plan contains candidates; confirmed mappings can be traced back to source fields and do not imply graph queryability.`} />
             {mappings.object_mappings?.length > 0 && (
               <div>
                 <Text strong>{t('pipeline.objectMappings')}:</Text>
@@ -749,6 +824,10 @@ export default function PipelinePage() {
           </Space>
         </Card>
       )}
+
+      <Modal title={lineage ? `${lineage.object_type}.${lineage.property_name}` : ''} open={!!lineage} footer={null} onCancel={() => setLineage(null)}>
+        {lineage?.sources?.length ? lineage.sources.map(source => <div key={source.mapping_id} style={{ marginBottom: 8 }}><Text code>{source.source_name}.{source.source_column}</Text> <Tag color={source.is_latest ? 'green' : 'default'}>{source.is_latest ? (isZh ? '当前版本' : 'Current') : (isZh ? '历史版本' : 'Historical')}</Tag><br /><Text type="secondary">{source.revision_id} · {source.resolution}</Text></div>) : <Text type="secondary">{isZh ? '暂无已确认的来源映射' : 'No confirmed source mapping'}</Text>}
+      </Modal>
 
       {/* ── Step 3: Candidate Preview ─────────────────────────────── */}
       {importPlan && (
