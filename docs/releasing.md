@@ -6,7 +6,6 @@ GitHub Releases are versioned snapshots of this repository's runnable Pet Food r
 
 - `VERSION`, `frontend/package.json`, and both root version fields in `frontend/package-lock.json` carry the same version without the `v` prefix. The frontend settings screen and FastAPI metadata read these values.
 - The supported version line begins at `v0.1.0`. While the public contracts are evolving, use Minor for new capabilities or compatibility changes and Patch for compatible fixes. Record migrations for breaking changes. Use `1.0.0` only after the supported API, schema, and file contracts are documented, tested, and stable.
-- The previous `v1.0.0`–`v1.0.4` tags and GitHub Releases were removed on 2026-10-28 because they predated the current version policy. Their commits remain in Git history. `v0.1.0` remains the first active release.
 - Never rewrite or reuse a release tag. The active **Protect version release tags** ruleset prevents updating or deleting `v*` tags; creation remains available to the release workflow.
 
 ## Decide the version for every feature PR

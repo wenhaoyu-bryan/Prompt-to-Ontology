@@ -8,8 +8,6 @@
 
 **项目状态：学习项目 · 可运行参考实现 · 单一 Pet Food 样例**
 
-当前版本线为 `0.x`，旧的 `v1.0.0`–`v1.0.4` Tag 与 Release 已清理。每个功能 PR 都需声明发版影响（无需发版、补丁或次版本）；功能合并且 `main` CI 通过后，自动化会提交版本 PR。版本 PR 合并并通过 `main` CI 后，才会自动创建 Tag 与 Release。详见[版本决策与发版流程](docs/releasing.md)。
-
 ![Dashboard](media/dashboard.png)
 
 ## 项目定位
