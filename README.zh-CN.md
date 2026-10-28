@@ -4,6 +4,8 @@
 
 **[English](README.md) | 中文**
 
+[贡献指南](CONTRIBUTING.zh-CN.md) · [发版流程](docs/releasing.md)
+
 > 用一个可运行的 Pet Food 参考实现，研究如何从问题与原始数据出发，构建可检查、可追溯、可审核的业务本体。
 
 **项目状态：学习项目 · 可运行参考实现 · 单一 Pet Food 样例**
@@ -89,7 +91,11 @@ Verified Questions 当前读取仓库中的 Pet Food CSV/YAML 样例文件，不
 PYTHONPATH=backend python -m unittest discover -s backend/tests
 ```
 
-在 `backend/` 运行已有 `python scripts/test_<module>.py` 模块检查；前端在 `frontend/` 运行 `npm run build`。启动本地 Docker Compose 服务后，可运行 `npm run test:smoke -- --workers=1`。GitHub Actions 在 PR 和 `main` 推送时运行后端单测及模块检查、Neo4j 集成检查、前端构建与 Playwright UI 点击测试。它目前只做 CI，不自动部署。若要阻止测试失败的 PR 合并，还需在 GitHub 为目标分支设置必过检查。
+在 `backend/` 运行已有 `python scripts/test_<module>.py` 模块检查；前端在 `frontend/` 运行 `npm run build`。启动本地 Docker Compose 服务后，可运行 `npm run test:smoke -- --workers=1`。GitHub Actions 在 PR 和 `main` 推送时运行后端单测及模块检查、Neo4j 集成检查、前端构建与 Playwright UI 点击测试。`main` 已将这四项检查设为必过；CI 不会部署项目。
+
+## 参与贡献
+
+提交改动前，请阅读[贡献指南](CONTRIBUTING.zh-CN.md)，了解本地检查、PR 要求和版本影响的选择。
 
 ## 许可
 
