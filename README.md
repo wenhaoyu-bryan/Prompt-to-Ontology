@@ -268,7 +268,7 @@ Quick Demo steps:
 
 | Feature | Status | Description |
 |---|---|---|
-| Ontology Manager | ✅ Available | Object types, link types, rules, typed action contracts, a sample metric definition, constraints |
+| Ontology Manager | ✅ Available | Unified detail drawers for object types, link types, rules, actions, and a sample metric; persistent local edit drafts; checked-in constraints |
 | Data Pipeline | ✅ Available | Profile CSV, flat JSON arrays and NDJSON; suggest and confirm field mappings, inspect source lineage, generate import plans |
 | Pet Food question sets | ✅ Available | Eight-question v1 design fixture; 22-question v2 read-only answers and separate regression gold with four scored dimensions |
 | Custom Object Data | ✅ Available | Upload CSV, JSON array or NDJSON with type inference |
@@ -352,6 +352,8 @@ GitHub Actions runs backend unit/module checks, Neo4j integration checks, a fron
 Prompt-to-Ontology is a learning project with a runnable reference implementation. The included Pet Food demo makes the design choices and workflow inspectable.
 
 The repository includes backend checks and frontend smoke tests, but does not provide a production deployment, enterprise identity and access management, or validation across multiple business domains. Source mapping decisions are persisted as metadata; they do not prove that an imported value is queryable in Neo4j. Verified Questions read checked-in CSV/YAML sample files rather than the runtime Neo4j graph. A clearer schema/runtime graph view remains future work.
+
+Ontology Manager edits are saved as local review drafts in `backend/.runtime/schema_drafts.json` (a persistent Docker volume when using Compose). They survive page refreshes and can be discarded from the detail drawer. Active ontology behavior continues to use the checked-in YAML until a reviewed code change updates it.
 
 ## Contributing
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Table, Tag, Space, Typography, Spin, Collapse, Descriptions, Badge, Tabs, Statistic, Button, Alert, theme } from 'antd';
+import { Card, Row, Col, Table, Tag, Space, Typography, Spin, Tabs, Statistic, Button, Alert, theme } from 'antd';
 import {
   ApartmentOutlined,
   LinkOutlined,
@@ -13,6 +13,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../providers/dataProvider';
+import SchemaDetailDrawer from '../components/ontology/SchemaDetailDrawer';
 
 const OBJECT_TYPE_EXPLANATIONS = {
   PetFoodProduct: { en: 'The central entity representing a specific pet food product. Modeled as an object because it carries unique properties (brand, species, life stage, nutrition), connects to multiple other entities, and is the primary target of rule evaluation.', zh: '代表特定宠物食品的核心实体。被建模为对象是因为它具有唯一属性（品牌、物种、生命阶段、营养），连接多个其他实体，并且是规则评估的主要目标。' },
@@ -31,15 +32,7 @@ const LINK_TYPE_EXPLANATIONS = {
   SUITABLE_FOR: { en: 'Connects a product to a life stage. Used to check age-appropriate nutrition.', zh: '将产品与生命阶段关联。用于检查年龄适当的营养。' },
 };
 
-const RULE_EXPLANATIONS = {
-  R001: { en: 'Inputs: product fat content. Logic: if fat > 15%, generate TRIGGERS_RISK edge. Output: high_fat risk. Evidence: nutrition panel data.', zh: '输入：产品脂肪含量。逻辑：如果脂肪 > 15%，生成 TRIGGERS_RISK 边。输出：高脂肪风险。证据：营养成分表数据。' },
-  R002: { en: 'Inputs: species, taurine ingredient presence. Logic: if species is cat and no taurine found, generate TRIGGERS_RISK edge. Output: missing_taurine risk.', zh: '输入：物种、牛磺酸成分是否存在。逻辑：如果是猫且未发现牛磺酸，生成 TRIGGERS_RISK 边。输出：缺少牛磺酸风险。' },
-  R003: { en: 'Inputs: species, chicken ingredient presence. Logic: if species is sensitive and product contains chicken, generate TRIGGERS_RISK edge. Output: allergen risk.', zh: '输入：物种、鸡肉成分是否存在。逻辑：如果物种敏感且产品含鸡肉，生成 TRIGGERS_RISK 边。输出：过敏原风险。' },
-  R004: { en: 'Inputs: species, life stage, phosphorus level. Logic: if senior cat and phosphorus > threshold, generate TRIGGERS_RISK edge.', zh: '输入：物种、生命阶段、磷含量。逻辑：如果是老年猫且磷超过阈值，生成 TRIGGERS_RISK 边。' },
-  R005: { en: 'Inputs: species, life stage, protein level. Logic: if kitten and protein < minimum, generate TRIGGERS_RISK edge.', zh: '输入：物种、生命阶段、蛋白质含量。逻辑：如果是幼猫且蛋白质低于最低值，生成 TRIGGERS_RISK 边。' },
-};
-
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 const SEVERITY_COLORS = {
   critical: 'red',
@@ -56,7 +49,21 @@ export default function SchemaPage() {
   const [schema, setSchema] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [activeAsset, setActiveAsset] = useState(null);
   const { token } = theme.useToken();
+
+  const onSaved = (category, name, definition) => setSchema(current => ({
+    ...current,
+    drafts: {
+      ...current.drafts,
+      [category]: { ...current.drafts?.[category], [name]: definition },
+    },
+  }));
+  const onDiscarded = (category, name) => setSchema(current => {
+    const categoryDrafts = { ...current.drafts?.[category] };
+    delete categoryDrafts[name];
+    return { ...current, drafts: { ...current.drafts, [category]: categoryDrafts } };
+  });
 
   const loadSchema = async () => {
     setLoading(true);
@@ -89,82 +96,53 @@ export default function SchemaPage() {
   }
 
   // API returns camelCase keys with dict format; convert to arrays for tables
-  const objectTypes = Object.entries(schema.objectTypes || {}).map(([name, v]) => ({
-    name,
-    description: v.description || '',
-    properties: Array.isArray(v.properties)
-      ? Object.fromEntries(v.properties.map(p => [p, { type: 'string', required: false, description: '' }]))
-      : v.properties || {},
-  }));
+  const assetValue = (category, name, value) => ({ name, ...value, ...schema.drafts?.[category]?.[name], isDraft: !!schema.drafts?.[category]?.[name] });
+  const objectTypes = Object.entries(schema.objectTypes || {}).map(([name, v]) => assetValue('objectTypes', name, v));
   const linkTypes = Object.entries(schema.linkTypes || {}).map(([name, v]) => ({
-    name,
-    source: v.from || v.source || '',
-    target: v.to || v.target || '',
-    description: v.description || '',
+    ...assetValue('linkTypes', name, v),
+    source: schema.drafts?.linkTypes?.[name]?.from || v.from || v.source || '',
+    target: schema.drafts?.linkTypes?.[name]?.to || v.to || v.target || '',
   }));
-  const rules = Object.entries(schema.rules || {}).map(([key, v]) => ({
-    rule_id: v.rule_id || key,
-    name: v.name || key,
-    severity: v.severity || 'info',
-    condition_type: v.condition?.type || '',
-    description: v.explanation || v.description || '',
-  }));
+  const rules = Object.entries(schema.rules || {}).map(([key, v]) => {
+    const item = assetValue('rules', key, v);
+    return { ...item, assetKey: key, condition_type: item.condition?.type || '', description: item.explanation || '' };
+  });
   const actions = Object.entries(schema.actionTypes || schema.actions || {}).map(([name, v]) => ({
-    name,
-    description: v.description || '',
-    applicableObjectType: v.applicable_object_type || '',
-    preconditions: v.preconditions || [],
-    inputs: v.inputs || [],
-    resultFields: v.result_fields || [],
-    executor: v.executor || '',
-    sideEffect: v.side_effect || '',
-    approvalRequired: !!v.approval_required,
+    ...assetValue('actionTypes', name, v),
   }));
-  const metrics = Object.entries(schema.metrics || {}).map(([name, v]) => ({ name, ...v }));
+  const metrics = Object.entries(schema.metrics || {}).map(([name, v]) => assetValue('metrics', name, v));
+
+  const openAsset = (category, name) => setActiveAsset({ category, name });
+  const detailAction = (category, getName = record => record.name) => ({
+    title: '', key: 'details', width: 120,
+    render: (_, record) => <Button type="link" onClick={event => { event.stopPropagation(); openAsset(category, getName(record)); }}>
+      {i18n.language === 'zh' ? '查看详情' : 'View details'}
+    </Button>,
+  });
+  const clickableRow = (category, getName = record => record.name) => record => ({
+    onClick: () => openAsset(category, getName(record)),
+    className: 'schema-asset-row',
+  });
+  const assetName = (name, isDraft, color) => <Space size={6} wrap><Tag color={color}>{name}</Tag>{isDraft && <Tag color="gold">{i18n.language === 'zh' ? '草稿' : 'Draft'}</Tag>}</Space>;
 
   const tabItems = [
     {
       key: 'objectTypes',
       label: <span><ApartmentOutlined /> {t('schema.objectTypes')} ({objectTypes.length})</span>,
       children: (
-        <Collapse
-          items={objectTypes.map(ot => ({
-            key: ot.name,
-            label: (
-              <Space>
-                <Tag color="blue">{ot.name}</Tag>
-                <Text type="secondary">{ot.description}</Text>
-              </Space>
-            ),
-            children: (
-              <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                {OBJECT_TYPE_EXPLANATIONS[ot.name] && (
-                  <Alert
-                    type="info"
-                    showIcon
-                    icon={<InfoCircleOutlined />}
-                    title={t('schema.objectTypeExplanation')}
-                    description={OBJECT_TYPE_EXPLANATIONS[ot.name][i18n.language] || OBJECT_TYPE_EXPLANATIONS[ot.name].en}
-                    style={{ fontSize: 12 }}
-                  />
-                )}
-                {ot.properties && (
-                  <Table
-                    dataSource={Object.entries(ot.properties).map(([k, v]) => ({ key: k, name: k, ...v }))}
-                    columns={[
-                      { title: t('common.name'), dataIndex: 'name', key: 'name' },
-                      { title: t('common.type'), dataIndex: 'type', key: 'type' },
-                      { title: t('schema.required'), dataIndex: 'required', key: 'required', render: v => v ? <Tag color="red">{t('common.yes')}</Tag> : <Tag>{t('common.no')}</Tag> },
-                      { title: t('common.description'), dataIndex: 'description', key: 'description' },
-                    ]}
-                    size="small"
-                    pagination={false}
-                    scroll={{ x: 'max-content' }}
-                  />
-                )}
-              </Space>
-            ),
-          }))}
+        <Table
+          dataSource={objectTypes}
+          rowKey="name"
+          size="small"
+          pagination={false}
+          scroll={{ x: 'max-content' }}
+          onRow={clickableRow('objectTypes')}
+          columns={[
+            { title: t('common.name'), dataIndex: 'name', key: 'name', render: (name, record) => assetName(name, record.isDraft, 'blue') },
+            { title: t('common.description'), dataIndex: 'description', key: 'description' },
+            { title: i18n.language === 'zh' ? '属性数' : 'Properties', dataIndex: 'properties', key: 'properties', render: value => Array.isArray(value) ? value.length : Object.keys(value || {}).length },
+            detailAction('objectTypes'),
+          ]}
         />
       ),
     },
@@ -178,25 +156,14 @@ export default function SchemaPage() {
           size="small"
           pagination={false}
           scroll={{ x: 'max-content' }}
+          onRow={clickableRow('linkTypes')}
           columns={[
-            { title: t('common.name'), dataIndex: 'name', key: 'name', render: (n) => <Tag color="green">{n}</Tag> },
+            { title: t('common.name'), dataIndex: 'name', key: 'name', render: (name, record) => assetName(name, record.isDraft, 'green') },
             { title: t('common.source'), dataIndex: 'source', key: 'source' },
             { title: t('common.target'), dataIndex: 'target', key: 'target' },
             { title: t('common.description'), dataIndex: 'description', key: 'description' },
+            detailAction('linkTypes'),
           ]}
-          expandable={{
-            expandedRowRender: (record) => {
-              const exp = LINK_TYPE_EXPLANATIONS[record.name];
-              return exp ? (
-                <Alert type="info" showIcon icon={<InfoCircleOutlined />}
-                  title={t('schema.linkTypeExplanation')}
-                  description={exp[i18n.language] || exp.en}
-                  style={{ fontSize: 12 }}
-                />
-              ) : <Text type="secondary">{record.description}</Text>;
-            },
-            rowExpandable: (record) => !!LINK_TYPE_EXPLANATIONS[record.name],
-          }}
         />
       ),
     },
@@ -210,29 +177,18 @@ export default function SchemaPage() {
           size="small"
           pagination={false}
           scroll={{ x: 'max-content' }}
+          onRow={clickableRow('rules', record => record.assetKey)}
           columns={[
             { title: t('common.id'), dataIndex: 'rule_id', key: 'rule_id', render: (id) => <Text code>{id}</Text> },
-            { title: t('common.name'), dataIndex: 'name', key: 'name' },
+            { title: t('common.name'), dataIndex: 'name', key: 'name', render: (name, record) => <Space size={6}>{name}{record.isDraft && <Tag color="gold">{i18n.language === 'zh' ? '草稿' : 'Draft'}</Tag>}</Space> },
             {
               title: t('common.severity'), dataIndex: 'severity', key: 'severity',
               render: (s) => <Tag color={SEVERITY_COLORS[s] || 'default'}>{t(`common.statusLabels.${s}`, s)}</Tag>,
             },
             { title: t('common.condition'), dataIndex: 'condition_type', key: 'condition_type' },
             { title: t('common.description'), dataIndex: 'description', key: 'description', ellipsis: true },
+            detailAction('rules', record => record.assetKey),
           ]}
-          expandable={{
-            expandedRowRender: (record) => {
-              const exp = RULE_EXPLANATIONS[record.rule_id];
-              return exp ? (
-                <Alert type="info" showIcon icon={<InfoCircleOutlined />}
-                  title={t('schema.ruleExplanation')}
-                  description={exp[i18n.language] || exp.en}
-                  style={{ fontSize: 12 }}
-                />
-              ) : <Text type="secondary">{record.description}</Text>;
-            },
-            rowExpandable: (record) => !!RULE_EXPLANATIONS[record.rule_id],
-          }}
         />
       ),
     },
@@ -246,33 +202,28 @@ export default function SchemaPage() {
           size="small"
           pagination={false}
           scroll={{ x: 'max-content' }}
+          onRow={clickableRow('actionTypes')}
           columns={[
-            { title: t('common.name'), dataIndex: 'name', key: 'name', render: (n) => <Tag color="orange">{n}</Tag> },
+            { title: t('common.name'), dataIndex: 'name', key: 'name', render: (name, record) => assetName(name, record.isDraft, 'orange') },
             { title: t('common.description'), dataIndex: 'description', key: 'description' },
-            { title: i18n.language === 'zh' ? '副作用' : 'Side effect', dataIndex: 'sideEffect', key: 'sideEffect', render: value => <Tag color={value === 'read_only' ? 'green' : 'orange'}>{value}</Tag> },
+            { title: i18n.language === 'zh' ? '副作用' : 'Side effect', dataIndex: 'side_effect', key: 'side_effect', render: value => <Tag color={value === 'read_only' ? 'green' : 'orange'}>{value}</Tag> },
+            detailAction('actionTypes'),
           ]}
-          expandable={{ expandedRowRender: record => <Descriptions column={1} bordered size="small" items={[
-            { key: 'object', label: i18n.language === 'zh' ? '适用对象' : 'Object', children: record.applicableObjectType },
-            { key: 'preconditions', label: i18n.language === 'zh' ? '前置条件' : 'Preconditions', children: record.preconditions.join('; ') },
-            { key: 'inputs', label: i18n.language === 'zh' ? '输入' : 'Inputs', children: record.inputs.map(item => `${item.name}: ${item.type}${item.required ? ' *' : ''}`).join(', ') },
-            { key: 'results', label: i18n.language === 'zh' ? '结果字段' : 'Result fields', children: record.resultFields.map(item => `${item.name}: ${item.type}`).join(', ') },
-            { key: 'executor', label: i18n.language === 'zh' ? '执行器' : 'Executor', children: record.executor },
-            { key: 'approval', label: i18n.language === 'zh' ? '需审批' : 'Approval required', children: record.approvalRequired ? 'Yes' : 'No' },
-          ]} /> }}
         />
       ),
     }] : []),
     ...(metrics.length > 0 ? [{
       key: 'metrics',
       label: <span>{i18n.language === 'zh' ? '指标定义' : 'Metric definitions'} ({metrics.length})</span>,
-      children: <Table dataSource={metrics} rowKey="name" size="small" pagination={false} columns={[
-        { title: i18n.language === 'zh' ? '指标' : 'Metric', dataIndex: 'name' },
+      children: <Table dataSource={metrics} rowKey="name" size="small" pagination={false} scroll={{ x: 'max-content' }} onRow={clickableRow('metrics')} columns={[
+        { title: i18n.language === 'zh' ? '指标' : 'Metric', dataIndex: 'name', render: (name, record) => assetName(name, record.isDraft, 'purple') },
         { title: i18n.language === 'zh' ? '对象' : 'Object', dataIndex: 'object_type' },
         { title: i18n.language === 'zh' ? '计算' : 'Aggregation', dataIndex: 'aggregation' },
         { title: i18n.language === 'zh' ? '维度' : 'Group by', dataIndex: 'group_by', render: value => value?.join(', ') },
         { title: i18n.language === 'zh' ? '单位' : 'Unit', dataIndex: 'unit' },
         { title: i18n.language === 'zh' ? '来源' : 'Source', dataIndex: 'source_asset' },
         { title: i18n.language === 'zh' ? '时效' : 'Freshness', dataIndex: 'freshness' },
+        detailAction('metrics'),
       ]} />,
     }] : []),
     {
@@ -296,7 +247,7 @@ export default function SchemaPage() {
   ];
 
   return (
-    <Space direction="vertical" size={20} style={{ width: '100%' }}>
+    <Space orientation="vertical" size={20} style={{ width: '100%' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
@@ -307,7 +258,7 @@ export default function SchemaPage() {
       </div>
 
       {/* Schema vs Instance explanation */}
-      <Alert type="info" showIcon icon={<InfoCircleOutlined />} message={t('pipeline.schemaExplanation')} style={{ fontSize: 12 }} />
+      <Alert type="info" showIcon icon={<InfoCircleOutlined />} title={t('pipeline.schemaExplanation')} style={{ fontSize: 12 }} />
 
       {/* Summary stats */}
       <Row gutter={[16, 16]}>
@@ -337,6 +288,15 @@ export default function SchemaPage() {
           style={{ marginTop: 8 }}
         />
       </Card>
+      <SchemaDetailDrawer
+        asset={activeAsset}
+        schema={schema}
+        explanation={activeAsset?.category === 'objectTypes' ? OBJECT_TYPE_EXPLANATIONS[activeAsset.name]
+          : activeAsset?.category === 'linkTypes' ? LINK_TYPE_EXPLANATIONS[activeAsset.name] : null}
+        onClose={() => setActiveAsset(null)}
+        onSaved={onSaved}
+        onDiscarded={onDiscarded}
+      />
     </Space>
   );
 }

@@ -243,8 +243,8 @@
     }
   },
   "schema": {
-    "title": "模式",
-    "subtitle": "管理对象类型、关系类型、校验规则和本体 JSON",
+    "title": "本体管理器",
+    "subtitle": "查看和编辑对象类型、关系类型、规则、动作和指标定义",
     "objectTypes": "对象类型",
     "linkTypes": "关系类型",
     "rules": "规则",

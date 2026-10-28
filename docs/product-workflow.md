@@ -23,7 +23,7 @@ Profiles CSV/sample data, maps fields to ontology object types and properties, g
 
 ### 2. Ontology Manager (Schema)
 
-Defines the ontology structure: object types, properties, link types, rules, constraints, actions, and schema versioning. This is the schema layer that all data must conform to.
+Shows the checked-in Pet Food object types, properties, link types, rules, actions, and metrics. Constraints remain defined in YAML. Object types, relationship types, rules, actions, and metrics share a list-to-detail drawer interaction. Editing an existing definition saves a persistent local draft under the backend runtime directory. Drafts can be reviewed or discarded from the drawer; they do not change the checked-in YAML, runtime graph, schema hash, or Verified Questions evaluation. To change the active schema, update the YAML in a code change and run the relevant checks.
 
 ### 3. Review Queue
 

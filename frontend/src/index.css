@@ -25,6 +25,36 @@
   --pto-scrollbar: #50627a;
 }
 
+/* Ontology Manager: the same affordance on every asset row and detail drawer. */
+.schema-asset-row {
+  cursor: pointer;
+}
+
+.schema-asset-row:hover > td {
+  background: var(--pto-hover) !important;
+}
+
+.schema-detail-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.schema-detail-json {
+  margin: 0;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.schema-detail-json-input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
 .app-sider .ant-layout-sider-children {
   height: 100%;
   min-height: 0;

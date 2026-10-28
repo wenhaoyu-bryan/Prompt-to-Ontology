@@ -243,8 +243,8 @@
     }
   },
   "schema": {
-    "title": "Schema",
-    "subtitle": "Manage object types, relationship types, validation rules, and ontology JSON",
+    "title": "Ontology Manager",
+    "subtitle": "Review and edit object types, relationships, rules, actions, and metrics",
     "objectTypes": "Object Types",
     "linkTypes": "Relationship Types",
     "rules": "Rules",

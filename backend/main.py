@@ -13,7 +13,7 @@ load_dotenv()
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from database import init_db
 from neo4j_connector import get_driver
 from ontology import (
@@ -29,6 +29,7 @@ from ontology import (
 from agent import run_agent, execute_action
 from legacy_data_pipeline import DataValidator, import_objects, parse_csv, normalize_field_names
 from ontology_registry import OntologyRegistry
+from schema_drafts import delete_schema_draft, load_schema_drafts, save_schema_draft, validate_schema_draft
 from domain_config import list_domains, get_domain_config, get_default_domain
 
 app = FastAPI(
@@ -842,11 +843,43 @@ def api_ontology_domain_schema(domain: str):
         except Exception:
             pass  # Kernel is optional — don't break existing behavior
 
+        schema_data["drafts"] = load_schema_drafts(domain)
         return schema_data
     except FileNotFoundError as e:
         raise HTTPException(404, str(e))
     except Exception as e:
         raise HTTPException(500, f"Failed to load ontology for domain '{domain}': {e}")
+
+
+class SchemaDraftRequest(BaseModel):
+    definition: dict
+
+
+def _editable_schema(domain: str) -> dict:
+    if domain != "pet_food":
+        raise HTTPException(404, "Only the Pet Food reference schema supports local drafts")
+    return OntologyRegistry(domain=domain).get_schema()
+
+
+@app.put("/api/ontology/{domain}/drafts/{category}/{name}")
+def api_save_schema_draft(domain: str, category: str, name: str, request: SchemaDraftRequest):
+    """Save a local definition draft without changing checked-in YAML or graph data."""
+    schema = _editable_schema(domain)
+    try:
+        validate_schema_draft(schema, category, name, request.definition)
+    except (ValueError, ValidationError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+    save_schema_draft(domain, category, name, request.definition)
+    return {"status": "draft", "category": category, "name": name, "definition": request.definition}
+
+
+@app.delete("/api/ontology/{domain}/drafts/{category}/{name}")
+def api_delete_schema_draft(domain: str, category: str, name: str):
+    schema = _editable_schema(domain)
+    if category not in {"objectTypes", "linkTypes", "rules", "actionTypes", "metrics"} or name not in schema[category]:
+        raise HTTPException(404, "Unknown ontology definition")
+    delete_schema_draft(domain, category, name)
+    return {"status": "discarded", "category": category, "name": name}
 
 
 @app.get("/api/ontology/violations")
