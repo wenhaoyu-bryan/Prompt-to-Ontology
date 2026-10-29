@@ -64,6 +64,8 @@ The newer [22-question catalog](sample-data/pet-food/verified-questions.v2.json)
 
 The project learns from publicly documented ontology concepts in [Palantir Foundry](https://www.palantir.com/docs/foundry/ontologies/ontologies-overview) and open-source graph and ontology tooling in [Semantica](https://github.com/semantica-agi/semantica). These are design references; this project does not claim access to vendor internals or feature equivalence.
 
+Graph Explorer's visual layout and exploration interactions are inspired by Semantica's Knowledge Explorer. This project implements its graph view with Sigma.js and Graphology, and uses React Flow for answer paths.
+
 ---
 
 ## Why It Matters

@@ -18,6 +18,8 @@
 
 设计参考包括公开的 [Palantir Foundry Ontology 文档](https://www.palantir.com/docs/foundry/ontologies/ontologies-overview) 和开源 [Semantica](https://github.com/semantica-agi/semantica)。本项目是独立的学习实践，不声称与它们的功能等价，也不包含公司内部资料。
 
+Graph Explorer 的视觉布局和探索交互参考了 Semantica 的 Knowledge Explorer。本项目使用 Sigma.js 和 Graphology 实现图谱视图，并使用 React Flow 展示问答证据路径。
+
 ## 核心构建思路：Prompt 是问题起点
 
 这里的 Prompt 不等于“一句话自动生成最终图谱”。它首先提出需要回答的业务问题与建模假设，再通过以下闭环逐步验证：
