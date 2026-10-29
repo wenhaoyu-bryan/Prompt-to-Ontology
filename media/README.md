@@ -39,7 +39,7 @@ The current edit opens on Graph Explorer and cuts between source profiling, fiel
 
 “[Inspired](https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1600022)” — Kevin MacLeod ([incompetech.com](https://incompetech.com/)). Licensed under [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/).
 
-The track was trimmed to a 96-second excerpt, faded in and out, and loudness-normalized. This credit also appears in the video end card and publishing description. The third-party music retains its CC BY 4.0 license; the repository's MIT license does not replace it. The large MP4 is hosted as a release asset, outside Git history.
+The track was trimmed to a 96-second excerpt, faded in and out, and loudness-normalized. This credit also appears in the video end card. The third-party music retains its CC BY 4.0 license; the repository's MIT license does not replace it. The large MP4 is hosted as a release asset, outside Git history.
 
 ## Refresh the captures
 
