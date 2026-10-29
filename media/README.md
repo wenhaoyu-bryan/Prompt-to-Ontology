@@ -52,4 +52,8 @@ The track was trimmed to a 96-second excerpt, faded in and out, and loudness-nor
 7. Inspect the four rule evaluation states. Ask the Analyst Agent “Which products contain chicken?” in deterministic fallback mode and capture the answer and tool name.
 8. Verify dark mode in each scene, inspect the full encoded video for decoding errors, check caption timing, pacing, music level, and attribution, and confirm that every published asset can be downloaded. Update both README files, screenshots, poster, and these chapter times together.
 
+### Publish the inline player
+
+Upload the finished MP4 as a GitHub video attachment, for example with GitHub CLI's `gh pr create --attach /absolute/path/to/demo.mp4` alongside the normal PR title and body. Copy the generated `https://github.com/user-attachments/assets/...` URL into a standalone paragraph immediately below the title in both README files. GitHub renders that attachment as a video player. Keep the Release MP4 link as a download fallback, and keep the video binary outside Git history.
+
 Q03 reads checked-in CSV files. Graph Explorer separately checks for matching runtime relationships. Schema drafts do not change checked-in definitions or graph data. The video demonstrates those boundaries rather than claiming production readiness or free-form Agent accuracy.
