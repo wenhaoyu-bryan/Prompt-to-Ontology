@@ -1,5 +1,11 @@
 # Prompt-to-Ontology
 
+[![Watch the 96-second product demo: from data to traceable graph evidence](media/demo-poster.png)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4)
+
+**[Watch the 96-second demo](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4)** · [Download MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4) · [中文](README.zh-CN.md)
+
+Explore the graph. Map data. Review changes. Trace answers to evidence. Actual product footage with music and on-screen captions.
+
 [![CI](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml)
 
 [Releases](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases) · [Contributing](CONTRIBUTING.md) · [Release process](docs/releasing.md)
@@ -14,14 +20,6 @@
 ![FastAPI](https://img.shields.io/badge/fastapi-009688)
 ![Neo4j](https://img.shields.io/badge/neo4j-5-008CC1)
 ![Docker Compose](https://img.shields.io/badge/docker--compose-2496ED)
-
-<p align="center">
-  <img
-    src="media/dashboard.png"
-    alt="Prompt-to-Ontology operational ontology runtime dashboard"
-    width="100%"
-  >
-</p>
 
 ---
 
@@ -117,6 +115,13 @@ flowchart LR
 
 ## Product Walkthrough
 
+<details>
+<summary>View the runtime dashboard</summary>
+
+![Operational ontology dashboard](media/dashboard.png)
+
+</details>
+
 Follow the Pet Food workflow from source inspection to review, then trace PF001's first ingredient from a sample answer into the runtime graph. The screenshots and video use the same dark UI; click any image to inspect it at full size.
 
 ### 1. Profile and map a source
@@ -184,13 +189,9 @@ This session uses **Deterministic Fallback** and the `find_products_by_ingredien
 
 ---
 
-## Demo Video
+## Demo Notes
 
-[![Pet Food product walkthrough in dark mode](media/demo-poster.png)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/pet-food-dark-demo.mp4)
-
-**3:30 · dark UI · English narration and captions.** [Download the MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/pet-food-dark-demo.mp4) · [English subtitles (SRT)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/pet-food-dark-demo.en.srt)
-
-Recorded from the running Pet Food reference: source profiling and mapping → build plan → review and application of one product → ontology contracts → graph exploration → Q03 evidence and source records → rule coverage → deterministic Agent query. The video starts with the seeded sample graph; applying one reviewed item does not imply that the entire plan was applied. English narration uses a synthetic system voice. The MP4 includes chapter markers and an English subtitle track.
+The recording uses the seeded Pet Food reference and applies one reviewed product. Q03 reads checked-in sample files and checks runtime relationships separately; the Agent query uses deterministic fallback mode without an LLM key. [Capture notes, chapters, and music credits](media/README.md).
 
 ---
 
