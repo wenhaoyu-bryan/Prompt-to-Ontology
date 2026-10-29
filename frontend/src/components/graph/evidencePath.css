@@ -1,0 +1,5 @@
+.evidence-flow .react-flow__controls { border: 1px solid var(--flow-border); border-radius: 6px; overflow: hidden; }
+.evidence-flow .react-flow__controls-button { background: var(--flow-bg); color: var(--flow-text); border-color: var(--flow-border); }
+.evidence-flow .react-flow__controls-button:hover { background: var(--flow-border); }
+.evidence-flow .react-flow__controls-button svg { fill: currentColor; }
+.evidence-flow .react-flow__handle { background: var(--flow-text); border-color: var(--flow-bg); }

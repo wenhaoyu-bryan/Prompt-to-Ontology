@@ -18,6 +18,8 @@
 
 设计参考包括公开的 [Palantir Foundry Ontology 文档](https://www.palantir.com/docs/foundry/ontologies/ontologies-overview) 和开源 [Semantica](https://github.com/semantica-agi/semantica)。本项目是独立的学习实践，不声称与它们的功能等价，也不包含公司内部资料。
 
+Graph Explorer 的视觉布局和探索交互参考了 Semantica 的 Knowledge Explorer。本项目使用 Sigma.js 和 Graphology 实现图谱视图，并使用 React Flow 展示问答证据路径。
+
 ## 核心构建思路：Prompt 是问题起点
 
 这里的 Prompt 不等于“一句话自动生成最终图谱”。它首先提出需要回答的业务问题与建模假设，再通过以下闭环逐步验证：
@@ -81,7 +83,7 @@ Dashboard → Data Pipeline（选择样例或上传 CSV/JSON/NDJSON、检查来�
 
 Verified Questions 当前读取仓库中的 Pet Food CSV/YAML 样例文件，不读取运行时 Neo4j 图谱；来源映射或导入计划完成也不代表图谱实例已可查询。
 
-图谱视图当前用于浏览运行时对象与关系。按 Schema 结构与运行时实例分层、显示来源及证据的视觉升级尚未纳入此阶段，见英文 README 的后续方向。
+图谱视图可搜索运行时对象、筛选关系，并从 Verified Questions 查看样例证据和匹配的运行时关系。匹配结果不表示答案由 Neo4j 计算得出；独立的 Schema 类型图仍是后续工作。
 
 ## 测试
 

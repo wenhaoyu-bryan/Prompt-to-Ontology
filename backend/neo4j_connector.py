@@ -231,28 +231,28 @@ def fetch_all_links_filtered(dataset: str | None = None) -> list[dict]:
                 result = session.run("""
                     MATCH (a)-[r]->(b)
                     WHERE a.dataset IS NULL AND b.dataset IS NULL
-                    RETURN a.id AS source_id, b.id AS target_id,
+                    RETURN elementId(r) AS edge_id, a.id AS source_id, b.id AS target_id,
                            type(r) AS link_type, properties(r) AS props
                 """)
             else:
                 result = session.run("""
                     MATCH (a)-[r]->(b)
                     WHERE r.dataset = $ds OR (a.dataset = $ds AND b.dataset = $ds)
-                    RETURN a.id AS source_id, b.id AS target_id,
+                    RETURN elementId(r) AS edge_id, a.id AS source_id, b.id AS target_id,
                            type(r) AS link_type, properties(r) AS props
                 """, ds=dataset)
         else:
             result = session.run("""
                 MATCH (a)-[r]->(b)
-                RETURN a.id AS source_id, b.id AS target_id,
+                RETURN elementId(r) AS edge_id, a.id AS source_id, b.id AS target_id,
                        type(r) AS link_type, properties(r) AS props
             """)
         rows = []
         for r in result:
-            row = {"source_id": r["source_id"], "target_id": r["target_id"], "link_type": r["link_type"]}
-            props = r["props"]
-            row["label"] = props.pop("label", None)
-            row.update(props)
+            props = dict(r["props"])
+            row = {**props, "edge_id": r["edge_id"], "source_id": r["source_id"],
+                   "target_id": r["target_id"], "link_type": r["link_type"],
+                   "label": props.get("label")}
             rows.append(row)
         return rows
 

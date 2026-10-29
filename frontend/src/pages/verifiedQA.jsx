@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react';
 import { Alert, Button, Card, Descriptions, Drawer, Empty, Input, Select, Space, Table, Tag, Typography, theme } from 'antd';
 import { FileSearchOutlined, LinkOutlined, PlayCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../providers/dataProvider';
+import EvidencePath from '../components/graph/EvidencePath';
 
 const { Text, Title } = Typography;
 
 export default function VerifiedQAPage() {
   const { i18n } = useTranslation();
+  const navigate = useNavigate();
   const zh = i18n.language === 'zh';
   const { token } = theme.useToken();
   const [questions, setQuestions] = useState([]);
@@ -116,7 +119,12 @@ export default function VerifiedQAPage() {
       {!answer ? <Empty description={zh ? '选择一个问题并点击只读查询' : 'Choose a question and run it'} /> : <Space orientation="vertical" size={14} style={{ width: '100%' }} data-testid="verified-answer">
         <Space wrap><Text code>{answer.question_id}</Text><Tag color={answer.status === 'answered' ? 'green' : answer.status === 'unknown' ? 'orange' : 'blue'}>{answer.status}</Tag><Tag color="default">{zh ? '只读' : 'Read-only'}</Tag></Space>
         <Text strong style={{ fontSize: 16 }}>{answer.conclusion}</Text>
+        <Text type="secondary">{zh ? '答案和路径来自仓库中的样例文件；运行时图谱需单独核对。' : 'The answer and path come from checked-in sample files; the runtime graph is checked separately.'}</Text>
         {answer.unknown_reasons?.length > 0 && <Alert type="warning" showIcon message={zh ? '无法确认的原因' : 'Why this cannot be confirmed'} description={answer.unknown_reasons.join(', ')} />}
+        {answer.path?.length > 0 && <Card size="small" title={zh ? '样例证据路径' : 'Sample evidence path'} extra={answer.path.some(step => step.kind === 'instance_relation') && <Button onClick={() => navigate(`/graph?question=${encodeURIComponent(answer.question_id)}`)}>{zh ? '在图谱中查看' : 'Explore in graph'}</Button>}>
+          <EvidencePath path={answer.path} zh={zh} onEvidence={ids => setSource(answer.evidence.find(item => ids?.includes(item.evidence_id)) || null)} />
+          <Text type="secondary">{zh ? '点击连线查看来源；图谱入口会核对运行时中是否存在该关系。' : 'Select a relationship to inspect its source. The graph view checks whether the relationship exists at runtime.'}</Text>
+        </Card>}
         <Card size="small" title={<><FileSearchOutlined /> {zh ? '事实与来源' : 'Facts and sources'}</>} styles={{ body: { padding: 0 } }}>
           <Table dataSource={answer.evidence || []} columns={evidenceColumns} rowKey="evidence_id" size="small" pagination={false} locale={{ emptyText: zh ? '没有可引用的事实' : 'No cited facts' }} scroll={{ x: 700 }} />
         </Card>
