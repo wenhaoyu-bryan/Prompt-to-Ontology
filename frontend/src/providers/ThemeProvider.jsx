@@ -14,7 +14,7 @@ const COLOR_PRESETS = {
 };
 
 const ThemeContext = createContext({
-  mode: 'light',
+  mode: 'dark',
   color: 'indigo',
   setMode: () => {},
   setColor: () => {},
@@ -25,7 +25,7 @@ export function useThemeContext() {
 }
 
 export default function ThemeProvider({ children }) {
-  const [mode, setMode] = useState(() => localStorage.getItem(STORAGE_MODE) || 'light');
+  const [mode, setMode] = useState(() => localStorage.getItem(STORAGE_MODE) === 'light' ? 'light' : 'dark');
   const [color, setColor] = useState(() => localStorage.getItem(STORAGE_COLOR) || 'indigo');
 
   useEffect(() => {

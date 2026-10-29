@@ -117,7 +117,7 @@ flowchart LR
 
 ## Product Walkthrough
 
-Follow one Pet Food demo session from source inspection to review, then trace PF001's first ingredient from a sample answer into the runtime graph. These screenshots show the current UI; click any image to inspect it at full size.
+Follow the Pet Food workflow from source inspection to review, then trace PF001's first ingredient from a sample answer into the runtime graph. The screenshots and video use the same dark UI; click any image to inspect it at full size.
 
 ### 1. Profile and map a source
 
@@ -186,15 +186,19 @@ This session uses **Deterministic Fallback** and the `find_products_by_ingredien
 
 ## Demo Video
 
-[![Watch the demo](https://img.youtube.com/vi/XG8USHbZ3oM/0.jpg)](https://youtu.be/XG8USHbZ3oM)
+[![Pet Food product walkthrough in dark mode](media/demo-poster.png)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/pet-food-dark-demo.mp4)
 
-This earlier recording introduces data ingestion, ontology construction, human review, graph exploration, rule evaluation, and Analyst Agent operations. It predates the current UI; the screenshots above show the updated interactions.
+**3:30 · dark UI · English narration and captions.** [Download the MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/pet-food-dark-demo.mp4) · [English subtitles (SRT)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/pet-food-dark-demo.en.srt)
+
+Recorded from the running Pet Food reference: source profiling and mapping → build plan → review and application of one product → ontology contracts → graph exploration → Q03 evidence and source records → rule coverage → deterministic Agent query. The video starts with the seeded sample graph; applying one reviewed item does not imply that the entire plan was applied. English narration uses a synthetic system voice. The MP4 includes chapter markers and an English subtitle track.
 
 ---
 
 ## Quick Start
 
 ### Docker Compose (Recommended)
+
+The app opens in dark mode by default. An explicit theme preference is preserved across visits.
 
 ```bash
 git clone https://github.com/wenhaoyu-bryan/Prompt-to-Ontology.git

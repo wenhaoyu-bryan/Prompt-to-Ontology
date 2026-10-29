@@ -48,7 +48,7 @@ flowchart LR
 
 ## 产品体验图解
 
-以下截图来自当前 Pet Food 本地演示会话，沿着来源检查、候选审核、图谱探索与证据追溯展开。点击图片可查看原图。
+以下截图来自当前 Pet Food 本地演示会话，沿着来源检查、候选审核、图谱探索与证据追溯展开。截图和视频统一使用深色界面，点击图片可查看原图。
 
 ### 1. 分步检查来源与字段映射
 
@@ -113,6 +113,14 @@ Sigma.js 与 Graphology 图谱支持按名称或 ID 搜索、选择对象、切�
 
 本轮使用无需 LLM 密钥的 **Deterministic Fallback** 模式，通过 `find_products_by_ingredient` 工具列出含鸡肉的产品，并展示工具名称。修改建议仍需进入 Review Queue；Trace 的启发式分数不等于答案正确率。
 
+## 演示视频
+
+[![深色 Pet Food 核心流程演示](media/demo-poster.png)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/pet-food-dark-demo.mp4)
+
+**3:30 · 全程深色界面 · 英文讲解与字幕。** [下载 MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/pet-food-dark-demo.mp4) · [英文字幕 SRT](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/pet-food-dark-demo.en.srt)
+
+视频实录了来源画像与映射、构建计划、单个产品的审核与应用、本体契约、图谱探索、Q03 证据路径与来源记录、规则覆盖及确定性 Agent 查询。起点是已经载入样例的图谱；应用一个审核项不代表整批计划已经应用。英文讲解使用系统合成语音，MP4 内含章节标记和英文字幕轨。
+
 ## 已实现与边界
 
 | 能力 | 当前状态 |
@@ -128,6 +136,8 @@ Sigma.js 与 Graphology 图谱支持按名称或 ID 搜索、选择对象、切�
 来源状态需区分：**已解析、建议映射、人工确认、图谱可查询**。确认字段映射并不证明数据已经写入 Neo4j；生成 Import Plan 也只产生候选。
 
 ## 本地运行
+
+界面默认使用深色，已明确设置的主题偏好会在下次访问时保留。
 
 ```bash
 git clone https://github.com/wenhaoyu-bryan/Prompt-to-Ontology.git
