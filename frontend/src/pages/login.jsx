@@ -25,7 +25,7 @@ export default function LoginPage() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%)',
+      background: token.colorBgLayout,
     }}>
       <div style={{ width: '100%', maxWidth: 420, padding: '0 16px' }}>
       <Card style={{ width: '100%', borderRadius: token.borderRadiusLG }} variant="borderless">
