@@ -117,55 +117,70 @@ flowchart LR
 
 ## Product Walkthrough
 
-### Data Pipeline and Review Queue
+Follow one Pet Food demo session from source inspection to review, then trace PF001's first ingredient from a sample answer into the runtime graph. These screenshots show the current UI; click any image to inspect it at full size.
+
+### 1. Profile and map a source
 
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="media/data-pipeline.png" alt="Data Pipeline">
-      <br>
-      <strong>Data Pipeline</strong><br>
-      Profile structured data, map fields to ontology types, validate candidates, and generate a reviewable import plan.
+      <a href="media/data-profile.png"><img src="media/data-profile.png" alt="Data Pipeline at Profile Data, showing column types, null rates, and sample values"></a><br>
+      <strong>Profile Data</strong><br>
+      Inspect the selected source in a six-step workbench. The page heading and step navigation stay visible while the step content scrolls.
     </td>
     <td width="50%" valign="top">
-      <img src="media/review-queue.png" alt="Review Queue">
-      <br>
+      <a href="media/data-pipeline.png"><img src="media/data-pipeline.png" alt="Map to Ontology with source field IDs, mapping suggestions, and Confirm, Alias, and Separate actions"></a><br>
+      <strong>Map to Ontology</strong><br>
+      Review field suggestions and source identity before previewing candidates, checking validation issues, and preparing an Import Plan. A confirmed mapping is not a graph write.
+    </td>
+  </tr>
+</table>
+
+### 2. Review candidates and inspect definitions
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="media/review-queue.png"><img src="media/review-queue.png" alt="Review Queue with pending full-build candidates and the PF001 candidate detail drawer"></a><br>
       <strong>Review Queue</strong><br>
-      Approve, reject, and apply proposed ontology changes through a human-in-the-loop workflow.
+      Submit the optional full-build plan to inspect candidates and their audit trail. Approval and application are separate steps; this capture leaves the candidates pending.
+    </td>
+    <td width="50%" valign="top">
+      <a href="media/ontology-manager.png"><img src="media/ontology-manager.png" alt="Ontology Manager with the PetFoodProduct definition in a right-side drawer and an Edit draft action"></a><br>
+      <strong>Ontology Manager</strong><br>
+      Use the same detail-drawer interaction for types, relationships, rules, actions, and metrics. Draft edits do not change the checked-in YAML or runtime graph.
     </td>
   </tr>
 </table>
 
-### Ontology Definition and Runtime Graph
+### 3. Explore the runtime graph
+
+<a href="media/graph.png"><img src="media/graph.png" alt="Sigma.js Graph Explorer in dark mode with typed object columns, search, relationship filters, and a simplified overview" width="100%"></a>
+
+Search by object name or ID, select an object, and switch between the overview and its neighborhood. The Sigma.js and Graphology view keeps every object in the overview and initially shows a subset of real relationships; **Show all links** reveals the rest. The counter makes that reduction explicit.
+
+### 4. Follow an answer back to its evidence
 
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="media/ontology-manager.png" alt="Ontology Manager">
-      <br>
-      <strong>Ontology Manager</strong><br>
-      Inspect object types, relationship types, rules, actions, constraints, and schema definitions.
+      <a href="media/verified-questions.png"><img src="media/verified-questions.png" alt="Verified Questions Q03 answer with a React Flow PF001 to ING001 path and cited CSV source records"></a><br>
+      <strong>Verified Questions</strong><br>
+      Run Q03 to see that PF001's first ingredient is ING001, named chicken. The answer, React Flow path, and source records come from the checked-in sample files.
     </td>
     <td width="50%" valign="top">
-      <img src="media/graph.png" alt="Graph Explorer">
-      <br>
-      <strong>Graph Explorer</strong><br>
-      Explore runtime objects, relationships, rule evidence, and global or local graph views.
+      <a href="media/graph-evidence.png"><img src="media/graph-evidence.png" alt="PF001 neighborhood with its CONTAINS edge to chicken highlighted and question evidence in the right inspector"></a><br>
+      <strong>Explore in graph</strong><br>
+      Follow the answer into PF001's neighborhood, inspect its properties, and open the cited records. The UI checks for a matching runtime relationship separately; it does not claim that Neo4j computed the sample answer.
     </td>
   </tr>
 </table>
 
-### Analyst Agent
+### 5. Ask the Analyst Agent
 
-<p align="center">
-  <img
-    src="media/analyst-agent.png"
-    alt="Ontology-grounded Analyst Agent"
-    width="100%"
-  >
-</p>
+<a href="media/analyst-agent.png"><img src="media/analyst-agent.png" alt="Analyst Agent answering Which products contain chicken with the deterministic find_products_by_ingredient tool" width="100%"></a>
 
-The Analyst Agent can retrieve objects, query relationships, evaluate rules, inspect evidence, detect data limitations, and propose reviewable updates. Its suggestions pass through Review Queue. The heuristic trace scores do not measure answer correctness, and the fixed question set has not yet been run as an automated accuracy benchmark.
+This session uses **Deterministic Fallback** and the `find_products_by_ingredient` tool without an LLM key. The answer lists matching products and the tool used. Proposed updates still pass through Review Queue; heuristic trace scores are not answer-accuracy scores.
 
 ---
 
@@ -173,7 +188,7 @@ The Analyst Agent can retrieve objects, query relationships, evaluate rules, ins
 
 [![Watch the demo](https://img.youtube.com/vi/XG8USHbZ3oM/0.jpg)](https://youtu.be/XG8USHbZ3oM)
 
-The video walks through data ingestion, ontology construction, human review, graph exploration, rule evaluation, and Analyst Agent operations.
+This earlier recording introduces data ingestion, ontology construction, human review, graph exploration, rule evaluation, and Analyst Agent operations. It predates the current UI; the screenshots above show the updated interactions.
 
 ---
 

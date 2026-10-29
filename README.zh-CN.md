@@ -46,6 +46,73 @@ flowchart LR
   E --> Q
 ```
 
+## 产品体验图解
+
+以下截图来自当前 Pet Food 本地演示会话，沿着来源检查、候选审核、图谱探索与证据追溯展开。点击图片可查看原图。
+
+### 1. 分步检查来源与字段映射
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="media/data-profile.png"><img src="media/data-profile.png" alt="Profile Data：字段类型、空值率和样例值"></a><br>
+      <strong>数据画像</strong><br>
+      六步工作台每次展示一个阶段，标题与步骤导航保持可见，下方内容独立滚动。
+    </td>
+    <td width="50%" valign="top">
+      <a href="media/data-pipeline.png"><img src="media/data-pipeline.png" alt="Map to Ontology：来源字段 ID、映射建议及确认、别名、独立操作"></a><br>
+      <strong>语义映射</strong><br>
+      检查来源版本与字段建议，再预览候选、查看校验问题并生成 Import Plan。确认映射不等于写入图谱。
+    </td>
+  </tr>
+</table>
+
+### 2. 审核候选与检查本体定义
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="media/review-queue.png"><img src="media/review-queue.png" alt="Review Queue：完整构建计划的待审候选与 PF001 详情抽屉"></a><br>
+      <strong>Review Queue</strong><br>
+      提交可选的完整构建计划后，在详情抽屉检查候选与审核记录。批准和应用是两步；截图中的候选仍处于待审状态。
+    </td>
+    <td width="50%" valign="top">
+      <a href="media/ontology-manager.png"><img src="media/ontology-manager.png" alt="Ontology Manager：右侧抽屉查看 PetFoodProduct 定义并进入草稿编辑"></a><br>
+      <strong>Ontology Manager</strong><br>
+      类型、关系、规则、Action 和指标统一通过详情抽屉查看与编辑草稿。草稿不会修改仓库 YAML 或运行时图谱。
+    </td>
+  </tr>
+</table>
+
+### 3. 探索运行时图谱
+
+<a href="media/graph.png"><img src="media/graph.png" alt="深色 Graph Explorer：类型化对象布局、搜索、关系筛选与简化总览" width="100%"></a>
+
+Sigma.js 与 Graphology 图谱支持按名称或 ID 搜索、选择对象、切换总览与局部邻域。总览保留全部对象，默认仅展示部分真实关系，并明确显示当前关系数与总数；点击 **Show all links** 可展开全部关系。
+
+### 4. 从问题追溯到证据
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="media/verified-questions.png"><img src="media/verified-questions.png" alt="Verified Questions：Q03 的答案、React Flow 路径及 CSV 来源记录"></a><br>
+      <strong>固定问题与证据路径</strong><br>
+      运行 Q03，查看 PF001 的首位成分 ING001（chicken）。答案、React Flow 路径和引用记录来自仓库中的样例文件。
+    </td>
+    <td width="50%" valign="top">
+      <a href="media/graph-evidence.png"><img src="media/graph-evidence.png" alt="PF001 邻域高亮连接 chicken 的 CONTAINS 关系，右侧展示问题证据与来源入口"></a><br>
+      <strong>跳入图谱核对</strong><br>
+      从答案进入 PF001 邻域，查看属性与来源记录。界面单独核对运行时关系是否匹配；这不表示样例答案由 Neo4j 计算得出。
+    </td>
+  </tr>
+</table>
+
+### 5. 使用 Analyst Agent
+
+<a href="media/analyst-agent.png"><img src="media/analyst-agent.png" alt="Analyst Agent 使用确定性工具回答哪些产品含鸡肉" width="100%"></a>
+
+本轮使用无需 LLM 密钥的 **Deterministic Fallback** 模式，通过 `find_products_by_ingredient` 工具列出含鸡肉的产品，并展示工具名称。修改建议仍需进入 Review Queue；Trace 的启发式分数不等于答案正确率。
+
 ## 已实现与边界
 
 | 能力 | 当前状态 |
