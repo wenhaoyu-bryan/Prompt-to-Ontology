@@ -4,8 +4,8 @@ import { theme } from 'antd';
 import '@xyflow/react/dist/style.css';
 import './evidencePath.css';
 
-/** A path derived only from the answer payload, not from the runtime graph. */
-export default function EvidencePath({ path, zh, onEvidence }) {
+/** Render only paths supplied by the caller, which identifies their evidence source. */
+export default function EvidencePath({ path, zh, onEvidence, label }) {
   const { token } = theme.useToken();
   const { nodes, edges } = useMemo(() => {
     const seen = new Map();
@@ -24,7 +24,7 @@ export default function EvidencePath({ path, zh, onEvidence }) {
     };
   }, [path, token.colorBgContainer, token.colorBorder, token.colorPrimary, token.colorText]);
   if (!path.length) return null;
-  return <div className="evidence-flow" data-testid="evidence-path" aria-label={zh ? '样例证据路径' : 'Sample evidence path'} style={{ height: 230, borderRadius: 10, overflow: 'hidden', '--flow-bg': token.colorBgContainer, '--flow-text': token.colorText, '--flow-border': token.colorBorder }}>
+  return <div className="evidence-flow" data-testid="evidence-path" aria-label={label || (zh ? '样例证据路径' : 'Sample evidence path')} style={{ height: 230, borderRadius: 10, overflow: 'hidden', '--flow-bg': token.colorBgContainer, '--flow-text': token.colorText, '--flow-border': token.colorBorder }}>
     <ReactFlow nodes={nodes} edges={edges} fitView fitViewOptions={{ maxZoom: 1, padding: 0.2 }} nodesDraggable={false} nodesConnectable={false}
       onEdgeClick={(_, edge) => onEvidence?.(edge.data.evidenceIds)} zoomOnScroll={false} proOptions={{ hideAttribution: true }}>
       <Background gap={22} color={token.colorBorderSecondary} /><Controls showInteractive={false} />

@@ -1,676 +1,948 @@
-import { useState, useEffect, useRef, Component } from 'react';
-import { Card, Input, Button, Space, Typography, Tag, Divider, Spin, message, Modal, Select, Alert, Drawer, Table, Tabs, Row, Col, Statistic, Empty, Descriptions, theme } from 'antd';
+import { useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  Button,
+  Collapse,
+  Dropdown,
+  Drawer,
+  Input,
+  Modal,
+  Radio,
+  Select,
+  Spin,
+  Tag,
+  Tooltip,
+  Typography,
+  message,
+  theme,
+} from "antd";
+import {
+  ApartmentOutlined,
+  ArrowRightOutlined,
+  CheckOutlined,
+  ClockCircleOutlined,
+  CloseOutlined,
+  DislikeOutlined,
+  EllipsisOutlined,
+  HistoryOutlined,
+  LikeOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  PlusOutlined,
+  RobotOutlined,
+  SearchOutlined,
+  SendOutlined,
+  SettingOutlined,
+  ToolOutlined,
+} from "@ant-design/icons";
+import { useTranslation } from "react-i18next";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import { api, apiLong } from "../providers/dataProvider";
+import LlmConfigDialog from "../components/query/LlmConfigDialog";
+import AnswerEvidence from "../components/query/AnswerEvidence";
+import "./queryWorkspace.css";
 
-class ErrorBoundary extends Component {
-  state = { error: null };
-  static getDerivedStateFromError(error) { return { error }; }
-  render() {
-    if (this.state.error) {
-      return <pre style={{ color: 'red', padding: 16, fontSize: 12, whiteSpace: 'pre-wrap' }}>{String(this.state.error?.message || this.state.error)}</pre>;
-    }
-    return this.props.children;
+const STORE = "pto-query-conversations-v1";
+const id = () => crypto.randomUUID();
+function readSessions() {
+  try {
+    const data = JSON.parse(localStorage.getItem(STORE));
+    return Array.isArray(data)
+      ? data
+          .filter(
+            (s) =>
+              s &&
+              typeof s.id === "string" &&
+              typeof s.title === "string" &&
+              Array.isArray(s.turns),
+          )
+          .map((s) => ({
+            ...s,
+            turns: s.turns
+              .filter(
+                (t) =>
+                  t &&
+                  typeof t.id === "string" &&
+                  typeof t.question === "string",
+              )
+              .map((t) =>
+                !t.result && !t.error
+                  ? {
+                      ...t,
+                      error:
+                        "This query was interrupted. Retry to run it again.",
+                    }
+                  : t,
+              ),
+          }))
+      : [];
+  } catch {
+    return [];
   }
 }
-import {
-  SendOutlined,
-  RobotOutlined,
-  UserOutlined,
-  SettingOutlined,
-  ThunderboltOutlined,
-  InfoCircleOutlined,
-  HistoryOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  CloseCircleOutlined,
-  ToolOutlined,
-  RightOutlined,
-} from '@ant-design/icons';
-import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { useThemeContext } from '../providers/ThemeProvider';
-import { api } from '../providers/dataProvider';
-import { MOCK_AGENT_RUNS } from '../mocks/agentRuns';
-import ReactMarkdown from 'react-markdown';
-
-const { Title, Text, Paragraph } = Typography;
-const { TextArea } = Input;
-
-const EXAMPLE_QUESTION_KEYS = [
-  'agent.exampleQ1',
-  'agent.exampleQ2',
-  'agent.exampleQ3',
-  'agent.exampleQ4',
-  'agent.exampleQ5',
-];
-
-const STATUS_COLORS = {
-  completed: 'green',
-  running: 'blue',
-  failed: 'red',
-};
+const summary = (answer) =>
+  String(answer || "")
+    .replace(/^##\s*(Conclusion|结论)\s*/i, "")
+    .split(/\n##\s/)[0]
+    .trim();
+const short = (text) =>
+  String(text || "")
+    .replace(/[#*\n]/g, " ")
+    .trim()
+    .slice(0, 150);
+const Markdown = ({ children }) => (
+  <div className="query-markdown">
+    <ReactMarkdown>{children || ""}</ReactMarkdown>
+  </div>
+);
 
 export default function AgentPage() {
-  const { t, i18n } = useTranslation();
-  const { mode } = useThemeContext();
+  const { i18n } = useTranslation();
+  const zh = i18n.language.startsWith("zh");
+  const text = (en, cn) => (zh ? cn : en);
   const { token } = theme.useToken();
   const navigate = useNavigate();
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [llmStatus, setLlmStatus] = useState(null);
-  const [configModalOpen, setConfigModalOpen] = useState(false);
-  const [configForm, setConfigForm] = useState({ provider: 'openai', api_key: '', model: 'gpt-4o-mini', base_url: 'https://api.openai.com/v1' });
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState(null);
-  const [activeTab, setActiveTab] = useState('chat');
-  const [selectedRun, setSelectedRun] = useState(null);
-  const [runDrawerOpen, setRunDrawerOpen] = useState(false);
-  const chatEndRef = useRef(null);
-
-  const loadLLMStatus = async () => {
-    try {
-      const { data } = await api.get('/llm/config');
-      setLlmStatus(data);
-    } catch (err) {
-      console.warn('[Agent] failed to load LLM status', err);
-      setLlmStatus(null);
-    }
-  };
-
-  useEffect(() => { loadLLMStatus(); }, []);
+  const [params, setParams] = useSearchParams();
+  const [sessions, setSessions] = useState(readSessions);
+  const [activeId, setActiveId] = useState(
+    () =>
+      params.get("conversation") ||
+      readSessions().find((s) => !s.archived)?.id ||
+      "",
+  );
+  const [turnId, setTurnId] = useState(params.get("turn") || "");
+  const [input, setInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [scope, setScope] = useState("active");
+  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768);
+  const [pending, setPending] = useState(null);
+  const [status, setStatus] = useState(null);
+  const [configOpen, setConfigOpen] = useState(false);
+  const [runOpen, setRunOpen] = useState(false);
+  const [rename, setRename] = useState(null);
+  const [feedback, setFeedback] = useState(null);
+  const [category, setCategory] = useState("");
+  const [comment, setComment] = useState("");
+  const [savingFeedback, setSavingFeedback] = useState(false);
+  const [historyError, setHistoryError] = useState(false);
+  const scroll = useRef(null);
+  const active = sessions.find((s) => s.id === activeId);
+  const turns = active?.turns || [];
+  const selected = turns.find((t) => t.id === turnId) || turns.at(-1);
+  const visible = sessions
+    .filter((s) => !!s.archived === (scope === "archived"))
+    .filter((s) =>
+      `${s.title} ${s.turns.map((t) => t.question).join(" ")}`
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+    )
+    .sort(
+      (a, b) =>
+        Number(!!b.pinned) - Number(!!a.pinned) || b.updatedAt - a.updatedAt,
+    );
+  const reasons = zh
+    ? [
+        "答案不准确",
+        "对象或属性错误",
+        "关系路径错误",
+        "证据不完整",
+        "数据范围问题",
+        "其他",
+      ]
+    : [
+        "Incorrect answer",
+        "Wrong object or property",
+        "Wrong relationship",
+        "Incomplete evidence",
+        "Data scope issue",
+        "Other",
+      ];
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const handleSend = async () => {
-    const q = input.trim();
-    if (!q || loading) return;
-    setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: q }]);
-    setLoading(true);
-    const langHint = i18n.language === 'zh' ? '\n\n请用中文回答。' : '';
+    api
+      .get("/llm/config")
+      .then(({ data }) => setStatus(data))
+      .catch(() => setStatus(null));
+  }, []);
+  useEffect(() => {
     try {
-      const { data } = await api.post('/pet-food/agent/chat', {
-        question: q + langHint,
-        context: { current_domain: 'pet_food' },
-      });
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: data.answer || t('agent.noAnswer'),
-        tools: data.tools_used || [],
-        llm_used: data.llm_used || false,
-        suggestions: data.suggestions || [],
-        can_submit_to_review: data.can_submit_to_review || false,
-        agent_run_id: data.agent_run_id || '',
-        user_message: q,
-      }]);
-    } catch (err) {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: t('agent.connectionError'),
-        error: true,
-      }]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmitSuggestions = async (msgIndex, suggestions, agentRunId, userMessage) => {
-    try {
-      const { data } = await api.post('/agent/suggestions/submit-review', {
-        agent_run_id: agentRunId,
-        user_message: userMessage,
-        suggestions: suggestions,
-      });
-      message.success(t('agent.suggestionsSubmitted'));
-      // Update the message to mark as submitted
-      setMessages(prev => prev.map((msg, i) =>
-        i === msgIndex ? { ...msg, suggestionsSubmitted: true, reviewBatchId: data.batch?.id } : msg
-      ));
-    } catch (err) {
-      message.error(err?.response?.data?.detail || t('agent.suggestionsFailed'));
-    }
-  };
-
-  const handleSaveConfig = async () => {
-    try {
-      const { data } = await api.post('/llm/config', configForm);
-      setLlmStatus(data);
-      setConfigModalOpen(false);
-      message.success(t('agent.configSaved'));
-      loadLLMStatus();
-    } catch (err) {
-      message.error(t('agent.configSaveFailed'));
-    }
-  };
-
-  const handleTestConnection = async () => {
-    setTesting(true);
-    setTestResult(null);
-    try {
-      const { data } = await api.post('/llm/test', configForm.api_key ? configForm : {});
-      setTestResult(data);
+      localStorage.setItem(STORE, JSON.stringify(sessions));
+      setHistoryError(false);
     } catch {
-      setTestResult({ ok: false, message: t('agent.testFailed') });
-    } finally {
-      setTesting(false);
+      setHistoryError(true);
     }
-  };
+  }, [sessions]);
+  useEffect(() => {
+    if (params.get("conversation")) {
+      setActiveId(params.get("conversation"));
+      setTurnId(params.get("turn") || "");
+    }
+  }, [params]);
+  useEffect(() => {
+    if (pending?.sessionId === activeId)
+      scroll.current?.scrollTo({
+        top: scroll.current.scrollHeight,
+        behavior: "smooth",
+      });
+  }, [pending, activeId]);
 
-  const handleDeleteConfig = async () => {
+  const selectSession = (session) => {
+    setActiveId(session.id);
+    setTurnId(session.turns.at(-1)?.id || "");
+    setInput("");
+    setParams({ conversation: session.id }, { replace: true });
+  };
+  const selectTurn = (turn) => {
+    setTurnId(turn.id);
+    setParams({ conversation: activeId, turn: turn.id }, { replace: true });
+  };
+  const newConversation = () => {
+    setActiveId("");
+    setTurnId("");
+    setInput("");
+    setParams({}, { replace: true });
+  };
+  const updateTurn = (sessionId, targetId, patch) =>
+    setSessions((current) =>
+      current.map((s) =>
+        s.id !== sessionId
+          ? s
+          : {
+              ...s,
+              turns: s.turns.map((t) =>
+                t.id === targetId ? { ...t, ...patch } : t,
+              ),
+            },
+      ),
+    );
+
+  const send = async (question = input, retryId = "") => {
+    const q = question.trim();
+    if (!q || pending) return;
+    const sessionId = active && !active.archived ? active.id : id();
+    const targetId = retryId || id();
+    const preceding = retryId
+      ? turns.slice(
+          0,
+          turns.findIndex((t) => t.id === retryId),
+        )
+      : turns;
+    const contextTurns = active?.archived ? [] : preceding;
+    const productIds = [...contextTurns]
+      .reverse()
+      .map((t) => t.question.match(/\bPF\d+\b/gi) || [])
+      .find((ids) => ids.length);
+    const lastProduct =
+      productIds?.length === 1 ? productIds[0].toUpperCase() : undefined;
+    const history = contextTurns
+      .filter((t) => t.result)
+      .slice(-4)
+      .flatMap((t) => [
+        { role: "user", content: t.question },
+        { role: "assistant", content: t.result.answer },
+      ]);
+    setSessions((current) => {
+      const session = current.find((s) => s.id === sessionId);
+      const turn = {
+        id: targetId,
+        question: q,
+        createdAt: new Date().toISOString(),
+      };
+      if (!session)
+        return [
+          {
+            id: sessionId,
+            title: q.slice(0, 60),
+            updatedAt: Date.now(),
+            turns: [turn],
+          },
+          ...current,
+        ];
+      return current.map((s) =>
+        s.id === sessionId
+          ? {
+              ...s,
+              updatedAt: Date.now(),
+              turns: retryId
+                ? s.turns.map((t) => (t.id === retryId ? turn : t))
+                : [...s.turns, turn],
+            }
+          : s,
+      );
+    });
+    setActiveId(sessionId);
+    setTurnId(targetId);
+    setInput("");
+    setPending({ sessionId, turnId: targetId });
+    setParams({ conversation: sessionId, turn: targetId }, { replace: true });
     try {
-      await api.delete('/llm/config');
-      setLlmStatus({ configured: false, source: 'none' });
-      message.success(t('agent.runtimeDeleted'));
-      loadLLMStatus();
-    } catch {
-      message.error(t('agent.runtimeDeleteFailed'));
+      const { data } = await apiLong.post("/pet-food/agent/chat", {
+        question: q,
+        context: {
+          current_domain: "pet_food",
+          current_product_id: lastProduct,
+          history,
+        },
+      });
+      updateTurn(sessionId, targetId, { result: data });
+    } catch (error) {
+      const detail = error.response?.data?.detail;
+      updateTurn(sessionId, targetId, {
+        error:
+          typeof detail === "string"
+            ? detail
+            : text(
+                "The query could not complete. Check the service and retry.",
+                "查询未能完成，请检查服务后重试。",
+              ),
+      });
+    } finally {
+      setPending(null);
     }
   };
 
-  const handleViewRun = (run) => {
-    setSelectedRun(run);
-    setRunDrawerOpen(true);
+  const sessionAction = (session, key) => {
+    if (key === "rename") {
+      setRename({ id: session.id, title: session.title });
+      return;
+    }
+    if (key === "delete") {
+      Modal.confirm({
+        title: text("Delete this conversation?", "删除此会话？"),
+        content: text(
+          "This removes its browser history. Server run records and feedback remain.",
+          "这会清除此浏览器中的会话，服务端运行记录和反馈仍保留。",
+        ),
+        okText: text("Delete", "删除"),
+        cancelText: text("Cancel", "取消"),
+        okButtonProps: { danger: true },
+        onOk: () => {
+          setSessions((current) => current.filter((s) => s.id !== session.id));
+          if (activeId === session.id) newConversation();
+        },
+      });
+      return;
+    }
+    setSessions((current) =>
+      current.map((s) =>
+        s.id === session.id
+          ? {
+              ...s,
+              [key === "pin" ? "pinned" : "archived"]: !(key === "pin"
+                ? s.pinned
+                : s.archived),
+            }
+          : s,
+      ),
+    );
+  };
+  const openGraph = (step) =>
+    navigate(
+      `/graph?${new URLSearchParams({ node: step.source_id, ...(step.target_id ? { target: step.target_id, relation: step.relation } : {}), conversation: activeId, turn: selected.id })}`,
+    );
+  const submitChanges = async (turn) => {
+    try {
+      const { data } = await api.post("/agent/suggestions/submit-review", {
+        agent_run_id: turn.result.agent_run_id,
+        user_message: turn.question,
+        suggestions: turn.result.suggestions,
+      });
+      updateTurn(activeId, turn.id, { submitted: data.batch?.id || true });
+      message.success(text("Submitted to Review Queue", "已提交审核队列"));
+    } catch (error) {
+      message.error(
+        error.response?.data?.detail || text("Submission failed", "提交失败"),
+      );
+    }
+  };
+  const saveFeedback = async (turn, rating, reason = "", note = "") => {
+    setSavingFeedback(true);
+    try {
+      const { data } = await api.post("/agent/feedback", {
+        trace_id: turn.result.trace_id,
+        agent_run_id: turn.result.agent_run_id,
+        conversation_id: activeId,
+        turn_id: turn.id,
+        rating,
+        category: reason,
+        comment: note,
+      });
+      updateTurn(activeId, turn.id, { feedback: data });
+      setFeedback(null);
+      message.success(
+        text("Feedback recorded for this answer", "已记录本轮回答的反馈"),
+      );
+    } catch {
+      message.error(
+        text(
+          "Feedback was not saved. Retry when the service is available.",
+          "反馈未保存，请在服务可用时重试。",
+        ),
+      );
+    } finally {
+      setSavingFeedback(false);
+    }
   };
 
-  const llmConfigured = llmStatus?.configured && llmStatus?.provider !== 'none';
-
-  const runColumns = [
-    {
-      title: t('agent.runId', 'Run ID'),
-      dataIndex: 'run_id',
-      key: 'run_id',
-      width: 90,
-      render: (id) => <Text code style={{ fontSize: 12 }}>{id}</Text>,
-    },
-    {
-      title: t('dashboard.prompt'),
-      dataIndex: 'prompt',
-      key: 'prompt',
-      ellipsis: true,
-    },
-    {
-      title: t('common.status'),
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      render: (s) => (
-        <Tag color={STATUS_COLORS[s]} icon={s === 'running' ? <ClockCircleOutlined /> : <CheckCircleOutlined />}>
-          {t(`common.statusLabels.${s}`, s)}
-        </Tag>
-      ),
-    },
-    {
-      title: t('agent.objectsExtracted'),
-      dataIndex: 'objects_extracted',
-      key: 'objects',
-      width: 80,
-    },
-    {
-      title: t('agent.issuesFound'),
-      dataIndex: 'issues_found',
-      key: 'issues',
-      width: 70,
-      render: (v) => v > 0 ? <Tag color="red">{v}</Tag> : <Text type="secondary">0</Text>,
-    },
-    {
-      title: t('common.actions'),
-      key: 'actions',
-      width: 60,
-      render: (_, record) => (
-        <Button size="small" type="link" icon={<RightOutlined />} onClick={(e) => { e.stopPropagation(); handleViewRun(record); }} />
-      ),
-    },
-  ];
-
-  const tabItems = [
-    {
-      key: 'chat',
-      label: <span><RobotOutlined /> {t('agent.chat')}</span>,
-      children: (
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'min(400px, 50vh)' }}>
-          {/* Chat area */}
-          <Card style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}
-            styles={{ body: { flex: 1, overflow: 'auto', padding: 16 } }}
-          >
-            {messages.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                <RobotOutlined style={{ fontSize: 48, opacity: 0.15, marginBottom: 16 }} />
-                <div>
-                  <Text type="secondary">{t('agent.askPrompt')}</Text>
-                </div>
-                <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  {EXAMPLE_QUESTION_KEYS.map((key, i) => (
-                    <Tag key={i} style={{ cursor: 'pointer' }} onClick={() => { setInput(t(key)); }}>
-                      {t(key)}
-                    </Tag>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {messages.map((msg, i) => (
-              <div key={i} style={{
-                display: 'flex',
-                justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                marginBottom: 12,
-              }}>
-                <div style={{
-                  maxWidth: '80%',
-                  padding: '10px 14px',
-                  borderRadius: 12,
-                  background: msg.role === 'user' ? token.colorPrimary : token.colorBgLayout,
-                  color: msg.role === 'user' ? '#fff' : token.colorText,
-                }}>
-                  {msg.role === 'assistant' && (
-                    <div style={{ marginBottom: 4 }}>
-                      {msg.llm_used ? (
-                        <Tag color="success" style={{ fontSize: 12 }}>{t('agent.llmTag')}</Tag>
-                      ) : (
-                        <Tag color="warning" style={{ fontSize: 12 }}>{t('agent.fallbackTag')}</Tag>
-                      )}
-                      {msg.tools?.map((tool, j) => (
-                        <Tag key={j} style={{ fontSize: 12, marginLeft: 4 }}>{tool}</Tag>
-                      ))}
-                    </div>
-                  )}
-                  <div style={{ fontSize: 13, lineHeight: 1.7, color: 'inherit' }}>
-                    <ReactMarkdown
-                      components={{
-                        h1: ({children}) => <h4 style={{margin: '12px 0 4px', fontWeight: 700}}>{children}</h4>,
-                        h2: ({children}) => <h5 style={{margin: '10px 0 4px', fontWeight: 700}}>{children}</h5>,
-                        h3: ({children}) => <h6 style={{margin: '8px 0 4px', fontWeight: 700}}>{children}</h6>,
-                        p: ({children}) => <p style={{margin: '4px 0'}}>{children}</p>,
-                        ul: ({children}) => <ul style={{margin: '4px 0', paddingLeft: 20}}>{children}</ul>,
-                        ol: ({children}) => <ol style={{margin: '4px 0', paddingLeft: 20}}>{children}</ol>,
-                        li: ({children}) => <li style={{margin: '2px 0'}}>{children}</li>,
-                        code: ({children, className}) => className
-                          ? <pre style={{background: token.colorFillTertiary, padding: 8, borderRadius: 4, fontSize: 12, overflow: 'auto', margin: '6px 0'}}><code>{children}</code></pre>
-                          : <code style={{background: token.colorFillTertiary, padding: '1px 4px', borderRadius: 3, fontSize: 12}}>{children}</code>,
-                        strong: ({children}) => <strong style={{fontWeight: 600}}>{children}</strong>,
-                        table: ({children}) => (
-                          <div style={{overflowX: 'auto', margin: '6px 0'}}>
-                            <table style={{borderCollapse: 'collapse', fontSize: 12, minWidth: '100%'}}>{children}</table>
-                          </div>
-                        ),
-                        th: ({children}) => <th style={{border: `1px solid ${token.colorBorderSecondary}`, padding: '4px 8px', textAlign: 'left', fontWeight: 600, wordBreak: 'break-word'}}>{children}</th>,
-                        td: ({children}) => <td style={{border: `1px solid ${token.colorBorderSecondary}`, padding: '4px 8px', wordBreak: 'break-word'}}>{children}</td>,
-                      }}
-                    >
-                      {msg.content}
-                    </ReactMarkdown>
-                  </div>
-
-                  {/* Phase 30: Show agent suggestions */}
-                  {msg.suggestions?.length > 0 && (
-                    <div style={{ marginTop: 12, padding: '8px 10px', background: `color-mix(in srgb, ${token.colorPrimary} 6%, transparent)`, borderRadius: 8, border: `1px solid color-mix(in srgb, ${token.colorPrimary} 15%, transparent)` }}>
-                      <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
-                        {t('agent.proposedUpdates')} ({msg.suggestions.length})
-                      </Text>
-                      {msg.suggestions.map((sug, j) => {
-                        const showRule = sug.related_rule_id && sug.related_rule_id !== 'UNKNOWN_RULE';
-                        const showMissingField = sug.missing_field && sug.missing_field !== 'data_quality';
-                        return (
-                        <div key={j} style={{ fontSize: 12, marginBottom: 6, padding: '6px 8px', background: token.colorBgElevated, borderRadius: 4 }}>
-                          <div style={{ marginBottom: 3 }}>
-                            <Tag color="purple" style={{ fontSize: 12 }}>{sug.type?.replace(/_/g, ' ')}</Tag>
-                            {sug.confidence != null && (
-                              <Text type="secondary" style={{ fontSize: 12 }}>({(sug.confidence * 100).toFixed(0)}%)</Text>
-                            )}
-                            {showRule && (
-                              <Tag color="orange" style={{ fontSize: 12, marginLeft: 4 }}>
-                                {t('agent.ruleLabel', 'Rule')}: {sug.related_rule_id}{sug.related_rule_name ? ` ${sug.related_rule_name}` : ''}
-                              </Tag>
-                            )}
-                            {showMissingField && (
-                              <Tag color="geekblue" style={{ fontSize: 12, marginLeft: 4 }}>
-                                {t('agent.missingFieldLabel', 'Missing Field')}: {sug.missing_field}
-                              </Tag>
-                            )}
-                          </div>
-                          <Text style={{ fontSize: 12, display: 'block' }}>{sug.title}</Text>
-                          {sug.target_object_id && (
-                            <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>{t('common.target')}: {sug.target_object_id}</Text>
-                          )}
-                          {sug.property_update && (
-                            <Text code style={{ fontSize: 12, display: 'block', marginTop: 2 }}>
-                              {sug.property_update.property}: {sug.property_update.old_value ?? '?'} → {sug.property_update.new_value}
-                            </Text>
-                          )}
-                          {sug.candidate_link && (
-                            <Text code style={{ fontSize: 12, display: 'block', marginTop: 2 }}>
-                              {sug.candidate_link.source_id} → {sug.candidate_link.type} → {sug.candidate_link.target_id}
-                            </Text>
-                          )}
-                          {sug.why_it_matters && (
-                            <Text type="secondary" italic style={{ fontSize: 12, display: 'block', marginTop: 3 }}>{sug.why_it_matters}</Text>
-                          )}
-                          {sug.reason && (
-                            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 2 }}>{sug.reason}</Text>
-                          )}
-                          {sug.evidence && (
-                            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 2 }}>{sug.evidence}</Text>
-                          )}
-                        </div>
-                        );
-                      })}
-                      {msg.suggestionsSubmitted ? (
-                        <div style={{ marginTop: 8 }}>
-                          <Tag color="success"><CheckCircleOutlined /> {t('agent.suggestionsSubmitted')}</Tag>
-                          {msg.reviewBatchId && (
-                            <Button type="link" size="small" onClick={() => navigate(`/review?batch_id=${msg.reviewBatchId}`)}>
-                              {t('agent.goToReview')} <RightOutlined />
-                            </Button>
-                          )}
-                        </div>
-                      ) : (
-                        <Button
-                          size="small"
-                          type="primary"
-                          icon={<SendOutlined />}
-                          style={{ marginTop: 8 }}
-                          onClick={() => handleSubmitSuggestions(i, msg.suggestions, msg.agent_run_id, msg.user_message)}
-                        >
-                          {t('agent.submitSuggestions')}
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {loading && (
-              <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 12 }}>
-                <div style={{ padding: '10px 14px', borderRadius: 12, background: token.colorBgLayout }}>
-                  <Spin size="small" /> <Text type="secondary" style={{ marginLeft: 8 }}>{t('agent.thinking')}</Text>
-                </div>
-              </div>
-            )}
-
-            <div ref={chatEndRef} />
-          </Card>
-
-          {/* Input */}
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <TextArea
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              placeholder={t('agent.askPlaceholder')}
-              autoSize={{ minRows: 1, maxRows: 4 }}
-              onPressEnter={e => {
-                if (!e.shiftKey) { e.preventDefault(); handleSend(); }
-              }}
-              style={{ flex: 1 }}
-            />
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={handleSend}
-              loading={loading}
-              style={{ height: 'auto' }}
-            >
-              {t('agent.send')}
-            </Button>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'history',
-      label: <span><HistoryOutlined /> {t('agent.runHistory')} <Tag style={{ fontSize: 12 }}>{t('common.demoData')}</Tag></span>,
-      children: (
-        <Card styles={{ body: { padding: 0 } }}>
-          <Table
-            dataSource={MOCK_AGENT_RUNS}
-            columns={runColumns}
-            rowKey="run_id"
-            size="small"
-            pagination={false}
-            onRow={(record) => ({
-              onClick: () => handleViewRun(record),
-              style: { cursor: 'pointer' },
-            })}
-          />
-        </Card>
-      ),
-    },
-  ];
-
+  const variables = {
+    "--query-bg": token.colorBgContainer,
+    "--query-raised": token.colorBgElevated,
+    "--query-page": token.colorBgLayout,
+    "--query-border": token.colorBorderSecondary,
+    "--query-muted": token.colorTextSecondary,
+    "--query-text": token.colorText,
+    "--query-accent": token.colorPrimary,
+  };
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', minHeight: 'calc(100vh - 120px)' /* 56px header + 24px content padding + 40px breathing room */ }}>
-      {/* Header */}
-      <div>
-        <Title level={4} style={{ margin: 0 }}>{t('agent.title')}</Title>
-        <Text type="secondary">{t('agent.subtitle')}</Text>
-      </div>
-      {/* Tools explanation — compact banner */}
-      <Alert
-        type="info"
-        banner
-        showIcon
-        icon={<InfoCircleOutlined />}
-        title={
-          <span style={{ fontSize: 12 }}>
-            {t('agent.toolsPanel')}{' '}
-            {[t('agent.toolLookup'), t('agent.toolRelation'), t('agent.toolRule'), t('agent.toolEvidence'), t('agent.toolLimitation')].map((tool, i) => (
-              <Tag key={i} color="blue" style={{ fontSize: 12, marginLeft: 2 }}>{tool}</Tag>
-            ))}
+    <div className="query-workspace" style={variables}>
+      <header className="query-page-heading">
+        <div>
+          <Typography.Title level={4}>
+            {text("Analyst Agent", "图谱问答")}
+          </Typography.Title>
+          <span>
+            {text(
+              "Ask a question. Follow the facts and relationships behind the answer.",
+              "围绕业务对象提问，查看结论背后的事实、关系与来源。",
+            )}
           </span>
-        }
-      />
-      {/* Agent safety boundary */}
-      <Alert
-        type="warning"
-        banner
-        showIcon
-        icon={<InfoCircleOutlined />}
-        message={t('agent.safetyBoundary')}
-        style={{ fontSize: 12 }}
-      />
-      {/* Status bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <RobotOutlined style={{ fontSize: 14 }} />
-        <Text style={{ fontSize: 13 }}>{t('agent.llmMode')}:</Text>
-        {llmConfigured ? (
-          <Tag color="success">{t('agent.llmReasoning')}</Tag>
-        ) : (
-          <Tag color="warning">{t('agent.fallback')}</Tag>
-        )}
-        {llmConfigured && (
-          <Tag>{llmStatus?.source === 'runtime' ? t('agent.runtimeConfig') : t('agent.envConfig')}</Tag>
-        )}
-        <div style={{ flex: 1 }} />
-        <Button
-          size="small"
-          icon={<SettingOutlined />}
-          onClick={() => setConfigModalOpen(true)}
-        >
-          {t('agent.configureLLM')}
-        </Button>
-      </div>
-
-      {/* Main content */}
-      <Card style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }} styles={{ body: { padding: '0 16px 16px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 } }}>
-        {/* flex-1-tabs: propagates flex layout into Ant Design Tabs content panes so the chat Card fills remaining height */}
-        <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} className="flex-1-tabs" style={{ marginTop: 8 }} />
-      </Card>
-
-      {/* LLM Config Modal */}
-      <Modal
-        title={t('agent.llmConfigTitle')}
-        open={configModalOpen}
-        onCancel={() => { setConfigModalOpen(false); setTestResult(null); }}
-        footer={null}
-        width={480}
-      >
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          {llmStatus?.configured && (
-            <Alert
-              type={llmStatus.source === 'runtime' ? 'success' : 'info'}
-              title={`${t('agent.currentConfig')}${llmStatus.provider} / ${llmStatus.model}`}
-              description={llmStatus.source === 'runtime' ? t('agent.runtimeDesc') : t('agent.envDesc')}
-              showIcon
-            />
+        </div>
+        <div className="query-page-actions">
+          <Tag>{text("Pet Food reference", "Pet Food 参考域")}</Tag>
+          <Button
+            icon={<SettingOutlined />}
+            onClick={() => setConfigOpen(true)}
+          >
+            {text("Model settings", "模型设置")}
+          </Button>
+        </div>
+      </header>
+      {historyError && (
+        <Alert
+          type="warning"
+          title={text(
+            "Browser history could not be saved. Keep this page open to retain the current conversation.",
+            "会话无法保存到浏览器，请保持本页面打开以保留当前内容。",
           )}
-
-          <div>
-            <Text>{t('agent.provider')}</Text>
-            <Select
-              value={configForm.provider}
-              onChange={v => {
-                const defaults = {
-                  openai: { base_url: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
-                  anthropic: { base_url: 'https://api.anthropic.com/v1', model: 'claude-sonnet-4-20250514' },
-                  deepseek: { base_url: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
-                  mimo: { base_url: 'https://api.xiaomimimo.com/v1', model: '' },
-                  minimax: { base_url: 'https://api.minimax.chat/v1', model: '' },
-                };
-                const d = defaults[v] || {};
-                setConfigForm(p => ({ ...p, provider: v, base_url: d.base_url ?? p.base_url, model: d.model ?? p.model }));
-              }}
-              style={{ width: '100%', marginTop: 4 }}
+        />
+      )}
+      <div className={`query-shell${collapsed ? " is-collapsed" : ""}`}>
+        <aside
+          className="query-history"
+          aria-label={text("Conversation history", "会话历史")}
+        >
+          <div className="query-history-header">
+            <b>{text("Conversations", "会话")}</b>
+            <Tooltip
+              title={text(
+                collapsed ? "Show history" : "Collapse history",
+                collapsed ? "展开历史" : "收起历史",
+              )}
+            >
+              <Button
+                type="text"
+                aria-label={text("Toggle history", "切换会话历史")}
+                icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                onClick={() => setCollapsed(!collapsed)}
+              />
+            </Tooltip>
+          </div>
+          <Button
+            className="query-new"
+            icon={<PlusOutlined />}
+            onClick={newConversation}
+          >
+            {text("New conversation", "新会话")}
+          </Button>
+          <div className="query-history-tools">
+            <Input
+              prefix={<SearchOutlined />}
+              aria-label={text("Search conversations", "搜索会话")}
+              placeholder={text("Search conversations", "搜索会话")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              allowClear
+            />
+            <Radio.Group
+              size="small"
+              value={scope}
+              onChange={(e) => setScope(e.target.value)}
+              optionType="button"
               options={[
-                { label: 'OpenAI', value: 'openai' },
-                { label: 'Anthropic', value: 'anthropic' },
-                { label: 'DeepSeek', value: 'deepseek' },
-                { label: 'Mimo', value: 'mimo' },
-                { label: 'MiniMax', value: 'minimax' },
+                { value: "active", label: text("Recent", "最近") },
+                { value: "archived", label: text("Archived", "已归档") },
               ]}
             />
           </div>
-
-          <div>
-            <Text>{t('agent.model')}</Text>
-            <Input
-              value={configForm.model}
-              onChange={e => setConfigForm(p => ({ ...p, model: e.target.value }))}
-              placeholder={t('agent.modelPlaceholder')}
-              style={{ marginTop: 4 }}
-            />
+          <div className="query-history-list">
+            {visible.map((session) => (
+              <div
+                className={`query-history-item${session.id === activeId ? " is-active" : ""}`}
+                key={session.id}
+              >
+                <button type="button" onClick={() => selectSession(session)}>
+                  <span>
+                    {session.pinned && <small>● </small>}
+                    {session.title}
+                  </span>
+                  <small>
+                    {session.turns.length} {text("questions", "个问题")}
+                  </small>
+                </button>
+                <Dropdown
+                  trigger={["click"]}
+                  menu={{
+                    items: [
+                      {
+                        key: "pin",
+                        label: text(
+                          session.pinned ? "Unpin" : "Pin",
+                          session.pinned ? "取消置顶" : "置顶",
+                        ),
+                      },
+                      { key: "rename", label: text("Rename", "重命名") },
+                      {
+                        key: "archive",
+                        label: text(
+                          session.archived ? "Restore" : "Archive",
+                          session.archived ? "恢复会话" : "归档",
+                        ),
+                      },
+                      {
+                        key: "delete",
+                        label: text("Delete", "删除"),
+                        danger: true,
+                      },
+                    ],
+                    onClick: ({ key }) => sessionAction(session, key),
+                  }}
+                >
+                  <Button
+                    type="text"
+                    aria-label={`${text("Conversation actions", "会话操作")}: ${session.title}`}
+                    icon={<EllipsisOutlined />}
+                  />
+                </Dropdown>
+              </div>
+            ))}
+            {!visible.length && (
+              <p className="query-history-empty">
+                {text("No conversations here yet.", "这里还没有会话。")}
+              </p>
+            )}
           </div>
-
-          <div>
-            <Text>{t('agent.baseUrl')}</Text>
-            <Input
-              value={configForm.base_url}
-              onChange={e => setConfigForm(p => ({ ...p, base_url: e.target.value }))}
-              placeholder="https://api.openai.com/v1"
-              style={{ marginTop: 4 }}
-            />
-          </div>
-
-          <div>
-            <Text>{t('agent.apiKey')}</Text>
-            <Input.Password
-              value={configForm.api_key}
-              onChange={e => setConfigForm(p => ({ ...p, api_key: e.target.value }))}
-              placeholder={t('agent.apiKeyPlaceholder')}
-              style={{ marginTop: 4 }}
-            />
-          </div>
-
-          <Alert
-            type="warning"
-            title={t('agent.securityNote')}
-            showIcon
-          />
-
-          {testResult && (
-            <Alert
-              type={testResult.ok ? 'success' : 'error'}
-              title={testResult.message}
-              description={testResult.ok && testResult.latency_ms != null ? `${t('agent.latency')}${testResult.latency_ms}ms` : undefined}
-              showIcon
-            />
-          )}
-
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button type="primary" onClick={handleSaveConfig} disabled={!configForm.api_key}>
-              {t('common.save')}
-            </Button>
-            <Button onClick={handleTestConnection} loading={testing}>
-              {t('agent.testConnection')}
-            </Button>
-            {llmStatus?.source === 'runtime' && (
-              <Button danger onClick={handleDeleteConfig}>
-                {t('agent.deleteRuntimeKey')}
+          <footer className="query-history-footer">
+            <HistoryOutlined />{" "}
+            {text("Saved in this browser", "保存在当前浏览器")}
+          </footer>
+        </aside>
+        <section
+          className="query-conversation"
+          aria-label={text("Query conversation", "问答会话")}
+        >
+          <header className="query-conversation-header">
+            <div className="query-conversation-name">
+              <ApartmentOutlined />
+              <b>{active?.title || text("New conversation", "新会话")}</b>
+            </div>
+            <div>
+              <Tag color={status?.configured ? "success" : "default"}>
+                {status?.configured
+                  ? text("LLM enabled", "模型已配置")
+                  : text("Deterministic demo", "确定性演示")}
+              </Tag>
+              <Button
+                type="text"
+                icon={<ClockCircleOutlined />}
+                disabled={!selected?.result}
+                onClick={() => setRunOpen(true)}
+              >
+                {text("Run details", "运行信息")}
               </Button>
-            )}
-          </div>
-        </Space>
-      </Modal>
-
-      {/* Agent Run Detail Drawer */}
-      <Drawer
-        title={selectedRun ? `${t('agent.runDetail')} — ${selectedRun.run_id}` : t('agent.runDetail')}
-        open={runDrawerOpen}
-        onClose={() => { setRunDrawerOpen(false); setSelectedRun(null); }}
-        size="large"
-      >
-        <ErrorBoundary>
-        {selectedRun && (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            {/* Status & Meta */}
-            <Card size="small" variant="inner">
-              <Row gutter={16}>
-                <Col span={8}>
-                  <Statistic
-                    title={t('common.status')}
-                    value={t('common.statusLabels.' + selectedRun.status, selectedRun.status)}
-                    styles={{ content: { color: selectedRun.status === 'completed' ? token.colorSuccess : selectedRun.status === 'running' ? token.colorPrimary : token.colorError, fontSize: 16 } }}
-                  />
-                </Col>
-                <Col span={8}>
-                  <Statistic title={t('agent.objectsExtracted')} value={selectedRun.objects_extracted} />
-                </Col>
-                <Col span={8}>
-                  <Statistic
-                    title={t('agent.issuesFound')}
-                    value={selectedRun.issues_found}
-                    styles={{ content: { color: selectedRun.issues_found > 0 ? token.colorError : undefined } }}
-                  />
-                </Col>
-              </Row>
-            </Card>
-
-            {/* Input Prompt */}
-            <Card size="small" title={t('agent.inputPrompt')} variant="inner">
-              <Text>{selectedRun.prompt}</Text>
-            </Card>
-
-            {/* Tools Used */}
-            {selectedRun.tools_used?.length > 0 && (
-              <Card size="small" title={<><ToolOutlined /> {t('agent.toolsUsed')}</>} variant="inner">
-                <Space wrap>
-                  {selectedRun.tools_used.map((tool, i) => (
-                    <Tag key={i} color="cyan">{tool}</Tag>
+            </div>
+          </header>
+          <div className="query-conversation-scroll" ref={scroll}>
+            {!turns.length && (
+              <div className="query-starter">
+                <span className="query-starter-mark">
+                  <ApartmentOutlined />
+                </span>
+                <Tag>
+                  {text("YOUR ONTOLOGY, EXPLAINED", "从本体中寻找依据")}
+                </Tag>
+                <h2>
+                  {text("Start with a question.", "从一个业务问题开始。")}
+                </h2>
+                <p>
+                  {text(
+                    "Explore products, ingredients, and rule results. Each answer keeps its own evidence and query run.",
+                    "探索产品、成分与规则结果。每轮回答都保留独立的证据和查询记录。",
+                  )}
+                </p>
+                <div className="query-starters">
+                  {(zh
+                    ? [
+                        "哪些产品含有 chicken？",
+                        "解释 PF001 的风险与数据缺口",
+                        "比较 PF001 和 PF002",
+                      ]
+                    : [
+                        "Which products contain chicken?",
+                        "Explain PF001’s risks and missing data",
+                        "Compare PF001 and PF002",
+                      ]
+                  ).map((q) => (
+                    <button type="button" onClick={() => send(q)} key={q}>
+                      <ToolOutlined />
+                      <span>{q}</span>
+                      <ArrowRightOutlined />
+                    </button>
                   ))}
-                </Space>
-              </Card>
+                </div>
+              </div>
             )}
-
-            {/* Summary */}
-            {selectedRun.answer_summary && (
-              <Card size="small" title={t('agent.answerSummary')} variant="inner">
-                <Paragraph style={{ margin: 0, fontSize: 13 }}>{selectedRun.answer_summary}</Paragraph>
-              </Card>
-            )}
-
-            {/* LLM Info */}
-            <Card size="small" variant="inner">
-              <Descriptions column={1} size="small">
-                <Descriptions.Item label={t('agent.runId', 'Run ID')}>{selectedRun.run_id}</Descriptions.Item>
-                <Descriptions.Item label={t('agent.llmUsed')}>
-                  {selectedRun.llm_used ? <Tag color="success">{t('common.yes')}</Tag> : <Tag>{t('common.no') + ' (' + t('agent.fallback') + ')'}</Tag>}
-                </Descriptions.Item>
-                <Descriptions.Item label={t('agent.relationshipsExtracted')}>{selectedRun.relationships_extracted}</Descriptions.Item>
-              </Descriptions>
-            </Card>
-          </Space>
+            {turns.map((turn) => (
+              <div
+                className="query-turn"
+                key={turn.id}
+                data-testid="query-turn"
+              >
+                <div className="query-question">
+                  <span>{text("YOU", "我")}</span>
+                  <p>{turn.question}</p>
+                </div>
+                {turn.id !== selected?.id ? (
+                  <button
+                    type="button"
+                    className="query-prior"
+                    onClick={() => selectTurn(turn)}
+                  >
+                    <RobotOutlined />
+                    <span>
+                      <b>
+                        {short(summary(turn.result?.answer)) ||
+                          text("View this query", "查看本轮查询")}
+                      </b>
+                      <small>
+                        {turn.result?.tool_results?.length || 0}{" "}
+                        {text("tool results", "项工具结果")}
+                      </small>
+                    </span>
+                    <ArrowRightOutlined />
+                  </button>
+                ) : turn.result ? (
+                  <article className="query-answer" data-testid="query-answer">
+                    <div className="query-answer-heading">
+                      <span>
+                        <RobotOutlined />
+                        <b>{text("Answer", "回答")}</b>
+                        <Tag>
+                          {turn.result.llm_used
+                            ? text("Model summary", "模型归纳")
+                            : text("Tool summary", "工具结果摘要")}
+                        </Tag>
+                      </span>
+                      <time>
+                        {new Date(turn.createdAt).toLocaleTimeString(
+                          zh ? "zh-CN" : "en-US",
+                          { hour: "2-digit", minute: "2-digit" },
+                        )}
+                      </time>
+                    </div>
+                    <Markdown>{summary(turn.result.answer)}</Markdown>
+                    <details className="query-full-answer">
+                      <summary>
+                        {text("Full explanation", "查看完整说明")}
+                      </summary>
+                      <Markdown>{turn.result.answer}</Markdown>
+                    </details>
+                    {!!turn.result.tool_calls?.length && (
+                      <Collapse
+                        className="query-process"
+                        ghost
+                        items={[
+                          {
+                            key: "process",
+                            label: (
+                              <span>
+                                {text("Query process", "查询过程")}{" "}
+                                <small>
+                                  {turn.result.tool_calls.length}{" "}
+                                  {text("tools", "个工具")} ·{" "}
+                                  {(
+                                    (turn.result.duration_ms || 0) / 1000
+                                  ).toFixed(2)}
+                                  s
+                                </small>
+                              </span>
+                            ),
+                            children: (
+                              <ol>
+                                {turn.result.tool_calls.map((call, i) => (
+                                  <li key={i}>
+                                    <span className="query-step-number">
+                                      {i + 1}
+                                    </span>
+                                    <div>
+                                      <b>{call.tool_name}</b>
+                                      <code>
+                                        {JSON.stringify(call.arguments)}
+                                      </code>
+                                    </div>
+                                    <Tag
+                                      color={
+                                        call.status === "success"
+                                          ? "success"
+                                          : "warning"
+                                      }
+                                    >
+                                      {call.status} · {call.duration_ms}ms
+                                    </Tag>
+                                  </li>
+                                ))}
+                              </ol>
+                            ),
+                          },
+                        ]}
+                      />
+                    )}
+                    <AnswerEvidence
+                      key={turn.id}
+                      result={turn.result}
+                      zh={zh}
+                      onGraph={openGraph}
+                      onSubmit={() => submitChanges(turn)}
+                      submitted={turn.submitted}
+                    />
+                    <footer className="query-feedback">
+                      <span>
+                        {text(
+                          "Was this answer helpful?",
+                          "本次回答是否有帮助？",
+                        )}
+                      </span>
+                      <Button
+                        type={
+                          turn.feedback?.rating === "positive"
+                            ? "primary"
+                            : "text"
+                        }
+                        size="small"
+                        aria-label={text("Helpful", "有帮助")}
+                        icon={<LikeOutlined />}
+                        disabled={!turn.result.trace_id || savingFeedback}
+                        onClick={() =>
+                          saveFeedback(
+                            turn,
+                            "positive",
+                            text("Helpful", "有帮助"),
+                          )
+                        }
+                      />
+                      <Button
+                        type={
+                          turn.feedback?.rating === "negative"
+                            ? "primary"
+                            : "text"
+                        }
+                        size="small"
+                        aria-label={text("Needs correction", "需要修正")}
+                        icon={<DislikeOutlined />}
+                        disabled={!turn.result.trace_id || savingFeedback}
+                        onClick={() => {
+                          setFeedback(turn);
+                          setCategory("");
+                          setComment("");
+                        }}
+                      />
+                      {turn.feedback && (
+                        <small>
+                          <CheckOutlined />{" "}
+                          {text("Feedback recorded", "已记录反馈")}
+                        </small>
+                      )}
+                    </footer>
+                  </article>
+                ) : turn.error ? (
+                  <Alert
+                    type="error"
+                    title={text("Query did not complete", "查询未完成")}
+                    description={turn.error}
+                    action={
+                      <Button
+                        onClick={() => send(turn.question, turn.id)}
+                        disabled={!!pending}
+                      >
+                        {text("Retry", "重试")}
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <div className="query-loading" role="status">
+                    <Spin size="small" />
+                    <span>
+                      {text("Reading ontology tools…", "正在读取本体工具…")}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="query-composer">
+            <Input.TextArea
+              aria-label={text("Ask about the ontology", "输入本体问题")}
+              placeholder={
+                active?.archived
+                  ? text(
+                      "Start a new conversation to continue",
+                      "发送问题将开启新会话",
+                    )
+                  : text(
+                      "Ask about a product, ingredient, or rule…",
+                      "输入产品、成分或规则相关问题…",
+                    )
+              }
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              autoSize={{ minRows: 2, maxRows: 4 }}
+              onKeyDown={(e) => {
+                if (
+                  e.key === "Enter" &&
+                  !e.shiftKey &&
+                  !e.nativeEvent.isComposing
+                ) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+            />
+            <div>
+              <span>
+                {text(
+                  "Read-only queries · proposed changes require review",
+                  "只读查询 · 变更建议需经审核",
+                )}
+              </span>
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                onClick={() => send()}
+                loading={!!pending}
+                disabled={!input.trim()}
+              >
+                {text("Ask", "提问")}
+              </Button>
+            </div>
+          </div>
+        </section>
+      </div>
+      <LlmConfigDialog
+        open={configOpen}
+        onClose={() => setConfigOpen(false)}
+        llmStatus={status}
+        onStatusChange={setStatus}
+      />
+      <Modal
+        title={text("Rename conversation", "重命名会话")}
+        open={!!rename}
+        onCancel={() => setRename(null)}
+        onOk={() => {
+          if (!rename.title.trim()) return;
+          setSessions((current) =>
+            current.map((s) =>
+              s.id === rename.id
+                ? { ...s, title: rename.title.trim().slice(0, 100) }
+                : s,
+            ),
+          );
+          setRename(null);
+        }}
+      >
+        <Input
+          aria-label={text("Conversation title", "会话标题")}
+          value={rename?.title || ""}
+          onChange={(e) => setRename((p) => ({ ...p, title: e.target.value }))}
+        />
+      </Modal>
+      <Modal
+        title={text("Answer feedback", "回答反馈")}
+        open={!!feedback}
+        onCancel={() => setFeedback(null)}
+        confirmLoading={savingFeedback}
+        okButtonProps={{ disabled: !category }}
+        onOk={() => saveFeedback(feedback, "negative", category, comment)}
+      >
+        <p>
+          {text(
+            "What needs to be corrected in this answer?",
+            "本轮回答的哪个部分需要修正？",
+          )}
+        </p>
+        <Select
+          aria-label={text("Feedback reason", "反馈原因")}
+          placeholder={text("Choose a reason", "选择原因")}
+          style={{ width: "100%" }}
+          value={category || undefined}
+          onChange={setCategory}
+          options={reasons.map((value) => ({ value, label: value }))}
+        />
+        <Input.TextArea
+          aria-label={text("Feedback details", "反馈说明")}
+          style={{ marginTop: 14 }}
+          placeholder={text(
+            "Additional details (optional)",
+            "补充说明（选填）",
+          )}
+          rows={3}
+          maxLength={2000}
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+        />
+      </Modal>
+      <Drawer
+        title={text("Run details", "运行信息")}
+        open={runOpen}
+        onClose={() => setRunOpen(false)}
+        size={480}
+      >
+        {selected?.result && (
+          <div className="query-run-details">
+            <Tag>
+              {selected.result.llm_used
+                ? text("LLM + ontology tools", "LLM 与本体工具")
+                : text("Deterministic demo", "确定性演示")}
+            </Tag>
+            {[
+              ["Run ID", selected.result.agent_run_id],
+              ["Trace ID", selected.result.trace_id],
+              [text("Question", "问题"), selected.question],
+              [
+                text("Duration", "耗时"),
+                selected.result.duration_ms != null
+                  ? `${selected.result.duration_ms} ms`
+                  : "—",
+              ],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <small>{label}</small>
+                <b>{value || "—"}</b>
+              </div>
+            ))}
+            <p className="query-note">
+              {text(
+                "Only recorded tool calls and returned facts are shown. Model internal reasoning is not displayed.",
+                "这里只展示已记录的工具调用与返回事实，不展示模型内部思维链。",
+              )}
+            </p>
+            <Button
+              icon={<ArrowRightOutlined />}
+              onClick={() => navigate("/agent-traces")}
+            >
+              {text("Open Agent Traces", "查看运行记录")}
+            </Button>
+          </div>
         )}
-        </ErrorBoundary>
       </Drawer>
     </div>
   );

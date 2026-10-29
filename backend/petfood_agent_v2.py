@@ -12,6 +12,7 @@ import os
 import re
 import json
 import time
+from datetime import datetime, timezone
 from neo4j_connector import get_driver
 from rule_engine import RuleEngine
 from ontology_registry import OntologyRegistry
@@ -187,13 +188,14 @@ PET_FOOD_TOOLS = [
 # Tool Implementations (unified output schema)
 # =====================================================
 
-def _wrap(tool_name, data, evidence=None, limitations=None):
+def _wrap(tool_name, data, evidence=None, limitations=None, paths=None):
     return {
         "tool_name": tool_name,
         "status": "success",
         "data": data,
         "evidence": evidence or [],
         "limitations": limitations or [],
+        "paths": paths or [],
     }
 
 
@@ -228,9 +230,10 @@ def tool_get_product_risk_explanation(product_id_or_name: str) -> dict:
 
         ings_r = session.run(
             "MATCH (p:PetFoodProduct {id: $pid})-[c:CONTAINS]->(i:Ingredient) "
-            "RETURN i.ingredient_name AS name ORDER BY c.ingredient_order", pid=pid
+            "RETURN i.id AS id, i.ingredient_name AS name ORDER BY c.ingredient_order", pid=pid
         )
-        ingredient_names = [(r["name"] or "").lower().strip() for r in ings_r]
+        ingredient_rows = [r.data() for r in ings_r]
+        ingredient_names = [(r["name"] or "").lower().strip() for r in ingredient_rows]
 
         risks_r = session.run(
             "MATCH (p:PetFoodProduct {id: $pid})-[e:TRIGGERS_RISK]->(r:RiskRule) "
@@ -254,6 +257,9 @@ def tool_get_product_risk_explanation(product_id_or_name: str) -> dict:
         data={"product": p, "brand": brand, "ingredients": ingredient_names, "risks": risks, "not_evaluable": not_evaluable},
         evidence=[f"{r['rule_id']}: {r['ev']}" for r in risks],
         limitations=limitations,
+        paths=[{"kind": "instance_relation", "source_id": pid, "relation": "CONTAINS",
+                "target_id": row["id"], "evidence_ids": []}
+               for row in ingredient_rows if row.get("id")],
     )
 
 
@@ -289,7 +295,7 @@ def tool_find_products_by_ingredient(ingredient_name: str) -> dict:
         result = session.run(
             "MATCH (p:PetFoodProduct)-[:CONTAINS]->(i:Ingredient) "
             "WHERE toLower(i.ingredient_name) = toLower($name) "
-            "RETURN p.id AS id, p.product_name AS name, p.target_species AS species, p.life_stage AS stage "
+            "RETURN p.id AS id, p.product_name AS name, p.target_species AS species, p.life_stage AS stage, i.id AS ingredient_id "
             "ORDER BY p.product_name", name=ingredient_name
         )
         products = [r.data() for r in result]
@@ -297,7 +303,10 @@ def tool_find_products_by_ingredient(ingredient_name: str) -> dict:
     if not products:
         return _wrap("find_products_by_ingredient", data=[], limitations=[f"No products found containing {ingredient_name}"])
 
-    return _wrap("find_products_by_ingredient", data=products, evidence=[f"{len(products)} products contain {ingredient_name}"])
+    return _wrap("find_products_by_ingredient", data=products, evidence=[f"{len(products)} products contain {ingredient_name}"],
+                 paths=[{"kind": "instance_relation", "source_id": row["id"], "relation": "CONTAINS",
+                         "target_id": row["ingredient_id"], "evidence_ids": []}
+                        for row in products if row.get("id") and row.get("ingredient_id")])
 
 
 def tool_find_products_without_ingredient(ingredient_name: str, species: str = None) -> dict:
@@ -503,6 +512,7 @@ def _llm_plan(question: str, context: dict = None) -> list[dict] | None:
 
     messages = [
         {"role": "system", "content": AGENT_SYSTEM_PROMPT},
+        *_conversation_history(context),
         {"role": "user", "content": (
             f"User question: {question}{ctx_hint}\n\n"
             "Select the appropriate tools to answer this question. Output a JSON array:\n"
@@ -551,6 +561,7 @@ def _llm_compose_answer(question: str, tool_results: list[dict], context: dict =
 
     messages = [
         {"role": "system", "content": AGENT_SYSTEM_PROMPT},
+        *_conversation_history(context),
         {"role": "user", "content": (
             f"User question: {question}\n\n"
             f"Tool results:\n{results_text}\n\n"
@@ -571,10 +582,27 @@ def _llm_compose_answer(question: str, tool_results: list[dict], context: dict =
 # Deterministic fallback (keyword routing)
 # =====================================================
 
+def _conversation_history(context: dict | None) -> list[dict]:
+    """Bounded conversation context; client history is not source evidence."""
+    history = (context or {}).get("history", [])
+    if not isinstance(history, list):
+        return []
+    return [{"role": entry["role"], "content": entry["content"][:4000]}
+            for entry in history[-8:] if isinstance(entry, dict)
+            and entry.get("role") in ("user", "assistant")
+            and isinstance(entry.get("content"), str)]
+
+
 def _keyword_route(question: str, context: dict = None) -> list[dict]:
     """Simple keyword routing — same logic as v1 agent."""
     q = question.lower()
     calls = []
+
+    # Follow-ups refer only to an explicitly selected/resolved product.
+    current = (context or {}).get("current_product_id") or ""
+    if (re.fullmatch(r"PF\d+", current) and not re.search(r"PF\d+", question.upper())
+            and re.search(r"\b(this|that|its|it)\b|这个|该产品|它", q)):
+        return [{"tool": "get_product_risk_explanation", "args": {"product_id_or_name": current}}]
 
     if "比较" in q or "compare" in q:
         ids = re.findall(r'PF\d+', question.upper())
@@ -591,15 +619,11 @@ def _keyword_route(question: str, context: dict = None) -> list[dict]:
             if word in q:
                 calls.append({"tool": "find_products_without_ingredient", "args": {"ingredient_name": word}})
                 break
-        if not calls:
-            calls.append({"tool": "find_products_without_ingredient", "args": {"ingredient_name": "chicken"}})
     elif "含" in q or "contain" in q or "chicken" in q:
         for word in ["chicken", "salmon", "beef", "taurine"]:
             if word in q:
                 calls.append({"tool": "find_products_by_ingredient", "args": {"ingredient_name": word}})
                 break
-        if not calls:
-            calls.append({"tool": "find_products_by_ingredient", "args": {"ingredient_name": "chicken"}})
     elif "high risk" in q or "高风险" in q:
         ids = re.findall(r'PF\d+', question.upper())
         if ids:
@@ -614,13 +638,6 @@ def _keyword_route(question: str, context: dict = None) -> list[dict]:
         ids = re.findall(r'PF\d+', question.upper())
         if ids:
             calls.append({"tool": "get_product_risk_explanation", "args": {"product_id_or_name": ids[0]}})
-        else:
-            calls.append({"tool": "find_high_risk_products", "args": {}})
-
-    # Add context-aware product lookup
-    if context and context.get("current_product_id") and not calls:
-        calls.append({"tool": "get_product_risk_explanation", "args": {"product_id_or_name": context["current_product_id"]}})
-
     return calls
 
 
@@ -637,6 +654,8 @@ def chat(question: str, context: dict = None) -> dict:
     2. Execute tools
     3. LLM composes grounded answer (fallback: template answer)
     """
+    run_started = time.perf_counter()
+    started_at = datetime.now(timezone.utc).isoformat()
     ts = lambda: time.strftime("%H:%M:%S", time.localtime())
     logs = []
     used_tools = []
@@ -661,11 +680,19 @@ def chat(question: str, context: dict = None) -> dict:
 
     # 2. Execute tools
     tool_results = []
+    tool_calls = []
     for call in calls:
         tool_name = call["tool"]
         args = call.get("args", {})
 
+        call_started = time.perf_counter()
+        call_started_at = datetime.now(timezone.utc).isoformat()
         result = _execute_tool(tool_name, args)
+        tool_calls.append({"tool_name": tool_name, "arguments": args,
+                           "status": result.get("status", "error"),
+                           "started_at": call_started_at,
+                           "completed_at": datetime.now(timezone.utc).isoformat(),
+                           "duration_ms": round((time.perf_counter() - call_started) * 1000)})
 
         tool_results.append(result)
         used_tools.append(tool_name)
@@ -678,7 +705,8 @@ def chat(question: str, context: dict = None) -> dict:
             data_summary = f" (dict)"
 
         logs.append({"step": step, "type": "observation", "icon": status_emoji, "color": "green" if result["status"] == "success" else "amber",
-                     "message": f"Tool {tool_name}{data_summary}\n{result.get('message', '') or ''}", "timestamp": ts()})
+                     "message": f"Tool {tool_name}{data_summary}\n{result.get('message', '') or ''}",
+                     "data": result.get("data"), "timestamp": ts()})
         step += 1
 
     # 3. Compose answer
@@ -692,7 +720,10 @@ def chat(question: str, context: dict = None) -> dict:
 
     if not answer:
         zh = _is_chinese(question)
-        if _is_recommendation_question(question):
+        if not tool_results:
+            answer = ("## 结论\n\n当前演示无法确定该问题对应的本体查询。请明确产品 ID、成分或比较的两个产品；例如：解释 PF001 的风险。"
+                      if zh else "## Conclusion\n\nThe demo could not identify an ontology query for this question. Specify a product ID, ingredient, or two products to compare; for example: Explain PF001’s risks.")
+        elif _is_recommendation_question(question):
             answer = _recommendation_template(question, tool_results, zh)
             logs.append({"step": step, "type": "thought", "icon": "📝", "color": "amber",
                          "message": "Using recommendation template to generate answer", "timestamp": ts()})
@@ -730,6 +761,11 @@ def chat(question: str, context: dict = None) -> dict:
         "answer": answer,
         "tools_used": used_tools,
         "llm_used": llm_used,
+        "tool_results": tool_results,
+        "tool_calls": tool_calls,
+        "duration_ms": round((time.perf_counter() - run_started) * 1000),
+        "started_at": started_at,
+        "completed_at": datetime.now(timezone.utc).isoformat(),
     }
 
 

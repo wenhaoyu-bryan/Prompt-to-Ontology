@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Checkbox, Descriptions, Drawer, Empty, Popover, Select, Space, Spin, Tag, Typography, theme } from 'antd';
-import { ApartmentOutlined, FilterOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { ApartmentOutlined, ArrowLeftOutlined, FilterOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../providers/dataProvider';
 import SigmaGraph, { typeColor } from '../components/graph/SigmaGraph';
 import './graphExplorer.css';
@@ -19,8 +19,16 @@ export default function GraphPage() {
   const zh = i18n.language.startsWith('zh');
   const { token } = theme.useToken();
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const questionId = params.get('question');
   const initialNode = params.get('node');
+  const targetNode = params.get('target');
+  const relation = params.get('relation');
+  const conversationId = params.get('conversation');
+  const turnId = params.get('turn');
+  const runtimePath = useMemo(() => initialNode && targetNode && relation && conversationId
+    ? [{ kind: 'instance_relation', source_id: initialNode, target_id: targetNode, relation }] : [],
+  [initialNode, targetNode, relation, conversationId]);
   const [graph, setGraph] = useState({ nodes: [], links: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -61,10 +69,10 @@ export default function GraphPage() {
   const relationTypes = useMemo(() => [...new Set(graph.links.map(edge => edge.linkType).filter(Boolean))].sort(), [graph.links]);
   const types = useMemo(() => [...new Set(graph.nodes.map(node => node.objectType || node.type).filter(Boolean))].sort(), [graph.nodes]);
   const match = useMemo(() => {
-    const steps = (answer?.path || []).filter(step => step.kind === 'instance_relation');
+    const steps = (answer?.path || runtimePath).filter(step => step.kind === 'instance_relation');
     const edges = steps.flatMap(step => graph.links.filter(edge => edgeMatches(step, edge)));
     return { steps, edges, missing: steps.filter(step => !graph.links.some(edge => edgeMatches(step, edge))) };
-  }, [answer, graph.links]);
+  }, [answer, runtimePath, graph.links]);
   const highlighted = useMemo(() => match.edges.map(edge => edge.id), [match.edges]);
   const filteredLinks = useMemo(() => graph.links.filter(edge => !enabledTypes || enabledTypes.includes(edge.linkType)), [graph.links, enabledTypes]);
   const overviewLinks = useMemo(() => {
@@ -106,7 +114,7 @@ export default function GraphPage() {
     <header className="graph-heading">
       <div><Title level={4} style={{ margin: 0 }}><ApartmentOutlined /> {zh ? '图谱探索' : 'Graph Explorer'}</Title>
         <Text type="secondary">{displayed.nodes.length} {zh ? '个对象' : 'objects'} · {mode === 'global' && displayed.links.length !== filteredLinks.length ? `${displayed.links.length} / ${filteredLinks.length}` : displayed.links.length} {zh ? '条关系' : 'relationships'}{mode === 'local' && selectedNode ? ` · ${zh ? '聚焦' : 'Focus'}: ${selectedNode.label || selectedNode.id}` : ''}</Text></div>
-      <Tag>{zh ? '运行时图谱' : 'Runtime graph'}</Tag>
+      <Space>{conversationId && <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/agent?${new URLSearchParams({ conversation: conversationId, ...(turnId ? { turn: turnId } : {}) })}`)}>{zh ? '返回本轮回答' : 'Back to answer'}</Button>}<Tag>{zh ? '运行时图谱' : 'Runtime graph'}</Tag></Space>
     </header>
     <div className="graph-toolbar">
       <Select className="graph-search" showSearch allowClear suffixIcon={<SearchOutlined />} aria-label={zh ? '查找对象' : 'Find an object'} placeholder={zh ? '搜索对象名称或 ID' : 'Search objects by name or ID'} value={selectedId || undefined}
@@ -149,6 +157,14 @@ export default function GraphPage() {
           </div>}
         </>}
         {answerError && <Alert type="warning" showIcon title={answerError} />}
+        {runtimePath.length > 0 && !loading && !error && <div className="graph-inspector-section">
+          <div className="graph-section-title">{zh ? '本轮查询关系' : 'Query relationship'}</div>
+          <div role="status" className={`graph-match ${match.missing.length ? 'is-missing' : 'is-found'}`}>
+            <strong>{match.missing.length ? (zh ? '当前图谱中未找到该关系' : 'Relationship is absent from the current graph') : (zh ? '已匹配本轮查询关系' : 'Query relationship matched')}</strong>
+            <span>{runtimePath[0].source_id} → {relation} → {targetNode}</span>
+            <span>{zh ? '依据当前图谱核对；只有匹配到的关系会高亮。' : 'Checked against the current graph; only matching relationships are highlighted.'}</span>
+          </div>
+        </div>}
         {questionId && !answer && !answerError && <Spin size="small" />}
         {answer && <div className="graph-inspector-section graph-answer">
           <div className="graph-section-title">{zh ? '问题证据' : 'Question evidence'} <span>{answer.question_id}</span></div>

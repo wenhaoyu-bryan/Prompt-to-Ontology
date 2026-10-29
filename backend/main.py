@@ -1911,6 +1911,22 @@ from agent_trace import (
     update_trace_review_info as at_update_review_info,
 )
 
+from agent_trace.feedback import QueryFeedback, read_feedback, save_feedback
+
+
+@app.post("/api/agent/feedback")
+def api_agent_feedback(request: QueryFeedback):
+    try:
+        return save_feedback(request, at_get_trace(request.trace_id))
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.get("/api/agent/feedback/{trace_id}")
+def api_agent_feedback_detail(trace_id: str):
+    return {"feedback": next((row for row in read_feedback() if row["trace_id"] == trace_id), None)}
+
+
 @app.get("/api/agent/traces")
 def api_agent_traces(limit: int = 50, status: str = None):
     """List agent traces."""

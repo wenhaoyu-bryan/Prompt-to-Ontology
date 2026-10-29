@@ -23,6 +23,7 @@
 | [Rule Studio](rule-studio-simulation.md) | Rule definitions, coverage, simulation |
 | [Agent Trace & Evaluation](agent-trace-evaluation.md) | Agent traces, evaluation, suggestion quality |
 | [Agent Operator](agent-operator.md) | Agent as ontology operator |
+| [Query Workbench](query-workbench.md) | Conversations, runtime facts, graph paths, and trace-linked feedback |
 | [Resettable Demo Mode](resettable-demo-mode.md) | Demo reset and seed modes |
 
 ## Technical
