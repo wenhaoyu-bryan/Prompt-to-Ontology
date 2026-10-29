@@ -67,6 +67,19 @@ class QueryWorkbenchTests(unittest.TestCase):
         self.assertEqual(empty['paths'], [])
         self.assertTrue(empty['limitations'])
 
+    def test_missing_product_is_not_found_instead_of_tool_error(self):
+        driver=MagicMock()
+        driver.session.return_value.__enter__.return_value.run.return_value.single.return_value=None
+        with patch.object(agent,'get_driver',return_value=driver):
+            for function in (agent.tool_get_product_risk_explanation, agent.tool_get_product_rule_evaluations):
+                self.assertEqual(function('PF999')['status'],'not_found')
+
+    def test_explicit_baseline_never_calls_configured_model(self):
+        with patch.object(agent,'_llm_plan') as plan, patch.object(agent,'_execute_tool',return_value=agent._wrap('get_product_risk_explanation',{})):
+            answer=agent.chat('Explain PF001',{'execution_mode':'deterministic'})
+        plan.assert_not_called()
+        self.assertFalse(answer['answer_llm_used'])
+
     def test_trace_preserves_failure_status_and_tool_arguments(self):
         with patch.object(service, 'load_traces', return_value=[]), patch.object(service, 'save_traces'):
             trace = service.create_trace('Explain PF999', 'No such product', 'run-unit', {
@@ -105,6 +118,16 @@ class FeedbackTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             feedback.save_feedback(self.request.model_copy(update={'rating': 'negative'}), self.trace)
         self.assertEqual(feedback.read_feedback(), [])
+
+    def test_feedback_retry_preserves_review_and_case_link(self):
+        row=feedback.save_feedback(self.request,self.trace)
+        reviewed=feedback.review_feedback(row['id'],'processed','Checked','AQ-case')
+        retried=feedback.save_feedback(self.request,self.trace)
+        self.assertEqual(retried,reviewed)
+        changed=feedback.save_feedback(self.request.model_copy(update={'comment':'New concern'}),self.trace)
+        self.assertEqual(changed['case_id'],'AQ-case')
+        self.assertEqual(changed['review_status'],'pending')
+        self.assertEqual(changed['review_history'][0]['review_note'],'Checked')
 
 
 if __name__ == '__main__':

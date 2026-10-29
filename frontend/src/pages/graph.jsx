@@ -26,9 +26,12 @@ export default function GraphPage() {
   const relation = params.get('relation');
   const conversationId = params.get('conversation');
   const turnId = params.get('turn');
-  const runtimePath = useMemo(() => initialNode && targetNode && relation && conversationId
+  const evaluationId = params.get('evaluation');
+  const evaluationCase = params.get('case');
+  const replayContext = params.get('from') === 'evaluation' ? {from:'evaluation',case:evaluationCase||'',evaluation_run:params.get('evaluation_run')||''} : {};
+  const runtimePath = useMemo(() => initialNode && targetNode && relation && (conversationId || evaluationId)
     ? [{ kind: 'instance_relation', source_id: initialNode, target_id: targetNode, relation }] : [],
-  [initialNode, targetNode, relation, conversationId]);
+  [initialNode, targetNode, relation, conversationId, evaluationId]);
   const [graph, setGraph] = useState({ nodes: [], links: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -114,7 +117,7 @@ export default function GraphPage() {
     <header className="graph-heading">
       <div><Title level={4} style={{ margin: 0 }}><ApartmentOutlined /> {zh ? '图谱探索' : 'Graph Explorer'}</Title>
         <Text type="secondary">{displayed.nodes.length} {zh ? '个对象' : 'objects'} · {mode === 'global' && displayed.links.length !== filteredLinks.length ? `${displayed.links.length} / ${filteredLinks.length}` : displayed.links.length} {zh ? '条关系' : 'relationships'}{mode === 'local' && selectedNode ? ` · ${zh ? '聚焦' : 'Focus'}: ${selectedNode.label || selectedNode.id}` : ''}</Text></div>
-      <Space>{conversationId && <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/agent?${new URLSearchParams({ conversation: conversationId, ...(turnId ? { turn: turnId } : {}) })}`)}>{zh ? '返回本轮回答' : 'Back to answer'}</Button>}<Tag>{zh ? '运行时图谱' : 'Runtime graph'}</Tag></Space>
+      <Space>{evaluationId && <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/verified-qa?${new URLSearchParams({run:evaluationId,case:evaluationCase||''})}`)}>{zh?'返回评测':'Back to evaluation'}</Button>}{conversationId && <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/agent?${new URLSearchParams({ ...replayContext, conversation: conversationId, ...(turnId ? { turn: turnId } : {}) })}`)}>{zh ? '返回本轮回答' : 'Back to answer'}</Button>}<Tag>{zh ? '运行时图谱' : 'Runtime graph'}</Tag></Space>
     </header>
     <div className="graph-toolbar">
       <Select className="graph-search" showSearch allowClear suffixIcon={<SearchOutlined />} aria-label={zh ? '查找对象' : 'Find an object'} placeholder={zh ? '搜索对象名称或 ID' : 'Search objects by name or ID'} value={selectedId || undefined}

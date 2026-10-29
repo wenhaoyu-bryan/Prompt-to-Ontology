@@ -10,7 +10,7 @@
     "graph": "图谱浏览器",
     "schema": "本体管理器",
     "agent": "分析智能体",
-    "verifiedQA": "可核对问答",
+    "verifiedQA": "评测与反馈",
     "review": "审核队列",
     "pipeline": "数据管道",
     "settings": "设置",

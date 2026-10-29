@@ -97,6 +97,12 @@ test("follow-up context, earlier answers, rename and archive survive reload", as
   await page.reload();
   await expect(page).toHaveURL(selectedUrl);
   await expect(page.getByTestId("query-turn")).toHaveCount(2);
+  if (
+    !(await page
+      .getByRole("textbox", { name: "Search conversations" })
+      .isVisible())
+  )
+    await page.getByRole("button", { name: "Toggle history" }).click();
   await page.getByRole("button", { name: /Conversation actions/ }).click();
   await page.getByRole("menuitem", { name: "Rename", exact: true }).click();
   await page

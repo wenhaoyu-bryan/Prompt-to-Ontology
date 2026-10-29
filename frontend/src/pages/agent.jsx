@@ -104,18 +104,27 @@ export default function AgentPage() {
   const { token } = theme.useToken();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
+  const evaluationContext =
+    params.get("from") === "evaluation"
+      ? {
+          from: "evaluation",
+          case: params.get("case") || "",
+          evaluation_run: params.get("evaluation_run") || "",
+        }
+      : {};
   const [sessions, setSessions] = useState(readSessions);
-  const [activeId, setActiveId] = useState(
-    () =>
-      params.get("conversation") ||
-      readSessions().find((s) => !s.archived)?.id ||
-      "",
+  const [activeId, setActiveId] = useState(() =>
+    params.get("question")
+      ? ""
+      : params.get("conversation") ||
+        readSessions().find((s) => !s.archived)?.id ||
+        "",
   );
   const [turnId, setTurnId] = useState(params.get("turn") || "");
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(params.get("question") || "");
   const [search, setSearch] = useState("");
   const [scope, setScope] = useState("active");
-  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768);
+  const [collapsed, setCollapsed] = useState(true);
   const [pending, setPending] = useState(null);
   const [status, setStatus] = useState(null);
   const [configOpen, setConfigOpen] = useState(false);
@@ -191,17 +200,23 @@ export default function AgentPage() {
     setActiveId(session.id);
     setTurnId(session.turns.at(-1)?.id || "");
     setInput("");
-    setParams({ conversation: session.id }, { replace: true });
+    setParams(
+      { ...evaluationContext, conversation: session.id },
+      { replace: true },
+    );
   };
   const selectTurn = (turn) => {
     setTurnId(turn.id);
-    setParams({ conversation: activeId, turn: turn.id }, { replace: true });
+    setParams(
+      { ...evaluationContext, conversation: activeId, turn: turn.id },
+      { replace: true },
+    );
   };
   const newConversation = () => {
     setActiveId("");
     setTurnId("");
     setInput("");
-    setParams({}, { replace: true });
+    setParams(evaluationContext, { replace: true });
   };
   const updateTurn = (sessionId, targetId, patch) =>
     setSessions((current) =>
@@ -275,7 +290,10 @@ export default function AgentPage() {
     setTurnId(targetId);
     setInput("");
     setPending({ sessionId, turnId: targetId });
-    setParams({ conversation: sessionId, turn: targetId }, { replace: true });
+    setParams(
+      { ...evaluationContext, conversation: sessionId, turn: targetId },
+      { replace: true },
+    );
     try {
       const { data } = await apiLong.post("/pet-food/agent/chat", {
         question: q,
@@ -339,7 +357,7 @@ export default function AgentPage() {
   };
   const openGraph = (step) =>
     navigate(
-      `/graph?${new URLSearchParams({ node: step.source_id, ...(step.target_id ? { target: step.target_id, relation: step.relation } : {}), conversation: activeId, turn: selected.id })}`,
+      `/graph?${new URLSearchParams({ ...evaluationContext, node: step.source_id, ...(step.target_id ? { target: step.target_id, relation: step.relation } : {}), conversation: activeId, turn: selected.id })}`,
     );
   const submitChanges = async (turn) => {
     try {
@@ -411,6 +429,15 @@ export default function AgentPage() {
         <div className="query-page-actions">
           <Tag>{text("Pet Food reference", "Pet Food 参考域")}</Tag>
           <Button
+            onClick={() =>
+              navigate(
+                `/verified-qa?${new URLSearchParams({ ...(params.get("case") ? { case: params.get("case") } : {}), ...(params.get("evaluation_run") ? { run: params.get("evaluation_run") } : {}) })}`,
+              )
+            }
+          >
+            {text("Evaluation", "问题集评测")}
+          </Button>
+          <Button
             icon={<SettingOutlined />}
             onClick={() => setConfigOpen(true)}
           >
@@ -450,6 +477,8 @@ export default function AgentPage() {
           </div>
           <Button
             className="query-new"
+            aria-label={text("New conversation", "新会话")}
+            title={text("New conversation", "新会话")}
             icon={<PlusOutlined />}
             onClick={newConversation}
           >
@@ -638,7 +667,7 @@ export default function AgentPage() {
                         <RobotOutlined />
                         <b>{text("Answer", "回答")}</b>
                         <Tag>
-                          {turn.result.llm_used
+                          {(turn.result.answer_llm_used ?? turn.result.llm_used)
                             ? text("Model summary", "模型归纳")
                             : text("Tool summary", "工具结果摘要")}
                         </Tag>
@@ -760,6 +789,17 @@ export default function AgentPage() {
                         <small>
                           <CheckOutlined />{" "}
                           {text("Feedback recorded", "已记录反馈")}
+                          <Button
+                            type="link"
+                            size="small"
+                            onClick={() =>
+                              navigate(
+                                `/verified-qa?panel=feedback&feedback=${turn.feedback.id}`,
+                              )
+                            }
+                          >
+                            {text("View feedback", "查看反馈")}
+                          </Button>
                         </small>
                       )}
                     </footer>
@@ -916,6 +956,8 @@ export default function AgentPage() {
             {[
               ["Run ID", selected.result.agent_run_id],
               ["Trace ID", selected.result.trace_id],
+              [text("Model", "模型"), selected.result.llm_model],
+              [text("Provider", "服务商"), selected.result.llm_provider],
               [text("Question", "问题"), selected.question],
               [
                 text("Duration", "耗时"),

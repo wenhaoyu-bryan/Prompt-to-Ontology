@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Button,
@@ -27,6 +27,20 @@ export default function LlmConfigDialog({
   });
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
+  useEffect(() => {
+    if (configModalOpen && llmStatus?.configured)
+      setConfigForm((p) => ({
+        ...p,
+        provider: llmStatus.provider,
+        model: llmStatus.model,
+        base_url: llmStatus.base_url,
+      }));
+  }, [
+    configModalOpen,
+    llmStatus?.provider,
+    llmStatus?.model,
+    llmStatus?.base_url,
+  ]);
   const setConfigModalOpen = (value) => {
     if (!value) {
       setConfigForm((p) => ({ ...p, api_key: "" }));
@@ -116,8 +130,8 @@ export default function LlmConfigDialog({
                   model: "claude-sonnet-4-20250514",
                 },
                 deepseek: {
-                  base_url: "https://api.deepseek.com/v1",
-                  model: "deepseek-chat",
+                  base_url: "https://api.deepseek.com",
+                  model: "deepseek-flash",
                 },
                 mimo: { base_url: "https://api.xiaomimimo.com/v1", model: "" },
                 minimax: { base_url: "https://api.minimax.chat/v1", model: "" },

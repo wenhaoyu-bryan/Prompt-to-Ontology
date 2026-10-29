@@ -39,7 +39,8 @@ Every answer must include:
 - tool usage log
 - non-medical disclaimer
 
-Always respond in English. Format:
+Respond in the language of the current question. Keep object and rule IDs unchanged.
+For English questions use this format:
 
 ## Conclusion
 ## Graph Evidence
@@ -48,8 +49,17 @@ Always respond in English. Format:
 ## Tools Used
 ## Note
 
+For Chinese questions use these section titles:
+## 结论
+## 图谱证据
+## 规则评估
+## 数据限制
+## 使用工具
+## 说明
+
 The note must include:
 This answer is based only on the current ontology data and rules. It is not veterinary diagnosis.
+For Chinese use: 本回答仅基于当前本体数据和规则，不做兽医诊断。
 """
 
 # =====================================================
@@ -224,7 +234,10 @@ def tool_get_product_risk_explanation(product_id_or_name: str) -> dict:
 
     driver = get_driver()
     with driver.session() as session:
-        p = dict(session.run("MATCH (p:PetFoodProduct {id: $pid}) RETURN p", pid=pid).single()["p"])
+        record = session.run("MATCH (p:PetFoodProduct {id: $pid}) RETURN p", pid=pid).single()
+        if record is None:
+            return _wrap_error('get_product_risk_explanation', 'not_found', f'Product not found: {pid}')
+        p = dict(record['p'])
         brand_r = session.run("MATCH (p:PetFoodProduct {id: $pid})-[:MADE_BY]->(b:Brand) RETURN b", pid=pid).single()
         brand = dict(brand_r["b"]) if brand_r else {}
 
@@ -271,7 +284,10 @@ def tool_get_product_rule_evaluations(product_id_or_name: str) -> dict:
 
     driver = get_driver()
     with driver.session() as session:
-        p = dict(session.run("MATCH (p:PetFoodProduct {id: $pid}) RETURN p", pid=pid).single()["p"])
+        record = session.run("MATCH (p:PetFoodProduct {id: $pid}) RETURN p", pid=pid).single()
+        if record is None:
+            return _wrap_error('get_product_rule_evaluations', 'not_found', f'Product not found: {pid}')
+        p = dict(record['p'])
         ings_r = session.run(
             "MATCH (p:PetFoodProduct {id: $pid})-[c:CONTAINS]->(i:Ingredient) "
             "RETURN i.ingredient_name AS name", pid=pid
@@ -565,6 +581,7 @@ def _llm_compose_answer(question: str, tool_results: list[dict], context: dict =
         {"role": "user", "content": (
             f"User question: {question}\n\n"
             f"Tool results:\n{results_text}\n\n"
+            + ("请用中文回答，包括各节标题。\n" if _is_chinese(question) else "Answer in English.\n") +
             "Answer the user's question based strictly on the tool results above. Follow the required format. "
             "Do not fabricate data. If data is insufficient, state this explicitly."
         )},
@@ -667,7 +684,7 @@ def chat(question: str, context: dict = None) -> dict:
     step += 1
 
     llm_used = False
-    calls = _llm_plan(question, context)
+    calls = None if (context or {}).get("execution_mode") == "deterministic" else _llm_plan(question, context)
     if calls:
         llm_used = True
         logs.append({"step": step, "type": "thought", "icon": "🧠", "color": "cyan",
@@ -711,9 +728,11 @@ def chat(question: str, context: dict = None) -> dict:
 
     # 3. Compose answer
     answer = None
+    answer_llm_used = False
     if llm_used:
         answer = _llm_compose_answer(question, tool_results, context)
         if answer:
+            answer_llm_used = True
             logs.append({"step": step, "type": "thought", "icon": "🧠", "color": "cyan",
                          "message": "LLM generated answer", "timestamp": ts()})
             step += 1
@@ -756,11 +775,17 @@ def chat(question: str, context: dict = None) -> dict:
         if not has_en_disclaimer:
             answer += "\n\n---\n*This answer is based only on the current ontology data and rules. It is not veterinary diagnosis.*"
 
+    from llm_config_manager import get_active_status
+    model_status = get_active_status() if llm_used else {}
     return {
         "logs": logs,
         "answer": answer,
         "tools_used": used_tools,
         "llm_used": llm_used,
+        "planner_llm_used": llm_used,
+        "answer_llm_used": answer_llm_used,
+        "llm_provider": model_status.get("provider"),
+        "llm_model": model_status.get("model"),
         "tool_results": tool_results,
         "tool_calls": tool_calls,
         "duration_ms": round((time.perf_counter() - run_started) * 1000),

@@ -1,0 +1,9 @@
+{
+  "version": "pet-food-agent-cases-v1",
+  "cases": [
+    {"id":"AQ01","question":"哪些产品含有 chicken？请列出全部产品 ID。","expected":"返回 PF001、PF006、PF009，并展示产品到 chicken 的 CONTAINS 关系。","assets":["PetFoodProduct","Ingredient","CONTAINS"],"required_ids":["ING001"],"product_ids":["PF001","PF006","PF009"],"required_paths":[{"source_id":"PF001","relation":"CONTAINS","target_id":"ING001"}],"answer_terms":["PF001","PF006","PF009"]},
+    {"id":"AQ02","question":"解释 PF001 的风险。请包含产品 ID 和规则 ID。","expected":"返回 PF001 与 RR003 的风险依据，并展示 PF001 的实际成分关系。","assets":["PetFoodProduct","RiskRule","TRIGGERS_RISK","CONTAINS"],"required_ids":["PF001","RR003"],"required_paths":[{"source_id":"PF001","relation":"CONTAINS","target_id":"ING001"}],"answer_terms":["PF001","RR003"],"evidence_terms":["RR003"]},
+    {"id":"AQ03","question":"比较 PF001 和 PF002，回答中包含两个产品 ID。","expected":"读取并比较两个产品的实际数据，保留两个产品的标识。","assets":["PetFoodProduct","RiskRule"],"required_ids":["PF001","PF002"],"answer_terms":["PF001","PF002"]},
+    {"id":"AQ04","question":"查询产品 PF999 的风险。没有数据时请明确说明。","expected":"明确产品不存在或无法确认，不编造产品属性、规则结果或关系。","assets":["PetFoodProduct"],"product_ids":[],"expected_unknown":true,"no_paths":true}
+  ]
+}

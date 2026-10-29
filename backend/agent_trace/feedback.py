@@ -35,13 +35,38 @@ def save_feedback(request: QueryFeedback, trace) -> dict:
     with _LOCK:
         rows = read_feedback()
         previous = next((row for row in rows if row["trace_id"] == request.trace_id), None)
+        submitted = request.model_dump()
+        if previous and all(previous.get(key) == value for key, value in submitted.items()):
+            return previous
         now = datetime.now(timezone.utc).isoformat()
-        row = {**request.model_dump(), "id": previous["id"] if previous else f"feedback-{uuid.uuid4().hex[:12]}",
+        history = list((previous or {}).get('review_history', []))
+        if previous and previous.get('review_status') == 'processed':
+            history.append({key:previous.get(key) for key in ('review_status','review_note','reviewed_at','case_id')})
+        row = {**(previous or {}), **submitted, "id": previous["id"] if previous else f"feedback-{uuid.uuid4().hex[:12]}",
                "question": trace.question, "status": "recorded",
+               "review_status": "pending", "review_note": "",
+               "review_history": history,
                "created_at": previous["created_at"] if previous else now, "updated_at": now}
         rows = [item for item in rows if item["trace_id"] != request.trace_id] + [row]
         _FILE.parent.mkdir(parents=True, exist_ok=True)
         temporary = _FILE.with_suffix(".tmp")
         temporary.write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(temporary, _FILE)
+        return row
+
+
+def review_feedback(feedback_id, status, note='', case_id=None):
+    if status not in ('pending', 'processed'):
+        raise ValueError('Invalid feedback review status')
+    with _LOCK:
+        rows = read_feedback()
+        row = next((r for r in rows if r['id'] == feedback_id), None)
+        if row is None:
+            raise ValueError('Feedback not found')
+        row.update(review_status=status, review_note=note, reviewed_at=datetime.now(timezone.utc).isoformat())
+        if case_id:
+            row['case_id'] = case_id
+        temporary = _FILE.with_suffix('.tmp')
+        temporary.write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding='utf-8')
         os.replace(temporary, _FILE)
         return row

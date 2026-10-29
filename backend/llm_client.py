@@ -374,12 +374,14 @@ def _call_openai_compat(messages: list[dict], tools: list[dict] | None = None) -
         "temperature": 0.3,
         "max_tokens": 4096,
     }
+    if provider == "deepseek":
+        body["thinking"] = {"type": "disabled"}
     if tools:
         body["tools"] = tools
         body["tool_choice"] = "auto"
 
     resp = requests.post(
-        f"{base_url}/chat/completions",
+        f"{base_url.rstrip('/')}/chat/completions",
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         json=body,
         timeout=90,
@@ -398,7 +400,7 @@ def _call_openai_compat(messages: list[dict], tools: list[dict] | None = None) -
     # 如果还有未闭合的 <think>
     raw = re.sub(r'<think>[\s\S]*$', '', raw)
     msg["content"] = raw.strip()
-    return {"message": msg}
+    return {"message": msg, "model": data.get("model"), "usage": data.get("usage")}
 
 
 def _call_anthropic_with_tools(messages: list[dict], tools: list[dict] | None = None) -> dict:

@@ -10,7 +10,7 @@ The Analyst Agent is a conversation workspace for the existing Pet Food query to
 4. Open a returned relationship in Graph Explorer. The graph checks its endpoints and relation type against current runtime data and highlights matching edges. **Back to answer** returns to the original conversation and turn.
 5. Continue with a follow-up, revisit an earlier answer, or record positive/negative feedback for that run.
 
-The header and composer remain visible while the conversation body scrolls. Conversations can be searched, renamed, pinned, archived, restored, and deleted.
+The header and composer remain visible while the conversation body scrolls. Conversation history starts collapsed and can be searched, renamed, pinned, archived, restored, and deleted. The evaluation shortcut opens [Evaluation & feedback](question-set-evaluation.md); replaying a recorded question retains its original batch and return location.
 
 ## Data and execution boundaries
 
