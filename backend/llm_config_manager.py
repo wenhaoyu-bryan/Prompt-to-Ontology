@@ -8,9 +8,22 @@ API keys are never persisted to disk, database, or returned unmasked.
 
 import os
 import time
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 # In-memory runtime config (cleared on backend restart)
 _runtime_config: dict = {}
+_query_config = ContextVar('llm_query_config', default=None)
+
+
+@contextmanager
+def llm_config_scope(config: dict):
+    """Keep one query/batch on its captured configuration; never persist the key."""
+    token = _query_config.set(dict(config))
+    try:
+        yield
+    finally:
+        _query_config.reset(token)
 
 # Default base URLs per provider
 _DEFAULTS = {
@@ -18,6 +31,7 @@ _DEFAULTS = {
     "minimax": {"base_url": "https://api.minimaxi.com/v1", "model": "MiniMax-M2.7"},
     "anthropic": {"base_url": "", "model": "claude-sonnet-4"},
     "openai_compatible": {"base_url": "", "model": ""},
+    "deepseek": {"base_url": "https://api.deepseek.com", "model": "deepseek-flash"},
 }
 
 
@@ -128,6 +142,13 @@ def clear_runtime_llm_config() -> dict:
 def get_env_llm_config() -> dict:
     """Return environment-based LLM config status."""
     backend = os.environ.get("LLM_BACKEND", "none")
+    if backend == "deepseek":
+        key = os.environ.get("DEEPSEEK_API_KEY", "")
+        return _build_status(configured=bool(key), source="environment", provider="deepseek",
+            model=os.environ.get("DEEPSEEK_MODEL", _DEFAULTS["deepseek"]["model"]),
+            base_url=os.environ.get("DEEPSEEK_BASE_URL", _DEFAULTS["deepseek"]["base_url"]),
+            key_masked=mask_api_key(key), editable=True, deletable=False,
+            message="DeepSeek is configured through backend environment variables." if key else "No DeepSeek key configured.")
     if backend == "openai":
         key = os.environ.get("OPENAI_API_KEY", "")
         return _build_status(
@@ -179,10 +200,17 @@ def get_env_llm_config() -> dict:
 
 def get_active_llm_config() -> dict:
     """Return the active config (runtime > env) with raw keys for internal use."""
+    scoped = _query_config.get()
+    if scoped is not None:
+        return dict(scoped)
     if _runtime_config and _runtime_config.get("api_key"):
         return dict(_runtime_config)
 
     backend = os.environ.get("LLM_BACKEND", "none")
+    if backend == "deepseek":
+        return {"provider": "deepseek", "api_key": os.environ.get("DEEPSEEK_API_KEY", ""),
+            "model": os.environ.get("DEEPSEEK_MODEL", _DEFAULTS["deepseek"]["model"]),
+            "base_url": os.environ.get("DEEPSEEK_BASE_URL", _DEFAULTS["deepseek"]["base_url"]), "source": "environment"}
     if backend == "openai":
         return {
             "provider": "openai",
@@ -212,6 +240,11 @@ def get_active_llm_config() -> dict:
 
 def get_active_status() -> dict:
     """Return masked status of the active config."""
+    scoped = _query_config.get()
+    if scoped is not None:
+        return _build_status(configured=bool(scoped.get('api_key')), source=scoped.get('source','runtime'),
+            provider=scoped.get('provider'), model=scoped.get('model'), base_url=scoped.get('base_url'),
+            key_masked=mask_api_key(scoped.get('api_key')))
     if _runtime_config:
         return get_runtime_llm_config()
     env = get_env_llm_config()
@@ -226,6 +259,9 @@ def get_active_status() -> dict:
 
 def is_llm_configured() -> bool:
     """Check if any LLM config is available."""
+    scoped = _query_config.get()
+    if scoped is not None:
+        return bool(scoped.get('api_key'))
     if _runtime_config and _runtime_config.get("api_key"):
         return True
     env = get_env_llm_config()
@@ -287,10 +323,13 @@ def _test_openai_compat(api_key: str, model: str, base_url: str, provider: str, 
         else:
             base_url = "https://api.openai.com/v1"
 
+    body = {"model": model, "messages": [{"role": "user", "content": 'Say "ok".'}], "max_tokens": 16}
+    if provider == "deepseek":
+        body["thinking"] = {"type": "disabled"}
     resp = requests.post(
-        f"{base_url}/chat/completions",
+        f"{base_url.rstrip('/')}/chat/completions",
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={"model": model, "messages": [{"role": "user", "content": 'Say "ok".'}], "max_tokens": 10},
+        json=body,
         timeout=30,
     )
     resp.raise_for_status()

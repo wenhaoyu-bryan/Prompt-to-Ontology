@@ -13,7 +13,7 @@ test('sample answer links to a verified runtime relationship and its source', as
 
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/verified-qa');
+  await page.goto('/verified-qa?view=reference');
   await page.getByRole('row').filter({ hasText: 'Q03' }).getByRole('button', { name: 'Run read-only' }).click();
   await expect(page.getByTestId('evidence-path')).toBeVisible();
   await page.getByRole('button', { name: 'Explore in graph' }).click();
@@ -36,7 +36,7 @@ test('sample answer links to a verified runtime relationship and its source', as
 });
 
 test('missing time evidence does not display a path or assert a runtime relation', async ({ page }) => {
-  await page.goto('/verified-qa');
+  await page.goto('/verified-qa?view=reference');
   await page.getByRole('row').filter({ hasText: 'Q07' }).getByRole('button', { name: 'Run read-only' }).click();
   await expect(page.getByTestId('verified-answer')).toContainText('trusted_time_missing');
   await expect(page.getByTestId('evidence-path')).toHaveCount(0);

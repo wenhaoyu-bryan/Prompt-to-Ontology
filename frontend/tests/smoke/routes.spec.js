@@ -20,7 +20,7 @@ const ROUTES = [
   { path: '/rule-studio',        titleKey: null,            fallback: 'Rule Studio' },
   { path: '/agent',              titleKey: null,            fallback: 'Agent' },
   { path: '/agent-traces',       titleKey: null,            fallback: 'Agent Traces' },
-  { path: '/verified-qa',        titleKey: null,            fallback: 'Verified Questions' },
+  { path: '/verified-qa',        titleKey: null,            fallback: 'Evaluation & feedback' },
   { path: '/graph-governance',   titleKey: null,            fallback: 'Graph Governance' },
   { path: '/settings',           titleKey: null,            fallback: 'Settings' },
 ];

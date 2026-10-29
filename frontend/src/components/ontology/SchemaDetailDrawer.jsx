@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, App, Button, Descriptions, Drawer, Form, Input, Popconfirm, Select, Space, Switch, Tag, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../providers/dataProvider';
 
 const { Text } = Typography;
@@ -48,6 +49,7 @@ function renderValue(value) {
 }
 
 export default function SchemaDetailDrawer({ asset, schema, explanation, onClose, onSaved, onDiscarded }) {
+  const navigate = useNavigate();
   const { i18n } = useTranslation();
   const isZh = i18n.language === 'zh';
   const tr = (en, zh) => isZh ? zh : en;
@@ -166,6 +168,7 @@ export default function SchemaDetailDrawer({ asset, schema, explanation, onClose
     footer={<div className="schema-detail-footer">
       <Button onClick={editing ? cancelEditing : onClose}>{editing ? tr('Cancel', '取消') : tr('Close', '关闭')}</Button>
       <Space wrap>
+        {!editing && <Button onClick={() => navigate(`/verified-qa?asset=${encodeURIComponent(name || '')}`)}>{tr('Validate related questions', '验证相关问题')}</Button>}
         {draft && !editing && <Popconfirm title={tr('Discard this local draft?', '撤销此本地草稿？')} onConfirm={discardDraft}>
           <Button danger loading={saving}>{tr('Discard draft', '撤销草稿')}</Button>
         </Popconfirm>}

@@ -14,6 +14,7 @@ class ToolCallTrace(BaseModel):
     input_summary: str = ""  # truncated, no secrets
     output_summary: str = ""  # truncated
     status: str = "success"  # success | error
+    duration_ms: int | None = None
     started_at: datetime | None = None
     completed_at: datetime | None = None
 

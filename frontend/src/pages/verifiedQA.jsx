@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { Alert, Button, Card, Descriptions, Drawer, Empty, Input, Select, Space, Table, Tag, Typography, theme } from 'antd';
 import { FileSearchOutlined, LinkOutlined, PlayCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import QueryEvaluationPage from '../components/evaluation/QueryEvaluationPage';
 import { api } from '../providers/dataProvider';
 import EvidencePath from '../components/graph/EvidencePath';
 
 const { Text, Title } = Typography;
 
-export default function VerifiedQAPage() {
+function VerifiedReferencePage() {
   const { i18n } = useTranslation();
   const navigate = useNavigate();
   const zh = i18n.language === 'zh';
@@ -177,4 +178,12 @@ export default function VerifiedQAPage() {
       ]} />}
     </Drawer>
   </Space>;
+}
+
+export default function VerifiedQAPage() {
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const { i18n } = useTranslation();
+  if (params.get("view") !== "reference") return <QueryEvaluationPage />;
+  return <><Button style={{marginBottom:16}} onClick={() => navigate("/verified-qa")}>{i18n.language.startsWith("zh") ? "返回评测与反馈" : "Back to evaluation"}</Button><VerifiedReferencePage /></>;
 }

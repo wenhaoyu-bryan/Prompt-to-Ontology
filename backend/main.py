@@ -11,7 +11,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ValidationError
 from database import init_db
@@ -1163,16 +1163,18 @@ def api_pet_food_agent_chat(req: PetFoodChatRequest):
 
     agent_run_id = f"run-{uuid.uuid4().hex[:10]}"
 
-    try:
-        result = chat_v2(req.question, context=req.context)
-    except Exception:
-        # Fallback to v1
+    from llm_config_manager import get_active_llm_config, llm_config_scope
+    with llm_config_scope(get_active_llm_config()):
         try:
-            result = chat_v1(req.question)
-            result["tools_used"] = []
-            result["llm_used"] = False
-        except Exception as e:
-            raise HTTPException(500, f"Agent error: {e}")
+            result = chat_v2(req.question, context=req.context)
+        except Exception:
+            # Fallback to v1
+            try:
+                result = chat_v1(req.question)
+                result["tools_used"] = []
+                result["llm_used"] = False
+            except Exception as e:
+                raise HTTPException(500, f"Agent error: {e}")
 
     # Phase 30: Analyze answer for ontology operator suggestions
     suggestions = analyze_agent_answer_for_suggestions(
@@ -1910,6 +1912,121 @@ from agent_trace import (
     update_trace_review_status as at_update_review_status,
     update_trace_review_info as at_update_review_info,
 )
+
+from agent_trace.feedback import QueryFeedback, read_feedback, save_feedback, review_feedback
+from agent_trace.evaluation_workbench import EvaluationWorkbench, EvaluationCase, EvaluationRequest, digest
+
+question_evaluator = EvaluationWorkbench(_Path(__file__).resolve().parent.parent, _Path(__file__).resolve().parent / '.runtime')
+
+
+@app.get('/api/agent/question-evaluations/cases')
+def api_question_cases():
+    from llm_config_manager import get_active_status
+    return {'cases': question_evaluator.cases(), 'latest_results': question_evaluator.latest_results(), 'model': get_active_status()}
+
+
+@app.post('/api/agent/question-evaluations/cases')
+def api_add_question_case(request: EvaluationCase):
+    if request.source_feedback_id and not any(r['id'] == request.source_feedback_id for r in read_feedback()):
+        raise HTTPException(404, 'Feedback not found')
+    try:
+        case = question_evaluator.save_case(request)
+        if request.source_feedback_id:
+            review_feedback(request.source_feedback_id, 'processed', 'Converted to an evaluation case', case['id'])
+        return case
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.put('/api/agent/question-evaluations/cases/{case_id}')
+def api_edit_question_case(case_id: str, request: EvaluationCase):
+    try:
+        return question_evaluator.save_case(request, case_id)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.get('/api/agent/question-evaluations/runs')
+def api_question_runs():
+    return {'runs': question_evaluator.list_runs()}
+
+
+@app.post('/api/agent/question-evaluations/runs')
+def api_run_question_evaluation(request: EvaluationRequest, tasks: BackgroundTasks):
+    from llm_config_manager import get_active_status, get_active_llm_config, llm_config_scope
+    from ontology_registry import OntologyRegistry
+    frozen_config = get_active_llm_config()
+    try:
+        with llm_config_scope(frozen_config):
+            run = question_evaluator.start(request, get_active_status(), digest(OntologyRegistry('pet_food').get_schema()))
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    def query(question, mode):
+        with llm_config_scope(frozen_config):
+            return api_pet_food_agent_chat(PetFoodChatRequest(question=question, context={'execution_mode': mode}))
+    tasks.add_task(question_evaluator.execute, run['id'], query)
+    return run
+
+
+@app.get('/api/agent/question-evaluations/runs/{run_id}')
+def api_question_run(run_id: str):
+    try:
+        return question_evaluator.get_run(run_id)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+class ResultReviewRequest(BaseModel):
+    decision: str
+    note: str = ''
+
+
+@app.patch('/api/agent/question-evaluations/runs/{run_id}/cases/{case_id}/review')
+def api_review_question_result(run_id: str, case_id: str, request: ResultReviewRequest):
+    try:
+        return question_evaluator.review_result(run_id, case_id, request.decision, request.note)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.get('/api/agent/question-evaluations/compare')
+def api_compare_question_runs(before: str, after: str, case_id: str):
+    try:
+        return question_evaluator.compare(before, after, case_id)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.get('/api/agent/feedback')
+def api_query_feedback_list():
+    return {'feedback': list(reversed(read_feedback()))}
+
+
+class FeedbackReviewRequest(BaseModel):
+    review_status: str
+    note: str = ''
+
+
+@app.patch('/api/agent/feedback/{feedback_id}/review')
+def api_review_query_feedback(feedback_id: str, request: FeedbackReviewRequest):
+    try:
+        return review_feedback(feedback_id, request.review_status, request.note[:2000])
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.post("/api/agent/feedback")
+def api_agent_feedback(request: QueryFeedback):
+    try:
+        return save_feedback(request, at_get_trace(request.trace_id))
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.get("/api/agent/feedback/{trace_id}")
+def api_agent_feedback_detail(trace_id: str):
+    return {"feedback": next((row for row in read_feedback() if row["trace_id"] == trace_id), None)}
+
 
 @app.get("/api/agent/traces")
 def api_agent_traces(limit: int = 50, status: str = None):

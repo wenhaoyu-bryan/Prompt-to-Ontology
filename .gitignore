@@ -34,6 +34,8 @@ docs/*
 !docs/data-pipeline.md
 !docs/review-queue-runtime.md
 !docs/agent-operator.md
+!docs/query-workbench.md
+!docs/question-set-evaluation.md
 !docs/product-workflow.md
 !docs/release-notes.md
 !docs/releasing.md

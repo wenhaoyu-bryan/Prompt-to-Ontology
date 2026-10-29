@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('verified answers expose evidence and abstain when a source field is absent', async ({ page }) => {
-  await page.goto('/verified-qa');
+  await page.goto('/verified-qa?view=reference');
   await expect(page.getByText('Question catalog')).toBeVisible();
 
   await page.getByRole('row').filter({ hasText: 'Q03' }).getByRole('button', { name: 'Run read-only' }).click();
@@ -23,7 +23,7 @@ test('verified answers expose evidence and abstain when a source field is absent
 });
 
 test('regression UI runs all questions, reruns affected cases, and compares runs', async ({ page }) => {
-  await page.goto('/verified-qa');
+  await page.goto('/verified-qa?view=reference');
   await page.getByRole('button', { name: 'Run all 22 questions' }).click();
   await expect(page.getByText('conclusion: 22/22')).toBeVisible();
   await expect(page.getByText('evidence: 22/22')).toBeVisible();
@@ -55,7 +55,7 @@ test('metric and action contracts answer concrete questions in the UI', async ({
   await page.getByRole('row').filter({ hasText: 'ExplainProductRisk' }).getByRole('button', { name: 'View details' }).click();
   await expect(page.getByRole('dialog', { name: 'ExplainProductRisk' })).toContainText('product_id');
 
-  await page.goto('/verified-qa');
+  await page.goto('/verified-qa?view=reference');
   await page.getByRole('listitem', { name: '3' }).click();
   await page.getByRole('row').filter({ hasText: 'Q21' }).getByRole('button', { name: 'Run read-only' }).click();
   await expect(page.getByTestId('verified-answer')).toContainText('7 products');

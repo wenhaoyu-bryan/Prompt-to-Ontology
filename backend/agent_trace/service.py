@@ -7,6 +7,7 @@ and trace lifecycle management (review status updates).
 from __future__ import annotations
 
 import re
+import json
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -76,19 +77,23 @@ def create_trace(
 
     Does NOT store chain-of-thought or raw LLM prompts.
     """
-    started_at = _now()
-    completed_at = _now()
+    started_at = result.get("started_at") or _now()
+    completed_at = result.get("completed_at") or _now()
 
     # -- Tool calls ------------------------------------------------
     tool_names: list[str] = result.get("tools_used", [])
     tool_calls: list[ToolCallTrace] = []
-    for tn in tool_names:
+    recorded_calls = result.get("tool_calls")
+    for index, tn in enumerate(tool_names):
+        call = recorded_calls[index] if recorded_calls and index < len(recorded_calls) else {}
         tool_calls.append(ToolCallTrace(
             tool_call_id=_new_tool_call_id(),
             tool_name=tn,
-            status="success",
-            started_at=started_at,
-            completed_at=completed_at,
+            status=call.get("status", "success"),
+            input_summary=json.dumps(call.get("arguments", {}), ensure_ascii=False)[:500] if call else "",
+            duration_ms=call.get("duration_ms"),
+            started_at=call.get("started_at") or started_at,
+            completed_at=call.get("completed_at") or completed_at,
         ))
 
     # -- Objects referenced ----------------------------------------
@@ -105,6 +110,10 @@ def create_trace(
     evidence_edges: list[EvidenceEdgeReference] = []
     seen_edge_keys: set[tuple[str, str]] = set()
     _extract_evidence_edges_from_result(result, evidence_edges, seen_edge_keys)
+    for tool_result in result.get("tool_results", []):
+        _extract_objects_from_result(tool_result, objects_referenced, seen_object_ids)
+        _extract_rules_from_result(tool_result, rules_referenced, seen_rule_ids)
+        _extract_evidence_edges_from_result(tool_result, evidence_edges, seen_edge_keys)
 
     # -- Suggestions -----------------------------------------------
     suggestion_traces: list[SuggestionTrace] = []
@@ -126,6 +135,8 @@ def create_trace(
     status = "completed"
     if not answer:
         status = "failed"
+    elif any(call.status != "success" for call in tool_calls):
+        status = "partial"
 
     # -- Sanitize metadata: drop chain-of-thought ------------------
     safe_metadata: dict[str, Any] = {}
@@ -182,8 +193,11 @@ def _extract_objects_from_result(
             # Product-like dict with an id field
             pid = val.get("id") or val.get("product_id")
             pname = val.get("product_name") or val.get("name", "")
-            if pid:
-                _add_object(str(pid), "PetFoodProduct", str(pname))
+            if pid and not ("rule_id" in val or "severity" in val):
+                obj_type = "Ingredient" if str(pid).startswith("ING") else "Brand" if str(pid).startswith("BR") else "PetFoodProduct"
+                _add_object(str(pid), obj_type, str(pname))
+            if val.get("ingredient_id"):
+                _add_object(str(val["ingredient_id"]), "Ingredient")
             # Brand
             bid = val.get("brand_id")
             bname = val.get("brand_name", "")

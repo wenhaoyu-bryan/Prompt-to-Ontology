@@ -28,6 +28,10 @@ services:
       NEO4J_DATABASE: ${NEO4J_DATABASE:-neo4j}
       ENABLE_LEGACY_DEMO_WRITES: ${ENABLE_LEGACY_DEMO_WRITES:-false}
       AUTO_SEED_DEMO_DATA: ${AUTO_SEED_DEMO_DATA:-true}
+      LLM_BACKEND: ${LLM_BACKEND:-none}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-flash}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
     volumes:
       - backend_runtime:/app/.runtime
     depends_on:

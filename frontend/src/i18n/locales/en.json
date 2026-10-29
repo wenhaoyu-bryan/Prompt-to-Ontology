@@ -10,7 +10,7 @@
     "graph": "Graph Explorer",
     "schema": "Ontology Manager",
     "agent": "Analyst Agent",
-    "verifiedQA": "Verified Questions",
+    "verifiedQA": "Evaluation & feedback",
     "review": "Review Queue",
     "pipeline": "Data Pipeline",
     "settings": "Settings",

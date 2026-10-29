@@ -1,0 +1,11 @@
+.git
+**/node_modules
+**/__pycache__
+**/.runtime
+**/.env
+**/.env.*
+!**/.env.example
+**/venv
+**/dist
+**/test-results
+**/.DS_Store
