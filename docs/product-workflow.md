@@ -51,7 +51,9 @@ Search, inspect, and compare ontology objects. View properties, evidence, risk e
 
 ### 2. Graph Explorer
 
-Visualize the global evidence network or drill into local neighborhoods. See relationships between products, ingredients, brands, species, and risk rules.
+Explore runtime objects and relationships in an overview or focused neighborhood. Search by object, filter relationship types, and inspect object or relationship details. A verified question with an instance path can open a focused graph view: sample-file evidence is shown separately, and only relationships found in the runtime graph are highlighted. A missing runtime relationship is reported explicitly.
+
+The graph endpoint returns distinct Neo4j relationships, including parallel edges. Display IDs are derived from endpoints and relationship type. For parallel edges with the same endpoints and type, their properties and an ordinal distinguish them; IDs in that group can change when its membership or properties change. These IDs are not durable domain identities for indistinguishable parallel relationships. The existing NetworkX analysis graph is separate and may collapse parallel relationships.
 
 ### 3. Agent Operator
 

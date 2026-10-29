@@ -1,388 +1,162 @@
-import { useEffect, useState, useCallback } from 'react';
-import { Card, Space, Typography, Spin, Skeleton, Radio, Select, Button, Drawer, Tag, Checkbox, Row, Col, Statistic, Divider, Empty, Result, theme } from 'antd';
-import { purple } from '@ant-design/colors';
-import {
-  ReloadOutlined,
-  NodeIndexOutlined,
-  ApartmentOutlined,
-  CompressOutlined,
-  ExpandOutlined,
-  FilterOutlined,
-  EyeOutlined,
-  MenuOutlined,
-} from '@ant-design/icons';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Card, Checkbox, Descriptions, Drawer, Empty, Select, Space, Spin, Tag, Typography, theme } from 'antd';
+import { ApartmentOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../providers/dataProvider';
-import { PageHeader } from '../components/common';
-import D3GraphCanvas from '../legacy/D3GraphCanvas';
-import EntityInspector from '../legacy/EntityInspector';
+import SigmaGraph, { typeColor } from '../components/graph/SigmaGraph';
+import './graphExplorer.css';
 
-const { Title, Text } = Typography;
+const { Text, Title } = Typography;
 
-const LINK_TYPE_FILTERS = [
-  { labelKey: 'graph.showBrands', value: 'MADE_BY' },
-  { labelKey: 'graph.showIngredients', value: 'CONTAINS' },
-  { labelKey: 'graph.showRisks', value: 'TRIGGERS_RISK' },
-  { labelKey: 'graph.showSpecies', value: 'TARGETS_SPECIES' },
-  { labelKey: 'graph.showLifeStage', value: 'SUITABLE_FOR' },
-];
-
-const LEGEND_ITEMS = [
-  { i18nKey: 'graph.legend.petFood', fallback: 'PetFoodProduct', colorToken: 'colorPrimary' },
-  { i18nKey: 'graph.legend.brand', fallback: 'Brand', colorToken: 'accent' },
-  { i18nKey: 'graph.legend.ingredient', fallback: 'Ingredient', colorToken: 'colorSuccess' },
-  { i18nKey: 'graph.legend.riskRule', fallback: 'RiskRule', colorToken: 'colorError' },
-  { i18nKey: 'graph.legend.species', fallback: 'Species', colorToken: 'colorInfo' },
-  { i18nKey: 'graph.legend.lifeStage', fallback: 'LifeStage', colorToken: 'colorWarning' },
-];
+function edgeMatches(step, edge) {
+  return step.kind === 'instance_relation' && edge.source === step.source_id &&
+    edge.target === step.target_id && edge.linkType === step.relation;
+}
 
 export default function GraphPage() {
-  const { t } = useTranslation();
+  const { i18n } = useTranslation();
+  const zh = i18n.language.startsWith('zh');
   const { token } = theme.useToken();
-  const [searchParams] = useSearchParams();
-  const highlightNodeId = searchParams.get('node');
-
-  const [graphData, setGraphData] = useState({ nodes: [], links: [] });
+  const [params] = useSearchParams();
+  const questionId = params.get('question');
+  const initialNode = params.get('node');
+  const [graph, setGraph] = useState({ nodes: [], links: [] });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [viewMode, setViewMode] = useState('global');
+  const [error, setError] = useState('');
+  const [answer, setAnswer] = useState(null);
+  const [answerError, setAnswerError] = useState('');
+  const [selectedId, setSelectedId] = useState(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState(null);
+  const [mode, setMode] = useState('global');
   const [depth, setDepth] = useState(1);
-  const [selectedNode, setSelectedNode] = useState(null);
-  const [nodeDetail, setNodeDetail] = useState(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [enabledLinkTypes, setEnabledLinkTypes] = useState(
-    new Set(LINK_TYPE_FILTERS.map(f => f.value))
-  );
-  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
-  const [sidebarDrawerOpen, setSidebarDrawerOpen] = useState(false);
+  const [enabledTypes, setEnabledTypes] = useState(null);
+  const [drawer, setDrawer] = useState(null);
 
-  const loadGraph = useCallback(async () => {
-    setLoading(true);
-    setError(false);
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
     try {
       const { data } = await api.get('/graph');
-      setGraphData(data);
-    } catch (err) {
-      console.warn('[Graph] Failed:', err.message);
-      setGraphData({ nodes: [], links: [] });
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { loadGraph(); }, [loadGraph]);
-
-  // Responsive: track window width for mobile sidebar collapse
+      setGraph({ nodes: data.nodes || [], links: data.links || [] });
+    } catch { setError(zh ? '图谱加载失败，请检查服务后重试。' : 'Could not load the graph. Check the service and retry.'); }
+    finally { setLoading(false); }
+  }, [zh]);
+  useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    let active = true;
+    setAnswer(null); setAnswerError('');
+    if (!questionId) return () => { active = false; };
+    api.post('/verified-qa/answer', { question_id: questionId })
+      .then(({ data }) => { if (active) setAnswer(data); })
+      .catch(() => { if (active) setAnswerError(zh ? '无法加载此问题的证据。' : 'Could not load evidence for this question.'); });
+    return () => { active = false; };
+  }, [questionId, zh]);
 
-  // Auto-select highlighted node from URL
   useEffect(() => {
-    if (highlightNodeId && graphData.nodes.length > 0) {
-      const node = graphData.nodes.find(n => n.id === highlightNodeId);
-      if (node) {
-        setSelectedNode(node);
-        setViewMode('local');
-        handleNodeClick(node);
-      }
+    const id = answer?.path?.find(step => step.kind === 'instance_relation')?.source_id || initialNode;
+    if (id && graph.nodes.some(node => node.id === id)) { setSelectedId(id); setMode('local'); }
+  }, [answer, graph.nodes, initialNode]);
+
+  const relationTypes = useMemo(() => [...new Set(graph.links.map(edge => edge.linkType).filter(Boolean))].sort(), [graph.links]);
+  const types = useMemo(() => [...new Set(graph.nodes.map(node => node.objectType || node.type).filter(Boolean))].sort(), [graph.nodes]);
+  const match = useMemo(() => {
+    const steps = (answer?.path || []).filter(step => step.kind === 'instance_relation');
+    const edges = steps.flatMap(step => graph.links.filter(edge => edgeMatches(step, edge)));
+    return { steps, edges, missing: steps.filter(step => !graph.links.some(edge => edgeMatches(step, edge))) };
+  }, [answer, graph.links]);
+  const highlighted = useMemo(() => match.edges.map(edge => edge.id), [match.edges]);
+  const filteredLinks = useMemo(() => graph.links.filter(edge => !enabledTypes || enabledTypes.includes(edge.linkType)), [graph.links, enabledTypes]);
+  const displayed = useMemo(() => {
+    if (mode === 'global' || !selectedId) return { nodes: graph.nodes, links: filteredLinks };
+    const ids = new Set([selectedId]); let frontier = new Set([selectedId]);
+    for (let i = 0; i < depth; i += 1) {
+      const next = new Set();
+      filteredLinks.forEach(edge => {
+        if (frontier.has(edge.source) && !ids.has(edge.target)) next.add(edge.target);
+        if (frontier.has(edge.target) && !ids.has(edge.source)) next.add(edge.source);
+      });
+      next.forEach(id => ids.add(id)); frontier = next;
     }
-  }, [highlightNodeId, graphData.nodes]);
+    return { nodes: graph.nodes.filter(node => ids.has(node.id)), links: filteredLinks.filter(edge => ids.has(edge.source) && ids.has(edge.target)) };
+  }, [mode, selectedId, depth, graph.nodes, filteredLinks]);
+  const selectedNode = graph.nodes.find(node => node.id === selectedId);
+  const selectedEdge = graph.links.find(edge => edge.id === selectedEdgeId);
+  const visibleMatches = match.edges.filter(edge => displayed.links.some(item => item.id === edge.id));
+  const selectNode = useCallback(id => { setSelectedId(id); setSelectedEdgeId(null); setMode('local'); setDrawer({ kind: 'node', id }); }, []);
+  const selectEdge = useCallback(id => { setSelectedEdgeId(id); setDrawer({ kind: 'edge', id }); }, []);
+  const drawerNode = drawer?.kind === 'node' ? graph.nodes.find(node => node.id === drawer.id) : null;
+  const drawerEdge = drawer?.kind === 'edge' ? graph.links.find(edge => edge.id === drawer.id) : null;
+  const drawerEvidence = drawer?.kind === 'evidence' ? drawer.evidence : null;
 
-  const handleNodeClick = useCallback(async (node) => {
-    setSelectedNode(node);
-    setViewMode('local');
-    setDrawerOpen(true);
-    try {
-      const { data } = await api.get(`/node/${node.id}`);
-      setNodeDetail(data);
-    } catch (err) {
-      console.warn('[Graph] Failed:', err.message);
-      setNodeDetail(null);
-    }
-  }, []);
-
-  // Compute local graph subset
-  const getLocalGraph = () => {
-    if (!selectedNode) return { nodes: [], links: [] };
-    const adj = new Map();
-    const filteredLinks = graphData.links.filter(l => enabledLinkTypes.has(l.linkType));
-    filteredLinks.forEach(l => {
-      const sid = typeof l.source === 'object' ? l.source.id : l.source;
-      const tid = typeof l.target === 'object' ? l.target.id : l.target;
-      if (!adj.has(sid)) adj.set(sid, []);
-      if (!adj.has(tid)) adj.set(tid, []);
-      adj.get(sid).push(tid);
-      adj.get(tid).push(sid);
-    });
-
-    const visited = new Set();
-    const queue = [{ id: selectedNode.id, d: 0 }];
-    visited.add(selectedNode.id);
-
-    while (queue.length > 0) {
-      const { id, d } = queue.shift();
-      if (d >= depth) continue;
-      const neighbors = adj.get(id) || [];
-      for (const nid of neighbors) {
-        if (!visited.has(nid)) {
-          visited.add(nid);
-          queue.push({ id: nid, d: d + 1 });
-        }
-      }
-    }
-
-    const nodeMap = new Map(graphData.nodes.map(n => [n.id, n]));
-    const nodes = [...visited].map(id => nodeMap.get(id)).filter(Boolean);
-    const nodeIds = new Set(visited);
-    const links = filteredLinks.filter(l => {
-      const sid = typeof l.source === 'object' ? l.source.id : l.source;
-      const tid = typeof l.target === 'object' ? l.target.id : l.target;
-      return nodeIds.has(sid) && nodeIds.has(tid);
-    });
-
-    return { nodes, links };
-  };
-
-  const displayData = viewMode === 'local' ? getLocalGraph() : {
-    nodes: graphData.nodes,
-    links: graphData.links.filter(l => enabledLinkTypes.has(l.linkType)),
-  };
-
-  const handleNavigateToNode = useCallback((nodeId) => {
-    const node = graphData.nodes.find(n => n.id === nodeId);
-    if (node) handleNodeClick(node);
-  }, [graphData.nodes, handleNodeClick]);
-
-  const resetFilters = () => {
-    setEnabledLinkTypes(new Set(LINK_TYPE_FILTERS.map(f => f.value)));
-    setViewMode('global');
-    setDepth(1);
-    setSelectedNode(null);
-    setDrawerOpen(false);
-    setNodeDetail(null);
-  };
-
-  // Graph stats
-  const filteredLinkCount = graphData.links.filter(l => enabledLinkTypes.has(l.linkType)).length;
-  const nodeTypeCounts = {};
-  displayData.nodes.forEach(n => {
-    const type = n.type || n.objectType;
-    nodeTypeCounts[type] = (nodeTypeCounts[type] || 0) + 1;
-  });
-
-  // Control panel content (shared between inline Card and mobile Drawer)
-  const controlPanelContent = (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      {/* View Mode */}
-      <div>
-        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>{t('graph.viewMode')}</Text>
-        <Radio.Group value={viewMode} onChange={e => setViewMode(e.target.value)} size="small" style={{ width: '100%' }}>
-          <Radio.Button value="global" style={{ width: '50%', textAlign: 'center' }}>
-            <ExpandOutlined /> {t('graph.globalView')}
-          </Radio.Button>
-          <Radio.Button value="local" style={{ width: '50%', textAlign: 'center' }}>
-            <CompressOutlined /> {t('graph.localView')}
-          </Radio.Button>
-        </Radio.Group>
-      </div>
-
-      {/* Depth selector (local mode only) */}
-      {viewMode === 'local' && (
-        <div>
-          <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>{t('graph.depth')}</Text>
-          <Select
-            value={depth}
-            onChange={setDepth}
-            size="small"
-            style={{ width: '100%' }}
-            options={[
-              { label: t('graph.oneHop'), value: 1 },
-              { label: t('graph.twoHop'), value: 2 },
-            ]}
-          />
+  return <div className="graph-workspace" style={{ '--graph-surface': token.colorBgContainer, '--graph-bg': token.colorBgLayout, '--graph-border': token.colorBorderSecondary, '--graph-muted': token.colorTextSecondary }}>
+    <header className="graph-heading">
+      <div><Title level={3} style={{ margin: 0 }}><ApartmentOutlined /> {zh ? '图谱探索' : 'Graph Explorer'}</Title>
+        <Text type="secondary">{zh ? '从对象出发，探索关系与证据。' : 'Explore objects, relationships, and their evidence.'}</Text></div>
+      <Button icon={<ReloadOutlined />} onClick={load}>{zh ? '刷新' : 'Refresh'}</Button>
+    </header>
+    <div className="graph-content">
+      <aside className="graph-controls graph-panel">
+        <Text strong>{zh ? '探索图谱' : 'Explore graph'}</Text>
+        <label className="graph-field"><span>{zh ? '查找对象' : 'Find an object'}</span>
+          <Select showSearch allowClear suffixIcon={<SearchOutlined />} placeholder={zh ? '搜索名称或 ID' : 'Search by name or ID'} value={selectedId || undefined}
+            optionFilterProp="label" onChange={value => value ? selectNode(value) : (setSelectedId(null), setMode('global'))}
+            options={graph.nodes.map(node => ({ value: node.id, label: `${node.label || node.id} · ${node.id}` }))} />
+        </label>
+        <div className="graph-field"><span>{zh ? '视图' : 'View'}</span>
+          <Space.Compact block><Button type={mode === 'global' ? 'primary' : 'default'} onClick={() => setMode('global')} style={{ width: '50%' }}>{zh ? '全图' : 'Overview'}</Button>
+            <Button type={mode === 'local' ? 'primary' : 'default'} disabled={!selectedId} onClick={() => setMode('local')} style={{ width: '50%' }}>{zh ? '局部' : 'Focus'}</Button></Space.Compact>
         </div>
-      )}
-
-      <Divider style={{ margin: '4px 0' }} />
-
-      {/* Link Type Filters */}
-      <div>
-        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>{t('graph.relationshipTypes')}</Text>
-        <Space direction="vertical" size={4} style={{ width: '100%' }}>
-          {LINK_TYPE_FILTERS.map(f => (
-            <Checkbox
-              key={f.value}
-              checked={enabledLinkTypes.has(f.value)}
-              onChange={e => {
-                const next = new Set(enabledLinkTypes);
-                if (e.target.checked) next.add(f.value);
-                else next.delete(f.value);
-                setEnabledLinkTypes(next);
-              }}
-            >
-              <Text style={{ fontSize: 12 }}>{t(f.labelKey)}</Text>
-            </Checkbox>
-          ))}
-        </Space>
-      </div>
-
-      <Divider style={{ margin: '4px 0' }} />
-
-      {/* Legend */}
-      <div>
-        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>{t('graph.legend', 'Legend')}</Text>
-        <Space direction="vertical" size={2} style={{ width: '100%' }}>
-          {LEGEND_ITEMS.map(item => {
-            const color = item.colorToken === 'accent' ? purple[5] : token[item.colorToken];
-            return (
-              <div key={item.i18nKey} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                <Text style={{ fontSize: 12 }}>{t(item.i18nKey, item.fallback)}</Text>
-              </div>
-            );
-          })}
-        </Space>
-      </div>
-
-      <Divider style={{ margin: '4px 0' }} />
-
-      {/* Stats */}
-      <div>
-        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>{t('graph.graphStats')}</Text>
-        <Space direction="vertical" size={2} style={{ width: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Text style={{ fontSize: 12 }}>{t('graph.visibleNodes')}</Text>
-            <Tag style={{ fontSize: 12 }}>{displayData.nodes.length}</Tag>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Text style={{ fontSize: 12 }}>{t('graph.visibleEdges')}</Text>
-            <Tag style={{ fontSize: 12 }}>{displayData.links.length}</Tag>
-          </div>
-        </Space>
-      </div>
-
-      <Divider style={{ margin: '4px 0' }} />
-
-      {/* Actions */}
-      <Space direction="vertical" size={4} style={{ width: '100%' }}>
-        <Button icon={<ReloadOutlined />} size="small" block onClick={loadGraph}>{t('common.refresh')}</Button>
-        <Button size="small" block onClick={resetFilters}>{t('graph.resetFilters')}</Button>
-      </Space>
-    </Space>
-  );
-
-  return (
-    <div style={{ display: 'flex', gap: 16, height: 'calc(100vh - 128px)' }}>
-      {/* Left filter panel -- inline on desktop, Drawer on mobile */}
-      {!isMobile && (
-        <Card
-          size="small"
-          style={{ width: 220, flexShrink: 0, overflow: 'auto' }}
-          styles={{ body: { padding: '12px' } }}
-          title={<><FilterOutlined /> {t('graph.controls')}</>}
-        >
-          {controlPanelContent}
-        </Card>
-      )}
-
-      {/* Mobile sidebar drawer */}
-      {isMobile && (
-        <Drawer
-          title={<><FilterOutlined /> {t('graph.controls')}</>}
-          open={sidebarDrawerOpen}
-          onClose={() => setSidebarDrawerOpen(false)}
-          placement="left"
-          width={280}
-        >
-          {controlPanelContent}
-        </Drawer>
-      )}
-
-      {/* Main graph area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        {/* Title & Status bar */}
-        <PageHeader
-          title={t('graph.title', 'Graph Explorer')}
-          subtitle={t('graph.subtitle', 'Explore ontology objects, relationships and rule evidence')}
-          extra={isMobile && (
-            <Button size="small" icon={<MenuOutlined />} onClick={() => setSidebarDrawerOpen(true)}>
-              {t('graph.filters', 'Filters')}
-            </Button>
-          )}
-        />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-          {viewMode === 'local' && selectedNode && (
-            <Tag color="blue" icon={<NodeIndexOutlined />}>
-              {selectedNode.label || selectedNode.id} — {t('graph.nodeCount', { count: displayData.nodes.length })}
-            </Tag>
-          )}
-          {viewMode === 'global' && (
-            <Tag color="cyan" icon={<ApartmentOutlined />}>
-              {t('graph.globalView')} — {displayData.nodes.length} {t('common.nodes')}
-            </Tag>
-          )}
+        {mode === 'local' && <label className="graph-field"><span>{zh ? '邻域范围' : 'Neighborhood'}</span><Select value={depth} onChange={setDepth} options={[{ value: 1, label: zh ? '一跳' : '1 hop' }, { value: 2, label: zh ? '两跳' : '2 hops' }]} /></label>}
+        <div className="graph-field"><span>{zh ? '关系类型' : 'Relationships'}</span>
+          <Checkbox.Group value={enabledTypes || relationTypes} onChange={setEnabledTypes} className="graph-checkboxes" options={relationTypes.map(value => ({ value, label: value }))} />
         </div>
-
-        {/* Graph canvas */}
-        <div style={{ flex: 1, minHeight: 0, borderRadius: 8, overflow: 'hidden', position: 'relative' }}>
-          {loading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <Spin size="large" />
-            </div>
-          ) : error ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <Result
-                status="warning"
-                title={t('common.loadFailed')}
-                extra={<Button type="primary" icon={<ReloadOutlined />} onClick={loadGraph}>{t('common.retry')}</Button>}
-              />
-            </div>
-          ) : displayData.nodes.length === 0 ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <Empty description={viewMode === 'local' ? t('graph.selectNode') : t('graph.emptyDesc', 'No graph data loaded. Reset to Seeded Demo or build from Data Pipeline.')}>
-                {viewMode === 'local' && (
-                  <Button icon={<ExpandOutlined />} onClick={() => setViewMode('global')}>
-                    {t('graph.globalView')}
-                  </Button>
-                )}
-              </Empty>
-            </div>
-          ) : (
-            <D3GraphCanvas
-              graphData={displayData}
-              selectedNode={selectedNode}
-              onNodeClick={handleNodeClick}
-              queriedNodeIds={[]}
-              highlightedNodeIds={[]}
-              navigateToNode={handleNavigateToNode}
-              onRunAgent={() => {}}
-              dataset="pet_food"
-              embedded
-            />
-          )}
+        <div className="graph-field"><span>{zh ? '对象类型' : 'Object types'}</span>
+          {types.map(type => <div className="graph-legend" key={type}><i style={{ background: typeColor(type) }} />{type}</div>)}
         </div>
-      </div>
-
-      {/* Entity Inspector drawer */}
-      <Drawer
-        open={drawerOpen}
-        onClose={() => { setDrawerOpen(false); setNodeDetail(null); }}
-        size={520}
-        styles={{ body: { padding: 0 } }}
-        closable={false}
-      >
-        <EntityInspector
-          selectedNode={selectedNode}
-          nodeDetail={nodeDetail}
-          onNavigateToNode={handleNavigateToNode}
-          onRunAgent={() => {}}
-        />
-      </Drawer>
+      </aside>
+      <section className="graph-main graph-panel">
+        <div className="graph-canvas-heading"><div><Text strong>{mode === 'local' && selectedNode ? (selectedNode.label || selectedNode.id) : (zh ? '实例图谱' : 'Instance graph')}</Text>
+          <div><Text type="secondary">{displayed.nodes.length} {zh ? '个对象' : 'objects'} · {displayed.links.length} {zh ? '条关系' : 'relationships'}</Text></div></div>
+          <Tag>{zh ? '运行时图谱' : 'Runtime graph'}</Tag></div>
+        <div className="graph-canvas" style={{ background: token.colorBgLayout }}>
+          {loading ? <div className="graph-centered"><Spin /></div> : error ? <div className="graph-centered"><Alert type="error" showIcon title={error} action={<Button onClick={load}>{zh ? '重试' : 'Retry'}</Button>} /></div> : !displayed.nodes.length ? <div className="graph-centered"><Empty description={zh ? '暂无图谱数据' : 'No graph data'} /></div> :
+            <SigmaGraph data={displayed} selectedId={selectedId} highlightedEdges={highlighted} onNodeSelect={selectNode} onEdgeSelect={selectEdge} zh={zh} />}
+        </div>
+        <div className="graph-canvas-footer">{zh ? '点击对象查看详情 · 选择关系类型过滤画布' : 'Select an object for details · Filter relationships to focus the canvas'}</div>
+      </section>
+      <aside className="graph-evidence graph-panel" data-testid="graph-evidence-panel">
+        <Text strong>{questionId ? (zh ? '问题证据' : 'Question evidence') : (zh ? '探索提示' : 'Explore with context')}</Text>
+        {!questionId && <p className="graph-copy">{zh ? '搜索对象或点击节点，查看它的属性和相邻关系。也可以从可核对问答打开证据路径。' : 'Search for or select an object to inspect its properties and neighbors. Open a verified question to trace its evidence.'}</p>}
+        {answerError && <Alert type="warning" showIcon title={answerError} />}
+        {questionId && !answer && !answerError && <Spin size="small" />}
+        {answer && <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+          <Space wrap><Tag color="blue">{answer.question_id}</Tag><Tag color={answer.status === 'unknown' ? 'orange' : 'green'}>{answer.status}</Tag></Space>
+          <Text>{answer.conclusion}</Text>
+          <Tag>{zh ? '答案来自样例文件' : 'Answer from sample files'}</Tag>
+          {answer.unknown_reasons?.length > 0 && <Alert type="warning" showIcon title={zh ? '证据不足' : 'Insufficient evidence'} description={answer.unknown_reasons.join(', ')} />}
+          {match.steps.length > 0 && (loading ? <Spin size="small" /> : !error && <Alert type={match.missing.length ? 'warning' : 'success'} showIcon title={match.missing.length ? (zh ? '运行时图中未找到完整路径' : 'The full path is not present in the runtime graph') : (zh ? '已在运行时图中找到关系' : 'Relationship found in runtime graph')} description={visibleMatches.length < match.edges.length ? (zh ? '部分匹配关系被当前筛选或局部视图隐藏。答案仍来自样例文件。' : 'Some matching relationships are hidden by the current filter or focus. The answer still comes from sample files.') : (zh ? '图中高亮仅表示关系匹配；样例答案仍来自文件。' : 'Highlighting shows a matching relationship; the answer still comes from the sample files.')} />)}
+          {answer.path?.length > 0 && <div className="graph-evidence-list">{answer.path.map((step, index) => <div key={`${step.source_id}-${step.relation}-${step.target_id}-${index}`}><Text code>{step.source_id}</Text><span> → {step.relation} → </span><Text code>{step.target_id}</Text></div>)}</div>}
+          {answer.evidence?.map(item => <Button key={item.evidence_id} block style={{ height: 'auto', textAlign: 'left', whiteSpace: 'normal' }} onClick={() => setDrawer({ kind: 'evidence', evidence: item })}><span>{item.source_path.split('/').pop()} · {item.field}</span></Button>)}
+        </Space>}
+      </aside>
     </div>
-  );
+    <Drawer title={drawerEvidence ? (zh ? '来源记录' : 'Source record') : drawerEdge ? (zh ? '关系详情' : 'Relationship details') : (zh ? '对象详情' : 'Object details')} open={!!drawer} onClose={() => setDrawer(null)} size={480}>
+      {drawerNode && <><Title level={4}>{drawerNode.label || drawerNode.id}</Title><Space wrap><Tag color="blue">{drawerNode.objectType || drawerNode.type}</Tag><Text code>{drawerNode.id}</Text></Space>
+        <Descriptions style={{ marginTop: 20 }} column={1} bordered size="small" items={Object.entries(drawerNode).filter(([key]) => !['id', 'label', 'type', 'objectType', 'color', 'size', 'alert'].includes(key)).map(([key, value]) => ({ key, label: key, children: typeof value === 'object' ? JSON.stringify(value) : String(value ?? '—') }))} /></>}
+      {drawerEdge && <Descriptions column={1} bordered size="small" items={[
+        { key: 'type', label: zh ? '关系' : 'Relationship', children: drawerEdge.linkType },
+        { key: 'source', label: zh ? '起点' : 'Source', children: drawerEdge.source },
+        { key: 'target', label: zh ? '终点' : 'Target', children: drawerEdge.target },
+        { key: 'id', label: 'ID', children: <Text copyable>{drawerEdge.id}</Text> },
+      ]} />}
+      {drawerEvidence && <Descriptions column={1} bordered size="small" items={[
+        { key: 'path', label: zh ? '来源文件' : 'Source file', children: drawerEvidence.source_path },
+        { key: 'hash', label: 'SHA-256', children: <Text copyable style={{ wordBreak: 'break-all' }}>{drawerEvidence.source_sha256}</Text> },
+        { key: 'record', label: zh ? '记录' : 'Record', children: drawerEvidence.record_id },
+        { key: 'field', label: zh ? '字段' : 'Field', children: drawerEvidence.field },
+        { key: 'value', label: zh ? '原始值' : 'Source value', children: String(drawerEvidence.value ?? '—') },
+      ]} />}
+      {selectedEdge && drawerEdge && <Text type="secondary" style={{ display: 'block', marginTop: 16 }}>{zh ? '此 ID 用于图谱展示；同类型平行关系发生变化时可能重新生成。' : 'This is a display ID; it can change when parallel relationships of the same type change.'}</Text>}
+    </Drawer>
+  </div>;
 }

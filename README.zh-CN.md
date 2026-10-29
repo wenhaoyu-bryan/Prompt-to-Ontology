@@ -81,7 +81,7 @@ Dashboard → Data Pipeline（选择样例或上传 CSV/JSON/NDJSON、检查来�
 
 Verified Questions 当前读取仓库中的 Pet Food CSV/YAML 样例文件，不读取运行时 Neo4j 图谱；来源映射或导入计划完成也不代表图谱实例已可查询。
 
-图谱视图当前用于浏览运行时对象与关系。按 Schema 结构与运行时实例分层、显示来源及证据的视觉升级尚未纳入此阶段，见英文 README 的后续方向。
+图谱视图可搜索运行时对象、筛选关系，并从 Verified Questions 查看样例证据和匹配的运行时关系。匹配结果不表示答案由 Neo4j 计算得出；独立的 Schema 类型图仍是后续工作。
 
 ## 测试
 

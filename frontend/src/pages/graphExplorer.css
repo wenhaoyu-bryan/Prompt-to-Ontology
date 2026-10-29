@@ -1,0 +1,19 @@
+.graph-workspace { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.graph-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.graph-content { display: grid; grid-template-columns: 224px minmax(0, 1fr) 276px; gap: 14px; min-height: 620px; height: calc(100vh - 180px); }
+.graph-panel { background: var(--graph-surface); border: 1px solid var(--graph-border); border-radius: 12px; min-width: 0; }
+.graph-controls, .graph-evidence { padding: 18px; overflow: auto; }
+.graph-field { display: flex; flex-direction: column; gap: 8px; margin-top: 22px; font-size: 12px; color: var(--graph-muted); }
+.graph-checkboxes { display: flex; flex-direction: column; gap: 8px; }
+.graph-legend { display: flex; align-items: center; gap: 8px; color: var(--graph-muted); }
+.graph-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
+.graph-main { display: flex; flex-direction: column; padding: 12px; }
+.graph-canvas-heading { display: flex; align-items: center; justify-content: space-between; padding: 5px 5px 12px; }
+.graph-canvas { position: relative; flex: 1; min-height: 430px; border-radius: 9px; overflow: hidden; background-image: radial-gradient(var(--graph-border) 1px, transparent 1px); background-size: 22px 22px; }
+.graph-centered { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; }
+.graph-canvas-footer { color: var(--graph-muted); font-size: 12px; padding: 11px 5px 2px; }
+.graph-copy { color: var(--graph-muted); line-height: 1.65; }
+.graph-evidence > .ant-typography:first-child { display: block; margin-bottom: 16px; }
+.graph-evidence-list { display: flex; flex-direction: column; gap: 10px; overflow-wrap: anywhere; font-size: 12px; }
+@media (max-width: 1200px) { .graph-content { grid-template-columns: 200px minmax(0,1fr); height: auto; } .graph-main { min-height: 600px; } .graph-evidence { grid-column: 1 / -1; } }
+@media (max-width: 700px) { .graph-content { display: flex; flex-direction: column; } .graph-controls { max-height: 300px; } .graph-main { min-height: 540px; } .graph-heading { align-items: flex-start; } }

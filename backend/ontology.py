@@ -4,6 +4,10 @@
 类型由 Neo4j 数据驱动，不硬编码。
 """
 
+import hashlib
+import json
+from collections import defaultdict
+
 import networkx as nx
 from neo4j_connector import (
     fetch_all_suppliers,
@@ -208,8 +212,44 @@ def refresh_graph(dataset: str | None = None):
 # 图谱数据序列化（供前端渲染）
 # =====================================================
 
+def _graph_edge_ids(edges: list[dict]) -> list[str]:
+    """Build repeatable display IDs without modifying the Neo4j graph.
+
+    Unique endpoint/type triples remain stable across import or restore. For
+    parallel edges with the same triple, properties and an ordinal distinguish
+    them; IDs in that group can change when its membership or properties change.
+    """
+    groups = defaultdict(list)
+    for index, edge in enumerate(edges):
+        groups[(edge["source_id"], edge["link_type"], edge["target_id"])].append(index)
+    ids = [""] * len(edges)
+    for key, indices in groups.items():
+        def digest(value):
+            raw = json.dumps(value, sort_keys=True, ensure_ascii=False, default=str, separators=(",", ":"))
+            return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+        if len(indices) == 1:
+            ids[indices[0]] = "edge-" + digest(key)
+            continue
+        buckets = defaultdict(list)
+        for index in indices:
+            properties = {k: v for k, v in edges[index].items()
+                          if k not in {"edge_id", "source_id", "target_id", "link_type"}}
+            buckets[digest([key, properties])].append(index)
+        for fingerprint, bucket in buckets.items():
+            for ordinal, index in enumerate(sorted(bucket, key=lambda i: str(edges[i].get("edge_id", ""))), 1):
+                ids[index] = f"edge-{fingerprint}-{ordinal}"
+    return ids
+
+
 def get_graph_data(dataset: str | None = None) -> dict:
-    """返回 {nodes, links} 供 D3 渲染，通用版（不硬编码属性）"""
+    """Return nodes and actual Neo4j relationships for graph exploration.
+
+    The NetworkX analysis graph is a DiGraph and may collapse parallel edges.
+    Read the relationships separately so the visual graph retains each edge.
+    IDs are deterministic display identifiers, not persistent domain IDs for
+    individual indistinguishable parallel relationships.
+    """
     G = get_graph(dataset)
     nodes = []
     _internal_keys = {'object_type', 'color', 'size', 'alert'}
@@ -232,13 +272,15 @@ def get_graph_data(dataset: str | None = None) -> dict:
         nodes.append(node_data)
 
     links = []
-    for src, dst, attrs in G.edges(data=True):
+    relationships = fetch_all_links_filtered(dataset)
+    for edge, edge_id in zip(relationships, _graph_edge_ids(relationships)):
         links.append({
-            "source": src,
-            "target": dst,
-            "label": attrs.get("label", ""),
-            "linkType": attrs.get("link_type", ""),
-            "relationship": attrs.get("link_type", ""),
+            "id": edge_id,
+            "source": edge["source_id"],
+            "target": edge["target_id"],
+            "label": edge.get("label") or "",
+            "linkType": edge.get("link_type", ""),
+            "relationship": edge.get("link_type", ""),
         })
 
     return {"nodes": nodes, "links": links}

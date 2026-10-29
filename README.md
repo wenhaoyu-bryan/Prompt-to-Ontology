@@ -271,7 +271,7 @@ Quick Demo steps:
 | Relationship Data | ✅ Available | Upload CSV, JSON array or NDJSON with validation |
 | Review Queue | ✅ Available | Human-in-the-loop approve / reject / apply |
 | Object Explorer | ✅ Available | Browse and inspect runtime objects |
-| Graph Explorer | ✅ Available | Global and local graph views with D3 |
+| Graph Explorer | ✅ Available | Sigma graph exploration, relationship filters, focused neighborhoods, and sample-question evidence |
 | Rule Studio | ✅ Available | Rule definitions, coverage, simulation |
 | Analyst Agent | ✅ Available | Tool-calling agent with deterministic fallback |
 | Agent Trace and Evaluation | ✅ Available | Structured traces, 5-score evaluation |
@@ -301,7 +301,7 @@ To enable LLM-powered reasoning:
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18, Vite 6, Refine, Ant Design 6, React Router v6, i18next, D3.js v7, Playwright |
+| Frontend | React 18, Vite 6, Refine, Ant Design 6, React Router v6, i18next, Sigma.js, Graphology, React Flow, D3.js, Playwright |
 | Backend | FastAPI, Neo4j 5, NetworkX, YAML schema, 4-state rule engine, tool-calling agent with deterministic fallback |
 | Runtime | Docker Compose |
 
@@ -347,7 +347,7 @@ GitHub Actions runs backend unit/module checks, Neo4j integration checks, a fron
 
 Prompt-to-Ontology is a learning project with a runnable reference implementation. The included Pet Food demo makes the design choices and workflow inspectable.
 
-The repository includes backend checks and frontend smoke tests, but does not provide a production deployment, enterprise identity and access management, or validation across multiple business domains. Source mapping decisions are persisted as metadata; they do not prove that an imported value is queryable in Neo4j. Verified Questions read checked-in CSV/YAML sample files rather than the runtime Neo4j graph. A clearer schema/runtime graph view remains future work.
+The repository includes backend checks and frontend smoke tests, but does not provide a production deployment, enterprise identity and access management, or validation across multiple business domains. Source mapping decisions are persisted as metadata; they do not prove that an imported value is queryable in Neo4j. Verified Questions read checked-in CSV/YAML sample files rather than the runtime Neo4j graph. Graph Explorer can highlight matching runtime relationships for a sample answer, but that match does not establish that the answer was computed from Neo4j. A separate schema graph view remains future work.
 
 Ontology Manager edits are saved as local review drafts in `backend/.runtime/schema_drafts.json` (a persistent Docker volume when using Compose). They survive page refreshes and can be discarded from the detail drawer. Active ontology behavior continues to use the checked-in YAML until a reviewed code change updates it.
 
