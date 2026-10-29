@@ -1,8 +1,8 @@
 # Prompt-to-Ontology
 
-[![观看 96 秒产品演示：从数据构建到图谱证据追溯](media/demo-poster.png)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4)
+https://github.com/user-attachments/assets/97bf16a6-b8e2-4364-af25-73ef42201fea
 
-**[观看 1 分 36 秒产品演示](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4)** · [下载 MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4) · [English](README.md)
+**1:36 · 1080p · 产品录屏与配乐** · [下载 MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4) · [English](README.md)
 
 图谱探索 → 数据映射 → 人工审核 → 问答证据追溯。实际产品录屏，配乐与英文画面提示。
 
