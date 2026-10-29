@@ -1,5 +1,11 @@
 # Prompt-to-Ontology
 
+[![观看 96 秒产品演示：从数据构建到图谱证据追溯](media/demo-poster.png)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4)
+
+**[观看 1 分 36 秒产品演示](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4)** · [下载 MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4) · [English](README.md)
+
+图谱探索 → 数据映射 → 人工审核 → 问答证据追溯。实际产品录屏，配乐与英文画面提示。
+
 [![CI](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml)
 
 **[English](README.md) | 中文**
@@ -9,8 +15,6 @@
 > 用一个可运行的 Pet Food 参考实现，研究如何从问题与原始数据出发，构建可检查、可追溯、可审核的业务本体。
 
 **项目状态：学习项目 · 可运行参考实现 · 单一 Pet Food 样例**
-
-![Dashboard](media/dashboard.png)
 
 ## 项目定位
 
@@ -47,6 +51,13 @@ flowchart LR
 ```
 
 ## 产品体验图解
+
+<details>
+<summary>查看运行概览 Dashboard</summary>
+
+![Dashboard](media/dashboard.png)
+
+</details>
 
 以下截图来自当前 Pet Food 本地演示会话，沿着来源检查、候选审核、图谱探索与证据追溯展开。截图和视频统一使用深色界面，点击图片可查看原图。
 
@@ -113,13 +124,9 @@ Sigma.js 与 Graphology 图谱支持按名称或 ID 搜索、选择对象、切�
 
 本轮使用无需 LLM 密钥的 **Deterministic Fallback** 模式，通过 `find_products_by_ingredient` 工具列出含鸡肉的产品，并展示工具名称。修改建议仍需进入 Review Queue；Trace 的启发式分数不等于答案正确率。
 
-## 演示视频
+## 演示说明
 
-[![深色 Pet Food 核心流程演示](media/demo-poster.png)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/pet-food-dark-demo.mp4)
-
-**3:30 · 全程深色界面 · 英文讲解与字幕。** [下载 MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/pet-food-dark-demo.mp4) · [英文字幕 SRT](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/pet-food-dark-demo.en.srt)
-
-视频实录了来源画像与映射、构建计划、单个产品的审核与应用、本体契约、图谱探索、Q03 证据路径与来源记录、规则覆盖及确定性 Agent 查询。起点是已经载入样例的图谱；应用一个审核项不代表整批计划已经应用。英文讲解使用系统合成语音，MP4 内含章节标记和英文字幕轨。
+视频使用已载入样例数据的图谱，演示单个产品的审核与应用。Q03 答案读取仓库内的样例文件，再单独检查运行时关系；Agent 查询使用无需 LLM 密钥的确定性演示模式。[录制说明、章节与配乐署名](media/README.md)。
 
 ## 已实现与边界
 

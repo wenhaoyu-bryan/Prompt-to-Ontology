@@ -17,26 +17,29 @@ The PNGs are actual viewport captures, at 1600 × 1000 CSS pixels except the 160
 | `verified-questions.png` | Q03 answer, React Flow path, and cited source records |
 | `graph-evidence.png` | PF001 neighborhood and matching CONTAINS relationship |
 | `analyst-agent.png` | Deterministic answer to “Which products contain chicken?” |
-| `demo-poster.png` | Title card extracted from the current demo video |
+| `demo-poster.png` | Editorial demo cover using a real Graph Explorer frame |
 
 ## Current demo
 
-[MP4 (3:30)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/pet-food-dark-demo.mp4) · [English SRT](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/pet-food-dark-demo.en.srt)
+[Product highlights — 1:36, 1080p](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4)
 
-The MP4 contains 1280 × 800 H.264 video, AAC narration, English subtitles, and chapter metadata. The narration is a synthetic system voice. It uses no music. Only the completed UI scenes are retained; idle command waits are removed. The large video and subtitle download live as GitHub Release assets, rather than in Git history.
+The current edit opens on Graph Explorer and cuts between source profiling, field mapping, build plans, review, schema inspection, Q03 evidence, rule states, and an ontology-tool query. It removes the long chapter cards, waiting, repeated navigation, and synthetic narration from the earlier tour. Short English editorial captions sit beside the full captured application viewport; no application data is invented. The MP4 has H.264 video, AAC music, and chapter metadata. Text is part of the picture, so it does not need a separate subtitle file.
 
 | Start | Chapter |
 | --- | --- |
-| 0:02 | Prompt-to-Ontology |
-| 0:20 | Profile and map a source |
-| 0:39 | Prepare a build plan |
-| 1:01 | Review before applying |
-| 1:25 | Inspect the ontology contract |
-| 1:46 | Explore the graph |
-| 2:11 | Trace an answer to its source |
-| 2:36 | Inspect executable rules |
-| 2:57 | Ask through ontology tools |
-| 3:15 | Explore the reference |
+| 0:00 | Explore the graph |
+| 0:08 | Profile and map |
+| 0:32 | Review before applying |
+| 0:48 | Inspect the ontology contract |
+| 0:55 | Follow an answer to its source |
+| 1:17 | Ask through ontology tools |
+| 1:32 | Explore the code |
+
+### Music credit
+
+“[Inspired](https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1600022)” — Kevin MacLeod ([incompetech.com](https://incompetech.com/)). Licensed under [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+The track was trimmed to a 96-second excerpt, faded in and out, and loudness-normalized. This credit also appears in the video end card and publishing description. The third-party music retains its CC BY 4.0 license; the repository's MIT license does not replace it. The large MP4 is hosted as a release asset, outside Git history.
 
 ## Refresh the captures
 
@@ -47,6 +50,6 @@ The MP4 contains 1280 × 800 H.264 video, AAC narration, English subtitles, and 
 5. Capture Graph Explorer's simplified overview, then exercise all links, object search, and object properties.
 6. Run Q03 in Verified Questions. Capture the answer, evidence path, and source table. Use Explore in graph, capture PF001's neighborhood, and inspect a cited source record.
 7. Inspect the four rule evaluation states. Ask the Analyst Agent “Which products contain chicken?” in deterministic fallback mode and capture the answer and tool name.
-8. Verify dark mode in each scene, inspect the full encoded video for decoding errors, check narration/caption timing, and confirm that every published asset can be downloaded. Update both README files, screenshots, poster, and these chapter times together.
+8. Verify dark mode in each scene, inspect the full encoded video for decoding errors, check caption timing, pacing, music level, and attribution, and confirm that every published asset can be downloaded. Update both README files, screenshots, poster, and these chapter times together.
 
 Q03 reads checked-in CSV files. Graph Explorer separately checks for matching runtime relationships. Schema drafts do not change checked-in definitions or graph data. The video demonstrates those boundaries rather than claiming production readiness or free-form Agent accuracy.
