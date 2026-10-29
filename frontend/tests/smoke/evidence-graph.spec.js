@@ -22,9 +22,14 @@ test('sample answer links to a verified runtime relationship and its source', as
   await expect(page.getByTestId('sigma-graph').locator('canvas').first()).toBeVisible();
   await expect(page.getByTestId('graph-evidence-panel')).toContainText('Relationship found in runtime graph');
   await expect(page.getByTestId('graph-evidence-panel')).toContainText('Answer from sample files');
+  await expect(page.getByTestId('graph-evidence-panel')).toContainText('WhiskerPro Adult Chicken Formula');
+  await page.getByRole('button', { name: 'View all properties' }).click();
+  await expect(page.getByRole('dialog', { name: 'Object details' })).toContainText('PF001');
+  await page.getByRole('dialog', { name: 'Object details' }).getByRole('button', { name: 'Close' }).click();
   await page.getByTestId('graph-evidence-panel').getByRole('button', { name: /product_ingredients.csv/ }).click();
   await expect(page.getByRole('dialog', { name: 'Source record' })).toContainText('PF001:ING001');
   await page.getByRole('dialog', { name: 'Source record' }).getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Relationships' }).click();
   await page.getByLabel('CONTAINS').uncheck();
   await expect(page.getByTestId('graph-evidence-panel')).toContainText('hidden by the current filter');
   expect(errors.filter(error => !error.includes('ResizeObserver'))).toEqual([]);
@@ -49,4 +54,19 @@ test('a sample relation missing from the runtime graph is reported as missing', 
   await expect(page.getByTestId('graph-evidence-panel')).toContainText('The full path is not present in the runtime graph');
   await expect(page.getByTestId('graph-evidence-panel')).not.toContainText('Relationship found in runtime graph');
   await page.unrouteAll({ behavior: 'wait' });
+});
+
+test('overview explains the reduced relationships and can show them all', async ({ page, request }) => {
+  const graph = await (await request.get('/api/graph')).json();
+  await page.goto('/graph');
+  await expect(page.getByText(/Simplified overview/)).toBeVisible();
+  await page.getByRole('button', { name: 'Show all links' }).click();
+  await expect(page.getByRole('button', { name: 'Simplify links' })).toBeVisible();
+  await expect(page.locator('.graph-heading')).toContainText(`${graph.links.length} relationships`);
+  await page.getByRole('button', { name: 'Simplify links' }).click();
+  await expect(page.getByText(/Simplified overview/)).toBeVisible();
+  await page.getByRole('combobox', { name: 'Find an object' }).fill('PF001');
+  await page.locator('.ant-select-item-option').filter({ hasText: 'PF001' }).first().click();
+  await expect(page.getByTestId('graph-evidence-panel')).toContainText('WhiskerPro Adult Chicken Formula');
+  await expect(page.locator('.graph-heading')).toContainText('Focus:');
 });

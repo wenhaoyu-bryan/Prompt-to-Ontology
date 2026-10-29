@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Descriptions, Drawer, Empty, Select, Space, Spin, Tag, Typography, theme } from 'antd';
-import { ApartmentOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { Alert, Button, Checkbox, Descriptions, Drawer, Empty, Popover, Select, Space, Spin, Tag, Typography, theme } from 'antd';
+import { ApartmentOutlined, FilterOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../providers/dataProvider';
@@ -30,6 +30,7 @@ export default function GraphPage() {
   const [selectedEdgeId, setSelectedEdgeId] = useState(null);
   const [mode, setMode] = useState('global');
   const [depth, setDepth] = useState(1);
+  const [showAllRelations, setShowAllRelations] = useState(false);
   const [enabledTypes, setEnabledTypes] = useState(null);
   const [drawer, setDrawer] = useState(null);
 
@@ -66,8 +67,16 @@ export default function GraphPage() {
   }, [answer, graph.links]);
   const highlighted = useMemo(() => match.edges.map(edge => edge.id), [match.edges]);
   const filteredLinks = useMemo(() => graph.links.filter(edge => !enabledTypes || enabledTypes.includes(edge.linkType)), [graph.links, enabledTypes]);
+  const overviewLinks = useMemo(() => {
+    const seen = new Set();
+    return [...filteredLinks].sort((a, b) => `${a.source}:${a.linkType}:${a.target}:${a.id}`.localeCompare(`${b.source}:${b.linkType}:${b.target}:${b.id}`)).filter(edge => {
+      const key = JSON.stringify([edge.source, edge.linkType]);
+      if (seen.has(key)) return false;
+      seen.add(key); return true;
+    });
+  }, [filteredLinks]);
   const displayed = useMemo(() => {
-    if (mode === 'global' || !selectedId) return { nodes: graph.nodes, links: filteredLinks };
+    if (mode === 'global' || !selectedId) return { nodes: graph.nodes, links: showAllRelations ? filteredLinks : overviewLinks };
     const ids = new Set([selectedId]); let frontier = new Set([selectedId]);
     for (let i = 0; i < depth; i += 1) {
       const next = new Set();
@@ -78,67 +87,83 @@ export default function GraphPage() {
       next.forEach(id => ids.add(id)); frontier = next;
     }
     return { nodes: graph.nodes.filter(node => ids.has(node.id)), links: filteredLinks.filter(edge => ids.has(edge.source) && ids.has(edge.target)) };
-  }, [mode, selectedId, depth, graph.nodes, filteredLinks]);
+  }, [mode, selectedId, depth, graph.nodes, filteredLinks, overviewLinks, showAllRelations]);
   const selectedNode = graph.nodes.find(node => node.id === selectedId);
   const selectedEdge = graph.links.find(edge => edge.id === selectedEdgeId);
   const visibleMatches = match.edges.filter(edge => displayed.links.some(item => item.id === edge.id));
-  const selectNode = useCallback(id => { setSelectedId(id); setSelectedEdgeId(null); setMode('local'); setDrawer({ kind: 'node', id }); }, []);
-  const selectEdge = useCallback(id => { setSelectedEdgeId(id); setDrawer({ kind: 'edge', id }); }, []);
+  const selectNode = useCallback((id, focus = false) => { setSelectedId(id); setSelectedEdgeId(null); if (focus) setMode('local'); }, []);
+  const selectEdge = useCallback(id => { setSelectedEdgeId(id); }, []);
   const drawerNode = drawer?.kind === 'node' ? graph.nodes.find(node => node.id === drawer.id) : null;
   const drawerEdge = drawer?.kind === 'edge' ? graph.links.find(edge => edge.id === drawer.id) : null;
   const drawerEvidence = drawer?.kind === 'evidence' ? drawer.evidence : null;
 
-  return <div className="graph-workspace" style={{ '--graph-surface': token.colorBgContainer, '--graph-bg': token.colorBgLayout, '--graph-border': token.colorBorderSecondary, '--graph-muted': token.colorTextSecondary }}>
+  const showInspector = !!(questionId || selectedNode || selectedEdge);
+  const related = selectedNode ? graph.links.filter(edge => edge.source === selectedNode.id || edge.target === selectedNode.id) : [];
+  const summaryFields = selectedNode ? Object.entries(selectedNode).filter(([key]) =>
+    !['id', 'label', 'type', 'objectType', 'color', 'size', 'alert', 'dataset', 'product_name', 'ingredient_name'].includes(key)).slice(0, questionId ? 2 : 4) : [];
+
+  return <div className="graph-workspace" style={{ '--graph-surface': token.colorBgContainer, '--graph-bg': token.colorBgLayout, '--graph-border': token.colorBorderSecondary, '--graph-muted': token.colorTextSecondary, '--graph-text': token.colorText, '--graph-accent': token.colorPrimary }}>
     <header className="graph-heading">
-      <div><Title level={3} style={{ margin: 0 }}><ApartmentOutlined /> {zh ? '图谱探索' : 'Graph Explorer'}</Title>
-        <Text type="secondary">{zh ? '从对象出发，探索关系与证据。' : 'Explore objects, relationships, and their evidence.'}</Text></div>
-      <Button icon={<ReloadOutlined />} onClick={load}>{zh ? '刷新' : 'Refresh'}</Button>
+      <div><Title level={4} style={{ margin: 0 }}><ApartmentOutlined /> {zh ? '图谱探索' : 'Graph Explorer'}</Title>
+        <Text type="secondary">{displayed.nodes.length} {zh ? '个对象' : 'objects'} · {mode === 'global' && displayed.links.length !== filteredLinks.length ? `${displayed.links.length} / ${filteredLinks.length}` : displayed.links.length} {zh ? '条关系' : 'relationships'}{mode === 'local' && selectedNode ? ` · ${zh ? '聚焦' : 'Focus'}: ${selectedNode.label || selectedNode.id}` : ''}</Text></div>
+      <Tag>{zh ? '运行时图谱' : 'Runtime graph'}</Tag>
     </header>
-    <div className="graph-content">
-      <aside className="graph-controls graph-panel">
-        <Text strong>{zh ? '探索图谱' : 'Explore graph'}</Text>
-        <label className="graph-field"><span>{zh ? '查找对象' : 'Find an object'}</span>
-          <Select showSearch allowClear suffixIcon={<SearchOutlined />} placeholder={zh ? '搜索名称或 ID' : 'Search by name or ID'} value={selectedId || undefined}
-            optionFilterProp="label" onChange={value => value ? selectNode(value) : (setSelectedId(null), setMode('global'))}
-            options={graph.nodes.map(node => ({ value: node.id, label: `${node.label || node.id} · ${node.id}` }))} />
-        </label>
-        <div className="graph-field"><span>{zh ? '视图' : 'View'}</span>
-          <Space.Compact block><Button type={mode === 'global' ? 'primary' : 'default'} onClick={() => setMode('global')} style={{ width: '50%' }}>{zh ? '全图' : 'Overview'}</Button>
-            <Button type={mode === 'local' ? 'primary' : 'default'} disabled={!selectedId} onClick={() => setMode('local')} style={{ width: '50%' }}>{zh ? '局部' : 'Focus'}</Button></Space.Compact>
-        </div>
-        {mode === 'local' && <label className="graph-field"><span>{zh ? '邻域范围' : 'Neighborhood'}</span><Select value={depth} onChange={setDepth} options={[{ value: 1, label: zh ? '一跳' : '1 hop' }, { value: 2, label: zh ? '两跳' : '2 hops' }]} /></label>}
-        <div className="graph-field"><span>{zh ? '关系类型' : 'Relationships'}</span>
-          <Checkbox.Group value={enabledTypes || relationTypes} onChange={setEnabledTypes} className="graph-checkboxes" options={relationTypes.map(value => ({ value, label: value }))} />
-        </div>
-        <div className="graph-field"><span>{zh ? '对象类型' : 'Object types'}</span>
-          {types.map(type => <div className="graph-legend" key={type}><i style={{ background: typeColor(type) }} />{type}</div>)}
-        </div>
-      </aside>
-      <section className="graph-main graph-panel">
-        <div className="graph-canvas-heading"><div><Text strong>{mode === 'local' && selectedNode ? (selectedNode.label || selectedNode.id) : (zh ? '实例图谱' : 'Instance graph')}</Text>
-          <div><Text type="secondary">{displayed.nodes.length} {zh ? '个对象' : 'objects'} · {displayed.links.length} {zh ? '条关系' : 'relationships'}</Text></div></div>
-          <Tag>{zh ? '运行时图谱' : 'Runtime graph'}</Tag></div>
-        <div className="graph-canvas" style={{ background: token.colorBgLayout }}>
-          {loading ? <div className="graph-centered"><Spin /></div> : error ? <div className="graph-centered"><Alert type="error" showIcon title={error} action={<Button onClick={load}>{zh ? '重试' : 'Retry'}</Button>} /></div> : !displayed.nodes.length ? <div className="graph-centered"><Empty description={zh ? '暂无图谱数据' : 'No graph data'} /></div> :
-            <SigmaGraph data={displayed} selectedId={selectedId} highlightedEdges={highlighted} onNodeSelect={selectNode} onEdgeSelect={selectEdge} zh={zh} />}
-        </div>
-        <div className="graph-canvas-footer">{zh ? '点击对象查看详情 · 选择关系类型过滤画布' : 'Select an object for details · Filter relationships to focus the canvas'}</div>
+    <div className="graph-toolbar">
+      <Select className="graph-search" showSearch allowClear suffixIcon={<SearchOutlined />} aria-label={zh ? '查找对象' : 'Find an object'} placeholder={zh ? '搜索对象名称或 ID' : 'Search objects by name or ID'} value={selectedId || undefined}
+        optionFilterProp="label" onChange={value => value ? selectNode(value, true) : (setSelectedId(null), setMode('global'))}
+        options={graph.nodes.map(node => ({ value: node.id, label: `${node.label || node.id} · ${node.id}` }))} />
+      <Space.Compact className="graph-view-switch"><Button type={mode === 'global' ? 'primary' : 'default'} onClick={() => setMode('global')}>{zh ? '全图' : 'Overview'}</Button>
+        <Button type={mode === 'local' ? 'primary' : 'default'} disabled={!selectedId} onClick={() => setMode('local')}>{zh ? '聚焦分析' : 'Focus'}</Button></Space.Compact>
+      {mode === 'local' && <Select aria-label={zh ? '邻域范围' : 'Neighborhood'} className="graph-depth" value={depth} onChange={setDepth} options={[{ value: 1, label: zh ? '一跳' : '1 hop' }, { value: 2, label: zh ? '两跳' : '2 hops' }]} />}
+      {mode === 'global' && overviewLinks.length < filteredLinks.length && <Button onClick={() => setShowAllRelations(!showAllRelations)}>{showAllRelations ? (zh ? '精简关系' : 'Simplify links') : (zh ? '显示全部关系' : 'Show all links')}</Button>}
+      <Popover trigger="click" placement="bottomRight" title={zh ? '关系类型' : 'Relationships'} content={<Checkbox.Group value={enabledTypes || relationTypes} onChange={setEnabledTypes} className="graph-checkboxes" options={relationTypes.map(value => ({ value, label: value }))} />}>
+        <Button icon={<FilterOutlined />}>{zh ? '关系筛选' : 'Relationships'}</Button>
+      </Popover>
+      <Button icon={<ReloadOutlined />} onClick={load}>{zh ? '刷新' : 'Refresh'}</Button>
+    </div>
+    <div className="graph-legend-row"><span className="graph-legend-label">{zh ? '对象类型' : 'Object types'}</span>
+      {types.map(type => <span className="graph-legend" key={type}><i style={{ background: typeColor(type) }} />{type}</span>)}
+    </div>
+    <div className={`graph-stage${showInspector ? ' graph-stage-with-inspector' : ''}`}>
+      <section className="graph-canvas" aria-label={zh ? '图谱画布' : 'Graph canvas'}>
+        {loading ? <div className="graph-centered"><Spin /></div> : error ? <div className="graph-centered"><Alert type="error" showIcon title={error} action={<Button onClick={load}>{zh ? '重试' : 'Retry'}</Button>} /></div> : !displayed.nodes.length ? <div className="graph-centered"><Empty description={zh ? '暂无图谱数据' : 'No graph data'} /></div> :
+          <SigmaGraph data={displayed} mode={mode} selectedId={selectedId} highlightedEdges={highlighted} onNodeSelect={selectNode} onEdgeSelect={selectEdge} zh={zh} />}
+        <div className="graph-canvas-caption">{mode === 'local' && selectedNode ? (zh ? '选择节点探索邻域' : 'Select a node to explore its neighborhood') : !showAllRelations && overviewLinks.length < filteredLinks.length ? (zh ? '精简概览 · 每个对象按关系类型展示一条真实关系' : 'Simplified overview · One real relationship per object and type') : (zh ? '选择对象以查看关系' : 'Select an object to inspect its relationships')}</div>
       </section>
-      <aside className="graph-evidence graph-panel" data-testid="graph-evidence-panel">
-        <Text strong>{questionId ? (zh ? '问题证据' : 'Question evidence') : (zh ? '探索提示' : 'Explore with context')}</Text>
-        {!questionId && <p className="graph-copy">{zh ? '搜索对象或点击节点，查看它的属性和相邻关系。也可以从可核对问答打开证据路径。' : 'Search for or select an object to inspect its properties and neighbors. Open a verified question to trace its evidence.'}</p>}
+      {showInspector && <aside className="graph-inspector" data-testid="graph-evidence-panel">
+        {selectedEdge ? <>
+          <div className="graph-inspector-kicker">{zh ? '关系' : 'RELATIONSHIP'}</div>
+          <Title level={5}>{selectedEdge.linkType}</Title>
+          <Text type="secondary">{selectedEdge.source} → {selectedEdge.target}</Text>
+          <Button className="graph-detail-button" onClick={() => setDrawer({ kind: 'edge', id: selectedEdge.id })}>{zh ? '查看关系详情' : 'View relationship details'}</Button>
+        </> : selectedNode && <>
+          <div className="graph-inspector-kicker"><i style={{ background: typeColor(selectedNode.objectType || selectedNode.type) }} />{selectedNode.objectType || selectedNode.type}</div>
+          <Title level={5} className="graph-inspector-title">{selectedNode.label || selectedNode.id}</Title>
+          <Text code className="graph-node-id">{selectedNode.id}</Text>
+          {summaryFields.length > 0 && <div className="graph-inspector-section"><div className="graph-section-title">{zh ? '对象属性' : 'Object details'}</div>
+            {summaryFields.map(([key, value]) => <div className="graph-property" key={key}><span>{key}</span><span>{typeof value === 'object' ? JSON.stringify(value) : String(value ?? '—')}</span></div>)}
+            <Button type="link" size="small" className="graph-inline-link" onClick={() => setDrawer({ kind: 'node', id: selectedNode.id })}>{zh ? '查看全部属性' : 'View all properties'}</Button>
+          </div>}
+          {!questionId && related.length > 0 && <div className="graph-inspector-section"><div className="graph-section-title">{zh ? '相关关系' : 'Related relationships'} <span>{related.length}</span></div>
+            {related.slice(0, 8).map(edge => { const id = edge.source === selectedNode.id ? edge.target : edge.source; const node = graph.nodes.find(item => item.id === id); return <button className="graph-related" type="button" key={edge.id} onClick={() => selectNode(id)}><span>{edge.linkType}</span><strong>{node?.label || id}</strong></button>; })}
+          </div>}
+        </>}
         {answerError && <Alert type="warning" showIcon title={answerError} />}
         {questionId && !answer && !answerError && <Spin size="small" />}
-        {answer && <Space orientation="vertical" size={12} style={{ width: '100%' }}>
-          <Space wrap><Tag color="blue">{answer.question_id}</Tag><Tag color={answer.status === 'unknown' ? 'orange' : 'green'}>{answer.status}</Tag></Space>
-          <Text>{answer.conclusion}</Text>
-          <Tag>{zh ? '答案来自样例文件' : 'Answer from sample files'}</Tag>
+        {answer && <div className="graph-inspector-section graph-answer">
+          <div className="graph-section-title">{zh ? '问题证据' : 'Question evidence'} <span>{answer.question_id}</span></div>
+          <Space wrap><Tag color={answer.status === 'unknown' ? 'orange' : 'green'}>{answer.status}</Tag><Tag>{zh ? '样例文件' : 'Answer from sample files'}</Tag></Space>
+          <p>{answer.conclusion}</p>
           {answer.unknown_reasons?.length > 0 && <Alert type="warning" showIcon title={zh ? '证据不足' : 'Insufficient evidence'} description={answer.unknown_reasons.join(', ')} />}
-          {match.steps.length > 0 && (loading ? <Spin size="small" /> : !error && <Alert type={match.missing.length ? 'warning' : 'success'} showIcon title={match.missing.length ? (zh ? '运行时图中未找到完整路径' : 'The full path is not present in the runtime graph') : (zh ? '已在运行时图中找到关系' : 'Relationship found in runtime graph')} description={visibleMatches.length < match.edges.length ? (zh ? '部分匹配关系被当前筛选或局部视图隐藏。答案仍来自样例文件。' : 'Some matching relationships are hidden by the current filter or focus. The answer still comes from sample files.') : (zh ? '图中高亮仅表示关系匹配；样例答案仍来自文件。' : 'Highlighting shows a matching relationship; the answer still comes from the sample files.')} />)}
+          {match.steps.length > 0 && (loading ? <Spin size="small" /> : !error && <div role="status" className={`graph-match ${match.missing.length ? 'is-missing' : 'is-found'}`}>
+            <strong>{match.missing.length ? (zh ? '运行时图中未找到完整路径' : 'The full path is not present in the runtime graph') : (zh ? '已在运行时图中找到关系' : 'Relationship found in runtime graph')}</strong>
+            <span>{visibleMatches.length < match.edges.length ? (zh ? '部分匹配关系被当前筛选或局部视图隐藏。答案仍来自样例文件。' : 'Some matching relationships are hidden by the current filter or focus. The answer still comes from sample files.') : (zh ? '图中高亮仅表示关系匹配；样例答案仍来自文件。' : 'Highlighting shows a matching relationship; the answer still comes from the sample files.')}</span>
+          </div>)}
           {answer.path?.length > 0 && <div className="graph-evidence-list">{answer.path.map((step, index) => <div key={`${step.source_id}-${step.relation}-${step.target_id}-${index}`}><Text code>{step.source_id}</Text><span> → {step.relation} → </span><Text code>{step.target_id}</Text></div>)}</div>}
-          {answer.evidence?.map(item => <Button key={item.evidence_id} block style={{ height: 'auto', textAlign: 'left', whiteSpace: 'normal' }} onClick={() => setDrawer({ kind: 'evidence', evidence: item })}><span>{item.source_path.split('/').pop()} · {item.field}</span></Button>)}
-        </Space>}
-      </aside>
+          <div className="graph-source-heading">{zh ? '来源记录' : 'Source records'}</div>
+          {answer.evidence?.map(item => <button className="graph-source" type="button" key={item.evidence_id} onClick={() => setDrawer({ kind: 'evidence', evidence: item })}><span>{item.source_path.split('/').pop()}</span><small>{item.field}</small></button>)}
+        </div>}
+      </aside>}
     </div>
     <Drawer title={drawerEvidence ? (zh ? '来源记录' : 'Source record') : drawerEdge ? (zh ? '关系详情' : 'Relationship details') : (zh ? '对象详情' : 'Object details')} open={!!drawer} onClose={() => setDrawer(null)} size={480}>
       {drawerNode && <><Title level={4}>{drawerNode.label || drawerNode.id}</Title><Space wrap><Tag color="blue">{drawerNode.objectType || drawerNode.type}</Tag><Text code>{drawerNode.id}</Text></Space>
