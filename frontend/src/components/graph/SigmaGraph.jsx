@@ -26,11 +26,13 @@ function isDarkColor(color) {
 export default function SigmaGraph({ data, mode, selectedId, highlightedEdges, onNodeSelect, onEdgeSelect, zh }) {
   const hostRef = useRef(null);
   const sigmaRef = useRef(null);
+  const selectedRef = useRef(selectedId);
   const callbacks = useRef({ onNodeSelect, onEdgeSelect });
   const [error, setError] = useState(false);
   const { token } = theme.useToken();
   const dark = isDarkColor(token.colorBgContainer);
   callbacks.current = { onNodeSelect, onEdgeSelect };
+  selectedRef.current = selectedId;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -85,11 +87,14 @@ export default function SigmaGraph({ data, mode, selectedId, highlightedEdges, o
     try {
       const drawLabel = (ctx, node) => {
         if (!node.label) return;
-        const limit = mode === 'global' ? 20 : 30;
+        if (host.clientWidth < 500 && selectedRef.current && !node.forceLabel) return;
+        const limit = host.clientWidth < 500 ? 16 : mode === 'global' ? 20 : 30;
         const text = node.label.length > limit ? `${node.label.slice(0, limit - 1)}…` : node.label;
         ctx.font = '500 11px system-ui, sans-serif';
         const width = ctx.measureText(text).width + 12;
-        const x = node.x + node.size + 6; const y = node.y - 9;
+        const right = node.x + node.size + 6;
+        const x = right + width > host.clientWidth - 8 ? Math.max(4, node.x - node.size - width - 6) : right;
+        const y = node.y - 9;
         ctx.fillStyle = dark ? 'rgba(10, 19, 31, 0.92)' : 'rgba(255, 255, 255, 0.92)';
         ctx.beginPath(); ctx.roundRect(x, y, width, 18, 5); ctx.fill();
         ctx.fillStyle = dark ? '#d8e4ef' : '#314659';
@@ -118,11 +123,18 @@ export default function SigmaGraph({ data, mode, selectedId, highlightedEdges, o
     const renderer = sigmaRef.current;
     if (!renderer) return;
     const emphasis = new Set(highlightedEdges || []);
+    const focusNodes = new Set();
+    emphasis.forEach(edge => {
+      if (renderer.getGraph().hasEdge(edge)) {
+        focusNodes.add(renderer.getGraph().source(edge));
+        focusNodes.add(renderer.getGraph().target(edge));
+      }
+    });
     renderer.setSetting('nodeReducer', (node, attrs) => ({ ...attrs,
       size: node === selectedId ? attrs.size * 1.7 : attrs.size,
       color: node === selectedId ? (dark ? '#efca81' : '#c18a3e') : attrs.color,
       borderColor: node === selectedId ? (dark ? '#8b6632' : '#f0d8b4') : attrs.borderColor,
-      forceLabel: node === selectedId,
+      forceLabel: node === selectedId || focusNodes.has(node),
     }));
     renderer.setSetting('edgeReducer', (edge, attrs) => ({ ...attrs,
       color: emphasis.has(edge) ? (dark ? '#89dce7' : '#247a9e') : attrs.color,
