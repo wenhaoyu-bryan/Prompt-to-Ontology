@@ -1,8 +1,8 @@
 # Prompt-to-Ontology
 
-[![Watch the 96-second product demo: from data to traceable graph evidence](media/demo-poster.png)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4)
+https://github.com/user-attachments/assets/97bf16a6-b8e2-4364-af25-73ef42201fea
 
-**[Watch the 96-second demo](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4)** · [Download MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4) · [中文](README.zh-CN.md)
+**1:36 · 1080p · Product demo with music** · [Download MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4) · [中文](README.zh-CN.md)
 
 Explore the graph. Map data. Review changes. Trace answers to evidence. Actual product footage with music and on-screen captions.
 

@@ -17,11 +17,13 @@ The PNGs are actual viewport captures, at 1600 × 1000 CSS pixels except the 160
 | `verified-questions.png` | Q03 answer, React Flow path, and cited source records |
 | `graph-evidence.png` | PF001 neighborhood and matching CONTAINS relationship |
 | `analyst-agent.png` | Deterministic answer to “Which products contain chicken?” |
-| `demo-poster.png` | Editorial demo cover using a real Graph Explorer frame |
+| `demo-poster.png` | Optional sharing cover using a real Graph Explorer frame |
 
 ## Current demo
 
-[Product highlights — 1:36, 1080p](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4)
+https://github.com/user-attachments/assets/97bf16a6-b8e2-4364-af25-73ef42201fea
+
+[Download product highlights — 1:36, 1080p](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4)
 
 The current edit opens on Graph Explorer and cuts between source profiling, field mapping, build plans, review, schema inspection, Q03 evidence, rule states, and an ontology-tool query. It removes the long chapter cards, waiting, repeated navigation, and synthetic narration from the earlier tour. Short English editorial captions sit beside the full captured application viewport; no application data is invented. The MP4 has H.264 video, AAC music, and chapter metadata. Text is part of the picture, so it does not need a separate subtitle file.
 
@@ -39,7 +41,7 @@ The current edit opens on Graph Explorer and cuts between source profiling, fiel
 
 “[Inspired](https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1600022)” — Kevin MacLeod ([incompetech.com](https://incompetech.com/)). Licensed under [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/).
 
-The track was trimmed to a 96-second excerpt, faded in and out, and loudness-normalized. This credit also appears in the video end card. The third-party music retains its CC BY 4.0 license; the repository's MIT license does not replace it. The large MP4 is hosted as a release asset, outside Git history.
+The track was trimmed to a 96-second excerpt, faded in and out, and loudness-normalized. This credit also appears in the video end card. The third-party music retains its CC BY 4.0 license; the repository's MIT license does not replace it. The MP4 is hosted as a GitHub video attachment for inline playback and as a Release asset for download, outside Git history.
 
 ## Refresh the captures
 
