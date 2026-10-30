@@ -20,7 +20,8 @@ import shutil
 import threading
 import uuid
 from datetime import datetime
-from data_pipeline.profiler import profile_rows, parse_structured_rows
+from data_pipeline.profiler import profile_rows
+from assisted_build.sources import parse_sources
 from data_pipeline.mapper import suggest_object_mappings
 from data_pipeline.models import ObjectMapping, LinkMapping
 from ontology_kernel import load_pet_food_schema
@@ -111,69 +112,7 @@ class AssistedBuildService:
                 raise ValueError("Goal must be at most 4000 characters")
             if not isinstance(files, list) or not 1 <= len(files) <= self.MAX_FILES:
                 raise ValueError("Upload 1 to 12 files")
-            sources = []
-            allrows = {}
-            total = 0
-            for n, f in enumerate(files):
-                content = f.get("content")
-                name = f.get("name", "source")
-                if (
-                    not isinstance(content, str)
-                    or not isinstance(name, str)
-                    or len(name) > 255
-                ):
-                    raise ValueError("Invalid source")
-                size = len(content.encode())
-                total += size
-                if size > self.MAX_BYTES or total > self.MAX_TOTAL_BYTES:
-                    raise ValueError("Upload size limit exceeded")
-                content = content.lstrip("\ufeff")
-                stripped = content.lstrip()
-                if stripped.startswith("["):
-                    fmt = "json"
-                    rows = parse_structured_rows(content, fmt)
-                elif stripped.startswith("{"):
-                    fmt = "ndjson"
-                    rows = parse_structured_rows(content, fmt)
-                else:
-                    fmt = "csv"
-                    reader = csv.DictReader(io.StringIO(content))
-                    fields = reader.fieldnames or []
-                    if (
-                        not fields
-                        or len(set(fields)) != len(fields)
-                        or any(not x for x in fields)
-                    ):
-                        raise ValueError("Unique non-empty CSV headers required")
-                    rows = []
-                    for row in reader:
-                        if None in row or any(v is None for v in row.values()):
-                            raise ValueError("CSV row width mismatch")
-                        rows.append(row)
-                        if len(rows) > self.MAX_ROWS:
-                            raise ValueError("Row limit exceeded")
-                if not rows or len(rows) > self.MAX_ROWS or len(rows[0]) > 100:
-                    raise ValueError("Expected 1 to 10000 rows and at most 100 columns")
-                if any(len(str(v)) > 10000 for row in rows for v in row.values()):
-                    raise ValueError("Cell limit exceeded")
-                sid = f"source-{n+1}"
-                profile = profile_rows(rows, sid)
-                sources.append(
-                    {
-                        "id": sid,
-                        "name": name,
-                        "format": fmt,
-                        "content_hash": hashlib.sha256(content.encode()).hexdigest(),
-                        "row_count": len(rows),
-                        "columns": [x.model_dump(mode="json") for x in profile.columns],
-                        "sample_rows": rows[:5],
-                        "object_mappings": [],
-                        "link_mappings": [],
-                        "excluded": False,
-                        "unit_confirmations": {},
-                    }
-                )
-                allrows[sid] = rows
+            sources, allrows = parse_sources(files)
             r = {
                 "id": "ab-" + uuid.uuid4().hex[:24],
                 "goal": goal,

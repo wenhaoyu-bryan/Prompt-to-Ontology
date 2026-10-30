@@ -309,6 +309,9 @@ export default function AssistedBuildWorkspace() {
           </Typography.Text>
         </div>
         <Space wrap>
+          <Button onClick={() => navigate("/pipeline?mode=schema")}>
+            {tr("Design new schema", "设计新本体")}
+          </Button>
           <Button onClick={() => navigate("/pipeline")}>
             {tr("Manual configuration", "手动配置")}
           </Button>

@@ -2,6 +2,21 @@
 
 Use **Data Pipeline → Build with assistant** to upload related source files together and prepare a reviewable import into the existing Pet Food definitions. The manual six-step workflow remains available.
 
+## Design new definitions
+
+Select **Design new schema** in the assisted workspace to propose objects, properties and relationships that the current ontology does not yet describe. The supplier and production-batch example demonstrates this flow without changing runtime data.
+
+1. Describe the concepts and questions to support, then upload related CSV, JSON or NDJSON files. Choose the configured model or the deterministic baseline.
+2. Inspect the definition map and open each definition in the right-hand drawer. Review its name, primary key, property types and units, relationship direction and cardinality, and the source columns that support it. Confirm or exclude every proposal. Changes return that definition to pending review.
+3. Validate the design and inspect the before/after definition differences. Missing or duplicate identities, invalid bindings, name collisions, excluded endpoints and unconfirmed definitions block saving. A reused definition must preserve the active definition; an extension can add properties while preserving existing fields.
+4. Explicitly save the reviewed draft. Download its complete JSON package or individual YAML, mapping and handoff files. Reopening a saved draft retains the exact reviewed revision. Editing invalidates the preview and export until it is validated and saved again.
+
+**A saved design is a draft, not an active ontology.** This flow writes neither checked-in YAML nor graph data. Exported `object_types.yaml` and `link_types.yaml` include the active definitions plus accepted additions. `source_mappings.json` retains candidate-to-column bindings; `schema-design.json` retains the design decisions and source profiles. Integrating this package into runtime schema readers, source mappings and import/query regression is a separate implementation step. Rules, actions and metrics are not generated in this version.
+
+The deterministic baseline proposes conservative string properties, unambiguous identity columns and generic reference relationships from matching keys. Those references do not establish business meaning or referential integrity. Numeric samples do not prove units; identity values must remain unique, nonblank strings, so leading zeroes are preserved. All proposals require human confirmation. Auto mode uses bounded source context and the existing provider configuration; invalid or unavailable model output explicitly falls back to the baseline.
+
+Design tasks are retained under ignored `backend/.runtime/assisted-build/schema_designs/` until deleted from **Design history**. The draft preview is tied to both a revision and the active schema fingerprint; stale previews cannot be saved or exported. Restarted analyses can be retried. This is the same local, single-process storage boundary as assisted imports.
+
 ## Build workflow
 
 1. Describe a concrete goal and add CSV, flat JSON arrays, or NDJSON files. Choose the configured model or the deterministic baseline.
@@ -29,6 +44,8 @@ If the model is unavailable or its proposal is invalid, the task records determi
 ## HTTP boundary
 
 `/api/assisted-build` exposes the schema/model status, a public sample-file allowlist, task listing and creation, mapping updates, preview, explicit review submission, runtime verification, interrupted-analysis retry, and task deletion. Creation returns HTTP 202 and performs mapping analysis in the background under a captured model configuration. Invalid inputs return HTTP 400/422; stale revision/schema/preview conflicts return HTTP 409; missing tasks return HTTP 404.
+
+`/api/assisted-build/schema-designs` exposes the separate definition-draft lifecycle: create/list/read, update definitions, preview, explicit save, export, retry and delete. There is no activation or graph-write endpoint. Model calls are not CI dependencies.
 
 ## Verification
 

@@ -25,6 +25,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import AssistedBuildWorkspace from '../components/build/AssistedBuildWorkspace';
+import SchemaDesignWorkspace from '../components/build/SchemaDesignWorkspace';
 import { api } from '../providers/dataProvider';
 
 const { Title, Text } = Typography;
@@ -64,7 +65,9 @@ function formatTime(ts) {
 
 export default function PipelinePage() {
   const [params, setParams] = useSearchParams();
-  return params.get('mode') === 'assisted'
+  return params.get('mode') === 'schema'
+    ? <SchemaDesignWorkspace />
+    : params.get('mode') === 'assisted'
     ? <AssistedBuildWorkspace />
     : <ManualPipelinePage onAssisted={() => setParams({ mode: 'assisted' })} />;
 }
