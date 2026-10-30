@@ -50,10 +50,8 @@ def submit_import_plan_to_review(plan_id: str) -> ReviewBatch:
     result = create_review_batch_from_import_plan(plan)
 
     # Persist batch and items
-    upsert_batch(result.batch)
-    all_items = load_items()
-    all_items.extend(result.items)
-    save_items(all_items)
+    from review_queue.storage import insert_bundle
+    insert_bundle(result.batch, result.items)
 
     return result.batch
 

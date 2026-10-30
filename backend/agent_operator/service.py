@@ -344,10 +344,8 @@ def submit_agent_suggestions_to_review(
     )
 
     # Persist batch and items
-    upsert_batch(batch)
-    all_items = load_items()
-    all_items.extend(items)
-    save_items(all_items)
+    from review_queue.storage import insert_bundle
+    insert_bundle(batch, items)
 
     suggestion_batch = AgentSuggestionBatch(
         id=batch.id,

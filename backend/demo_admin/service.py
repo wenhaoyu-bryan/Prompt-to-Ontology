@@ -168,9 +168,8 @@ class DemoAdminService:
 
     @staticmethod
     def _clear_review_queue():
-        from review_queue.storage import save_items, save_batches
-        save_items([])
-        save_batches([])
+        from review_queue.storage import clear_queue
+        clear_queue()
 
     def _clear_pipeline(self):
         if self.pipeline_service:

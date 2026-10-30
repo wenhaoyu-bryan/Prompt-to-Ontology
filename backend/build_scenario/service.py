@@ -161,10 +161,8 @@ class BuildScenarioService:
         result = create_review_batch_from_import_plan(import_plan)
 
         # Persist batch and items directly
-        upsert_batch(result.batch)
-        all_items = load_items()
-        all_items.extend(result.items)
-        save_items(all_items)
+        from review_queue.storage import insert_bundle
+        insert_bundle(result.batch, result.items)
 
         plan.submitted_to_review = True
         plan.review_batch_id = result.batch.id
