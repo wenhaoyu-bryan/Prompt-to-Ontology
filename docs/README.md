@@ -17,6 +17,7 @@
 |---|---|
 | [Architecture](ARCHITECTURE.md) | System architecture overview |
 | [Ontology Kernel](ontology-kernel.md) | Domain-agnostic runtime kernel |
+| [Assisted Build](assisted-build.md) | Multi-file mapping proposals, immutable previews, review submission and runtime verification |
 | [Data Pipeline](data-pipeline.md) | CSV profiling, mapping, import plans |
 | [Review Queue](review-queue-runtime.md) | Human-in-the-loop review workflow |
 | [Graph Snapshot & Diff](graph-snapshot-diff-rollback.md) | Graph governance: snapshot, diff, rollback |

@@ -35,6 +35,7 @@ docs/*
 !docs/review-queue-runtime.md
 !docs/agent-operator.md
 !docs/query-workbench.md
+!docs/assisted-build.md
 !docs/question-set-evaluation.md
 !docs/product-workflow.md
 !docs/release-notes.md
@@ -64,3 +65,7 @@ neo4j-logs/
 backend/.runtime/
 test-results/
 frontend/test-results/
+
+# Local browser inspection artifacts
+.playwright-cli/
+output/playwright/

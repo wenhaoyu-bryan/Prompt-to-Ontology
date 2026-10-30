@@ -23,7 +23,8 @@ import {
   CloudUploadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import AssistedBuildWorkspace from '../components/build/AssistedBuildWorkspace';
 import { api } from '../providers/dataProvider';
 
 const { Title, Text } = Typography;
@@ -62,6 +63,13 @@ function formatTime(ts) {
 }
 
 export default function PipelinePage() {
+  const [params, setParams] = useSearchParams();
+  return params.get('mode') === 'assisted'
+    ? <AssistedBuildWorkspace />
+    : <ManualPipelinePage onAssisted={() => setParams({ mode: 'assisted' })} />;
+}
+
+function ManualPipelinePage({ onAssisted }) {
   const { t, i18n } = useTranslation();
   const { token } = theme.useToken();
   const navigate = useNavigate();
@@ -572,6 +580,9 @@ export default function PipelinePage() {
           <Text type="secondary">{t('pipeline.subtitle')}</Text>
         </div>
         <Space wrap>
+          <Button type="primary" icon={<RocketOutlined />} onClick={onAssisted}>
+            {isZh ? '辅助构建' : 'Build with assistant'}
+          </Button>
           <Button icon={<HistoryOutlined />} onClick={() => { setHistoryOpen(true); loadRecentPlans(); }}>
             {t('pipeline.planHistory')}
           </Button>

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import threading
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -15,16 +16,34 @@ _RUNTIME_DIR = Path(__file__).resolve().parent.parent / ".runtime"
 _ITEMS_FILE = _RUNTIME_DIR / "review_items.json"
 _BATCHES_FILE = _RUNTIME_DIR / "review_batches.json"
 
-_lock = threading.Lock()
+_lock = threading.RLock()
 
 
 def _ensure_dir():
     _RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def _atomic_save(path: Path, records) -> None:
+    _ensure_dir()
+    fd, temp = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump([record.model_dump(mode="json") for record in records], f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temp, path)
+    finally:
+        if os.path.exists(temp):
+            os.unlink(temp)
+
+
 # ── Items ──────────────────────────────────────────────────────────────
 
 def load_items() -> list[ReviewItem]:
+    with _lock:
+        return _load_items_locked()
+
+def _load_items_locked() -> list[ReviewItem]:
     _ensure_dir()
     if not _ITEMS_FILE.exists():
         return []
@@ -39,8 +58,7 @@ def load_items() -> list[ReviewItem]:
 def save_items(items: list[ReviewItem]) -> None:
     _ensure_dir()
     with _lock:
-        with open(_ITEMS_FILE, "w", encoding="utf-8") as f:
-            json.dump([item.model_dump(mode="json") for item in items], f, ensure_ascii=False, indent=2)
+        _atomic_save(_ITEMS_FILE, items)
 
 
 def get_item(item_id: str) -> ReviewItem | None:
@@ -51,6 +69,10 @@ def get_item(item_id: str) -> ReviewItem | None:
 
 
 def upsert_item(item: ReviewItem) -> ReviewItem:
+    with _lock:
+        return _upsert_item_locked(item)
+
+def _upsert_item_locked(item):
     items = load_items()
     found = False
     for i, existing in enumerate(items):
@@ -67,6 +89,10 @@ def upsert_item(item: ReviewItem) -> ReviewItem:
 # ── Batches ────────────────────────────────────────────────────────────
 
 def load_batches() -> list[ReviewBatch]:
+    with _lock:
+        return _load_batches_locked()
+
+def _load_batches_locked() -> list[ReviewBatch]:
     _ensure_dir()
     if not _BATCHES_FILE.exists():
         return []
@@ -81,8 +107,7 @@ def load_batches() -> list[ReviewBatch]:
 def save_batches(batches: list[ReviewBatch]) -> None:
     _ensure_dir()
     with _lock:
-        with open(_BATCHES_FILE, "w", encoding="utf-8") as f:
-            json.dump([batch.model_dump(mode="json") for batch in batches], f, ensure_ascii=False, indent=2)
+        _atomic_save(_BATCHES_FILE, batches)
 
 
 def get_batch(batch_id: str) -> ReviewBatch | None:
@@ -93,6 +118,10 @@ def get_batch(batch_id: str) -> ReviewBatch | None:
 
 
 def upsert_batch(batch: ReviewBatch) -> ReviewBatch:
+    with _lock:
+        return _upsert_batch_locked(batch)
+
+def _upsert_batch_locked(batch):
     batches = load_batches()
     found = False
     for i, existing in enumerate(batches):
@@ -104,3 +133,23 @@ def upsert_batch(batch: ReviewBatch) -> ReviewBatch:
         batches.append(batch)
     save_batches(batches)
     return batch
+
+
+def insert_bundle(batch: ReviewBatch, items: list[ReviewItem]) -> None:
+    """Atomically read and append a bundle within this process; retries preserve decisions."""
+    with _lock:
+        existing_items = load_items()
+        known = {item.id for item in existing_items}
+        existing_items.extend(item for item in items if item.id not in known)
+        save_items(existing_items)
+        existing_batches = load_batches()
+        if not any(existing.id == batch.id for existing in existing_batches):
+            existing_batches.append(batch)
+            save_batches(existing_batches)
+
+
+def clear_queue() -> None:
+    """Clear both collections without interleaving another queue mutation."""
+    with _lock:
+        save_items([])
+        save_batches([])

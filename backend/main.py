@@ -2178,3 +2178,8 @@ def api_demo_health():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8765)
+
+
+# Multi-source assisted import: explicit previews and Review Queue submission.
+from assisted_build_api import router as assisted_build_router
+app.include_router(assisted_build_router)
