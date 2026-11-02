@@ -1,61 +1,91 @@
 # Product screenshots and demo
 
-Captured on **2026-10-29** from the local Pet Food demo for **v0.3.1**. The app defaults to dark mode; all nine README screenshots and every demo scene use that theme. Existing explicit light preferences remain available to users.
-
-## Screenshots
-
-The PNGs are actual viewport captures, at 1600 × 1000 CSS pixels except the 1600 × 1100 dashboard. Screenshots and video come from isolated runs of the same bundled scenario. The recording used a temporary demo stack so it did not reset the regular local environment. Screenshots do not include the video's chapter cards.
-
-| File | Captured state |
-| --- | --- |
-| `dashboard.png` | Seeded graph at the beginning of the demo, before review items are created |
-| `data-profile.png` | Data Pipeline step 2: product source column profiles |
-| `data-pipeline.png` | Step 3: source mapping suggestions and decision controls |
-| `review-queue.png` | Full-build candidates pending review, PF001 detail drawer |
-| `ontology-manager.png` | PetFoodProduct definition drawer with Edit draft |
-| `graph.png` | Simplified runtime overview with 46 objects and 56 of 116 relationships |
-| `verified-questions.png` | Q03 answer, React Flow path, and cited source records |
-| `graph-evidence.png` | PF001 neighborhood and matching CONTAINS relationship |
-| `analyst-agent.png` | Deterministic answer to “Which products contain chicken?” |
-| `demo-poster.png` | Optional sharing cover using a real Graph Explorer frame |
+Captured on **2026-11-02** from **v0.6.0** in the light theme. The video follows one small assisted import through review, application, verification, and an actual DeepSeek query about the imported data.
 
 ## Current demo
 
 https://github.com/user-attachments/assets/97bf16a6-b8e2-4364-af25-73ef42201fea
 
-[Download product highlights — 1:36, 1080p](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4)
+[Download product highlights — 1:43, 1080p](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.6.0/prompt-to-ontology-v0.6.0-demo.mp4)
 
-The current edit opens on Graph Explorer and cuts between source profiling, field mapping, build plans, review, schema inspection, Q03 evidence, rule states, and an ontology-tool query. It removes the long chapter cards, waiting, repeated navigation, and synthetic narration from the earlier tour. Short English editorial captions sit beside the full captured application viewport; no application data is invented. The MP4 has H.264 video, AAC music, and chapter metadata. Text is part of the picture, so it does not need a separate subtitle file.
+The 103.2-second MP4 uses H.264 video at 1920 × 1080, 30 fps, and AAC instrumental music. Short English captions sit above the actual application viewport. There is no synthetic narration. Navigation, idle time, and four repetitive approvals are cut; several real frames are held for readability. The opening graph is a result teaser. The goal/upload close-up is a second take using the same inputs, joined to the original successful model run. Application content and model outputs are not fabricated or replaced.
 
-| Start | Chapter |
+### What the recording demonstrates
+
+- The [three source files](recording-sample/) add **PF101** (Harbor Cat Chicken Recipe), **ING101** (chicken), **ING102** (brown rice), and two `CONTAINS` relationships to an already seeded Pet Food graph. This is an incremental import, not an empty-graph rebuild.
+- The assisted-build run calls DeepSeek against the existing ontology. Its proposal omitted the optional `ingredient_order` property; the recording shows the human mapping correction before confirmation.
+- All five candidates are approved through Review Queue and applied. The runtime verification returns `applied: true`, `graph_matched: true`, and `status: matched`, finding all three expected objects and both relationships.
+- The typed question is **“Which ingredients are in PF101? Show the supporting relationships.”** The recorded response reports `planner_llm_used: true` and `answer_llm_used: true`, provider `deepseek`, model `deepseek-flash`, and the actual tool `get_product_risk_explanation`.
+- The answer returns chicken and brown rice, with two supporting runtime relationships. The path view opens Graph Explorer, which independently reports a matching relationship. These returned relationships are not original file-row or document citations. The video makes no food-safety or general Agent-accuracy claim.
+
+The recording uses an isolated, disposable Docker stack, synthetic source files, and a privately configured backend key. It does not reset the regular acceptance environment or capture credentials. Raw recordings, runtime state, and full API responses remain outside Git history.
+
+| Start | Scene |
 | --- | --- |
 | 0:00 | Explore the graph |
-| 0:08 | Profile and map |
-| 0:32 | Review before applying |
-| 0:48 | Inspect the ontology contract |
-| 0:55 | Follow an answer to its source |
-| 1:17 | Ask through ontology tools |
-| 1:32 | Explore the code |
+| 0:05 | Describe the goal and upload sources |
+| 0:15 | DeepSeek mapping proposal |
+| 0:25 | Human relationship-mapping correction |
+| 0:32 | Preview candidate changes |
+| 0:38 | Submit for review |
+| 0:42 | Inspect and approve a candidate |
+| 0:52 | Apply the approved batch |
+| 0:58 | Verify against the runtime graph |
+| 1:02 | Ask the Analyst Agent about PF101 |
+| 1:11 | Inspect the answer, tool call, and model run |
+| 1:25 | Follow the returned relationship path |
+| 1:32 | Check the runtime relationship |
+| 1:38 | Explore the code and music credit |
 
 ### Music credit
 
 “[Inspired](https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1600022)” — Kevin MacLeod ([incompetech.com](https://incompetech.com/)). Licensed under [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/).
 
-The track was trimmed to a 96-second excerpt, faded in and out, and loudness-normalized. This credit also appears in the video end card. The third-party music retains its CC BY 4.0 license; the repository's MIT license does not replace it. The MP4 is hosted as a GitHub video attachment for inline playback and as a Release asset for download, outside Git history.
+The track is a 103.2-second excerpt with fades and loudness adjustment. This credit also appears in the end card. The third-party music retains its CC BY 4.0 license; the repository's MIT license does not replace it. The video binary is hosted as a GitHub video attachment and a Release asset, outside Git history.
+
+## Screenshots
+
+All screenshots are unretouched captures of the actual 1600 × 900 application viewport. The fixed reference test is separate from the live Agent query.
+
+| File | Captured state |
+| --- | --- |
+| `dashboard.png` | Seeded graph before the incremental import |
+| `build-sources.png` | Goal and three uploaded source files |
+| `data-profile.png` | Source field profiles in assisted build |
+| `data-pipeline.png` | Product source-to-ontology mappings |
+| `build-preview.png` | Three object candidates and two relationship candidates |
+| `build-verified.png` | Applied import matched against the runtime graph |
+| `review-queue.png` | Pending PF101 candidate in the detail drawer |
+| `ontology-manager.png` | PetFoodProduct definition drawer |
+| `graph.png` | Runtime graph overview after the incremental import |
+| `verified-questions.png` | Fixed Q03 reference answer and checked-in CSV evidence |
+| `graph-evidence.png` | PF101 neighborhood and matching runtime relationship |
+| `analyst-agent.png` | Actual DeepSeek answer about PF101's ingredients |
+| `query-tools.png` | Recorded query tool and arguments |
+| `query-model.png` | Run details, provider, and model |
+| `query-evidence.png` | React Flow path for the returned relationship |
+| `demo-poster.png` | Actual Graph Explorer frame for sharing |
 
 ## Refresh the captures
 
-1. Start an isolated Pet Food demo with seeded sample data. Sign in with `demo` / `demo`, use English and dark mode, and keep credentials and model configuration out of captures.
-2. Capture Dashboard before creating review items. In Data Pipeline, select `pet_food_products`, inspect Profile Data, then Map to Ontology. Capture after data and transitions settle. This source alone can report missing Brand primary keys; the full-build example is a separate multi-source path.
-3. Open Full build demo, create the four-source plan, inspect its validation summary, and submit it to Review Queue. Capture PF001's pending candidate drawer. For the video, approve and apply that one product, then show it in the Applied tab. Leave the remaining candidates pending. The graph was already seeded; this is not a clean full-graph rebuild.
-4. Capture the PetFoodProduct definition drawer. Inspect an Action contract without saving a draft or changing the active YAML.
-5. Capture Graph Explorer's simplified overview, then exercise all links, object search, and object properties.
-6. Run Q03 in Verified Questions. Capture the answer, evidence path, and source table. Use Explore in graph, capture PF001's neighborhood, and inspect a cited source record.
-7. Inspect the four rule evaluation states. Ask the Analyst Agent “Which products contain chicken?” in deterministic fallback mode and capture the answer and tool name.
-8. Verify dark mode in each scene, inspect the full encoded video for decoding errors, check caption timing, pacing, music level, and attribution, and confirm that every published asset can be downloaded. Update both README files, screenshots, poster, and these chapter times together.
+1. Start an isolated stack from the version being demonstrated. Use English, the light theme, and a 1600 × 900 viewport. Configure the backend privately and keep keys and model configuration forms out of captures.
+2. Capture Dashboard before importing. Upload the three files in `recording-sample/` and enter the build goal: “Connect this cat food to its ingredients, then help me inspect the recipe.” Inspect the actual model proposal; resolve missing or ambiguous mappings rather than hiding them.
+3. Confirm mappings and inspect the preview. Submit the plan to Review Queue, inspect each candidate, approve the five changes, and apply the batch. Verify that the expected objects and relationships match Neo4j. Preserve the distinction between submission, approval, application, and graph verification.
+4. Ask the PF101 question above through the Analyst Agent. Confirm the response's planner/answer model flags, inspect the recorded tool and returned relationships, and open the path in Graph Explorer. A fallback run must be labeled as a fallback, not as a live model result.
+5. Separately capture the PetFoodProduct definition drawer and Q03 reference test. Wait for the Q03 answer to include `ING001 is first`; its checked-in CSV evidence is separate from the runtime Agent evidence.
+6. Edit the real captures into a video shorter than two minutes. Use brief captions and restrained music; remove idle time and redundant actions. Check every cut for leftover recording overlays, errors, stale UI, and secrets. Decode the complete final file, inspect its frames and audio level, and check duration, codecs, dimensions, and size.
+7. Refresh both READMEs, the screenshots, poster, capture metadata, and chapter times together. Verify public playback and download after publishing.
 
 ### Publish the inline player
 
-Upload the finished MP4 as a GitHub video attachment, for example with GitHub CLI's `gh pr create --attach /absolute/path/to/demo.mp4` alongside the normal PR title and body. Copy the generated `https://github.com/user-attachments/assets/...` URL into a standalone paragraph immediately below the title in both README files. GitHub renders that attachment as a video player. Keep the Release MP4 link as a download fallback, and keep the video binary outside Git history.
+Use a GitHub CLI version that supports native attachments (`gh pr create --help` must list `--attach`; this refresh used **2.103.3**). Upload the finished MP4 with a normal PR body, for example:
 
-Q03 reads checked-in CSV files. Graph Explorer separately checks for matching runtime relationships. Schema drafts do not change checked-in definitions or graph data. The video demonstrates those boundaries rather than claiming production readiness or free-form Agent accuracy.
+```bash
+gh pr create --title 'docs: refresh product demo' \
+  --body-file /tmp/demo-pr.md \
+  --attach /absolute/path/to/prompt-to-ontology-v0.6.0-demo.mp4
+```
+
+Copy the returned `https://github.com/user-attachments/assets/...` URL into a standalone paragraph immediately below the title in both READMEs. GitHub renders a native video player. Keep a Release asset as the MP4 download fallback; append an asset only when the existing release permits it, and never move an existing release tag to publish media. If an attachment command reports a partial failure, inspect the PR before retrying so it is not duplicated.
+
+This is a documentation/media change with release impact **None**. It does not require a new product version. CI and branch protection still apply to the PR.

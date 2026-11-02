@@ -4,7 +4,7 @@
 
 https://github.com/user-attachments/assets/97bf16a6-b8e2-4364-af25-73ef42201fea
 
-**96 秒产品演示** · [下载 MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4) · [English](README.md)
+**103 秒产品演示 · v0.6.0 · 浅色主题 · DeepSeek** · [下载 MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.6.0/prompt-to-ontology-v0.6.0-demo.mp4) · [English](README.md)
 
 [![CI](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
@@ -73,6 +73,10 @@ docker compose up --build
 
 ![已载入 Pet Food 样例的 Dashboard](media/dashboard.png)
 
+### 辅助构建
+
+![描述构建目标并上传三个来源文件](media/build-sources.png)
+
 ### 来源映射
 
 ![来源字段类型、空值与样例记录](media/data-profile.png)
@@ -85,7 +89,7 @@ docker compose up --build
 
 ![Review Queue 中的候选产品与属性](media/review-queue.png)
 
-批准前检查候选。视频在已载入样例的图谱中应用一个审核后的产品，并非从空白状态重建全部图谱。
+批准前检查候选。视频在已载入样例的图谱中添加 PF101、两个原料和两条 `CONTAINS` 关系。五项变更均经过审核和应用，并非从空白状态重建全部图谱。
 
 ![PetFoodProduct 定义与 Schema 草稿操作](media/ontology-manager.png)
 
@@ -103,17 +107,17 @@ Ontology Manager 展示定义与本地编辑草稿，不改变生效的 YAML。
 
 固定问题 Q03 从仓库内样例文件读取答案，Graph Explorer 单独核对运行时图谱中是否存在对应关系。
 
-![PF001 邻域中的匹配关系与来源证据](media/graph-evidence.png)
+![Agent 查询返回的 PF101 邻域及运行时匹配关系](media/graph-evidence.png)
 
 ### Analyst Agent
 
-![通过确定性工具查询含鸡肉的产品](media/analyst-agent.png)
+![DeepSeek 实时回答刚导入的 PF101 包含哪些原料](media/analyst-agent.png)
 
-视频展示确定性回退模式下的答案与工具名称。
+视频中的构建建议、查询规划和答案总结均调用 DeepSeek，展示实际工具记录，并在运行时图谱核对返回的关系。
 
 </details>
 
-视频和截图保留了较早版本的参考界面。当前应用采用默认浅色工作区，提供辅助构建、Schema 草稿设计和统一模型配置。最新流程参见[辅助构建](docs/assisted-build.md)、[问答工作台](docs/query-workbench.md)和[评测与反馈](docs/question-set-evaluation.md)。
+视频和截图已更新为 v0.6.0 的浅色界面。视频展示辅助导入、人工审核、运行时验证，以及使用模型查询刚导入的产品。相关流程参见[辅助构建](docs/assisted-build.md)、[问答工作台](docs/query-workbench.md)和[评测与反馈](docs/question-set-evaluation.md)。
 
 [完整产品流程](docs/product-workflow.md) · [录制说明与其他截图](media/README.md)
 
@@ -122,7 +126,7 @@ Ontology Manager 展示定义与本地编辑草稿，不改变生效的 YAML。
 本仓库用于学习与验证设计，尚未证明生产就绪、企业级身份与权限管理能力，或跨业务领域的适用性。
 
 - **参考答案与 Agent 查询使用不同依据。** 参考样例读取仓库内的 CSV/YAML，图谱高亮核对运行时关系。Agent 查询调用运行时工具；返回的证据字符串不等于原始文件行或文档片段引用。
-- **评测分数只覆盖配置的检查项。** Agent 评测记录实际回答、工具和 Trace，按配置检查项计分，需要判断的回答单独人工审核。分数不代表通用 Agent 的正确率。视频使用无需 LLM 密钥的确定性回退。
+- **评测分数只覆盖配置的检查项。** Agent 评测记录实际回答、工具和 Trace，按配置检查项计分，需要判断的回答单独人工审核。分数不代表通用 Agent 的正确率。视频使用已配置的 DeepSeek 模型，录屏和仓库均不包含密钥。
 - **Schema 编辑保存为草稿。** Ontology Manager 保存本地待审草稿；生效定义继续使用仓库中的 YAML。
 - **规则结果描述样例。** 结果取决于现有数据和配置条件，不能作为兽医建议；缺少证据时，规则可能无法评估。
 

@@ -1,0 +1,124 @@
+{
+  "captured_at": "2026-11-02",
+  "version": "v0.6.0",
+  "source_commit": "677f9ec181f95e34abbf166c3855e2d1ee4e57fc",
+  "theme": "light",
+  "viewport": [
+    1600,
+    900
+  ],
+  "video": {
+    "filename": "prompt-to-ontology-v0.6.0-demo.mp4",
+    "duration_seconds": 103.2,
+    "dimensions": [
+      1920,
+      1080
+    ],
+    "fps": 30,
+    "video_codec": "h264",
+    "audio_codec": "aac",
+    "chapters": [
+      {
+        "start_seconds": 0,
+        "duration_seconds": 5,
+        "title": "Build an ontology. Ask with evidence."
+      },
+      {
+        "start_seconds": 5,
+        "duration_seconds": 10,
+        "title": "01 / Describe the goal. Add the sources."
+      },
+      {
+        "start_seconds": 15,
+        "duration_seconds": 10,
+        "title": "02 / Review the agent\u2019s proposal."
+      },
+      {
+        "start_seconds": 25,
+        "duration_seconds": 7,
+        "title": "Keep the meaning in the relationships."
+      },
+      {
+        "start_seconds": 32,
+        "duration_seconds": 6,
+        "title": "Preview the exact changes."
+      },
+      {
+        "start_seconds": 38,
+        "duration_seconds": 4,
+        "title": "03 / Send the reviewed plan to Review Queue."
+      },
+      {
+        "start_seconds": 42,
+        "duration_seconds": 4,
+        "title": "Check the candidate and its audit trail."
+      },
+      {
+        "start_seconds": 46,
+        "duration_seconds": 6,
+        "title": "Approve with a reason."
+      },
+      {
+        "start_seconds": 52,
+        "duration_seconds": 6,
+        "title": "Apply the approved batch."
+      },
+      {
+        "start_seconds": 58,
+        "duration_seconds": 4,
+        "title": "Verify the runtime result."
+      },
+      {
+        "start_seconds": 62,
+        "duration_seconds": 9.2,
+        "title": "04 / Ask about the data you just added."
+      },
+      {
+        "start_seconds": 71.2,
+        "duration_seconds": 8,
+        "title": "An answer grounded in ontology tools."
+      },
+      {
+        "start_seconds": 79.2,
+        "duration_seconds": 3.2,
+        "title": "Inspect the actual execution."
+      },
+      {
+        "start_seconds": 82.4,
+        "duration_seconds": 2.8,
+        "title": "Inspect the actual execution."
+      },
+      {
+        "start_seconds": 85.2,
+        "duration_seconds": 7,
+        "title": "05 / Follow the relationship path."
+      },
+      {
+        "start_seconds": 92.2,
+        "duration_seconds": 6,
+        "title": "See the match in the runtime graph."
+      },
+      {
+        "start_seconds": 98.2,
+        "duration_seconds": 5,
+        "title": "Explore the code"
+      }
+    ],
+    "sha256": "7cc71ec5a5a847f910222bdaa045de7625c1f4070221fd1a3531dbcfd21f2732",
+    "bytes": 3850055
+  },
+  "scenario": {
+    "product_id": "PF101",
+    "object_count": 3,
+    "relationship_count": 2,
+    "verified_applied": true,
+    "verified_graph_matched": true,
+    "model_provider": "deepseek",
+    "model": "deepseek-flash",
+    "planner_llm_used": true,
+    "answer_llm_used": true,
+    "query_tools": [
+      "get_product_risk_explanation"
+    ]
+  }
+}
