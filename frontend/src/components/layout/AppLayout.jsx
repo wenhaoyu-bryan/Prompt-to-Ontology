@@ -33,6 +33,7 @@ import {
   RocketOutlined,
   FileSearchOutlined,
   MenuOutlined,
+  ControlOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -137,6 +138,13 @@ export default function AppLayout() {
         : null,
       children: [
         {
+          key: "/models",
+          icon: <ControlOutlined />,
+          label: i18n.language.startsWith("zh")
+            ? "模型配置"
+            : "Model configuration",
+        },
+        {
           key: "/demo-center",
           icon: <RocketOutlined />,
           label: t("nav.demoCenter"),
@@ -220,7 +228,9 @@ export default function AppLayout() {
                 whiteSpace: "nowrap",
               }}
             >
-              {t("app.demoTag")}
+              {i18n.language.startsWith("zh")
+                ? "本体与推理平台"
+                : "Ontology & reasoning"}
             </div>
           </div>
         )}
@@ -354,7 +364,7 @@ export default function AppLayout() {
               />
             )}
             <span className="workspace-breadcrumb">
-              <span>Pet Food</span>
+              <span>{t("app.name")}</span>
               <span aria-hidden="true">/</span>
               <strong>{currentItem?.label || t("app.name")}</strong>
             </span>

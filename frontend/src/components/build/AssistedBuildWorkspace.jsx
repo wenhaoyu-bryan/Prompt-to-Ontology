@@ -146,7 +146,13 @@ export default function AssistedBuildWorkspace() {
         if (!alive) return;
         setRun(data);
         if (!initialized && !busyRun(data)) {
-          setStage(["submitted", "submitting"].includes(data.status) ? 3 : data.preview ? 2 : 1);
+          setStage(
+            ["submitted", "submitting"].includes(data.status)
+              ? 3
+              : data.preview
+                ? 2
+                : 1,
+          );
           initialized = true;
         }
         if (busyRun(data)) timer = setTimeout(poll, 1500);
@@ -340,7 +346,16 @@ export default function AssistedBuildWorkspace() {
           )}
         </Space>
       </header>
-      <BuildNavigation mode="import" disabled={pending} />
+      <BuildNavigation
+        mode="import"
+        disabled={pending}
+        onModelsChanged={() => {
+          api
+            .get("/assisted-build/schema")
+            .then((r) => setCatalog(r.data))
+            .catch(report);
+        }}
+      />
       <div className="ab-progress">
         <div className="ab-run-caption">
           <span>

@@ -10,6 +10,7 @@ import { test, expect } from '@playwright/test';
  */
 
 const ROUTES = [
+  { path: '/models', titleKey: null, fallback: 'Model configuration' },
   { path: '/dashboard',          titleKey: 'title',         fallback: 'Dashboard' },
   { path: '/demo-center',        titleKey: null,            fallback: 'Demo Center' },
   { path: '/pipeline',           titleKey: null,            fallback: 'Build with your data' },

@@ -56,7 +56,7 @@ Use a 4 px base with 8/12/16/20/24 px spacing. Controls use 4 px corners; indepe
 
 ## Shell and navigation
 
-The desktop sidebar is 224 px, collapsed 64 px. The global header is 48 px with a contextual `Pet Food / current page` breadcrumb. Daily tasks remain visible; governance/debug tools are grouped but available and automatically expanded on their routes. Demo and settings stay discoverable in Resources.
+The desktop sidebar is 224 px, collapsed 64 px. Use the platform name and “Ontology & reasoning” in the brand area; Pet Food is a reference domain, not the platform identity. The global header is 48 px with a `Prompt-to-Ontology / current page` breadcrumb. Daily tasks remain visible; governance/debug tools are grouped but available and automatically expanded on their routes. Model configuration, demo resources and settings stay discoverable in Resources.
 
 On mobile use the navigation drawer, readable labels and reduced padding. Preserve every existing route and do not make access depend on hover alone.
 
@@ -75,6 +75,8 @@ Keep the title, mode navigation, compact stepper and bottom action bar visible. 
 Schema calibration defaults to the **definition list**. The structure map is an explicit alternate view. Both open the same editing drawer; changing view does not change definitions or confirmations. Do not hide pending decisions, stale previews or unsaved edits. Existing revision/hash/schema guards remain mandatory; late responses must not overwrite another task after navigation.
 
 ## Components
+
+Model configuration uses a flat list of reusable connections and one explicit selector per Agent. Assisted import and schema design share the build binding; query and evaluations share the query binding. Selectors save immediately and affect new runs. Page and workspace drawers use the same settings component. Edit a connection in a right drawer; show protocol, base URL, exact model ID and a write-only key field. Never prefill the masked key as a real secret. Changing protocol or URL requires the key again. Connectivity success must not imply full tool-workflow verification.
 
 - **Headings:** `.page-heading`, with title/supporting line and a restrained action group. No extra hero card.
 - **Sections:** `.page-section` and fine separators. Use `.quiet-panel` only when a bounded surface helps the task.

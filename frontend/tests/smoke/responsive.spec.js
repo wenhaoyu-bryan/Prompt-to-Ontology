@@ -9,6 +9,7 @@ import { test, expect } from '@playwright/test';
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 
 const MOBILE_ROUTES = [
+  '/models',
   '/dashboard',
   '/pipeline',
   '/graph',

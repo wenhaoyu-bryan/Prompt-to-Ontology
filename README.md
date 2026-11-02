@@ -41,7 +41,7 @@ The backend seeds sample data on first startup by default. You can try the Analy
 
 Run the stack locally on a trusted network. The demo login is a frontend convenience, not backend authentication.
 
-For setup and troubleshooting, see [Local Docker setup](docs/local-docker-setup.md). To configure an external model, open **Settings → LLM Config**. Supported providers include DeepSeek, OpenAI, Anthropic, and MiniMax. See [model setup](docs/question-set-evaluation.md#model-setup) for DeepSeek with the OpenAI-compatible protocol. Keep API keys in local settings or ignored environment files.
+For setup and troubleshooting, see [Local Docker setup](docs/local-docker-setup.md). Open **Model configuration** in the sidebar to save OpenAI-compatible or Anthropic connections and assign models separately to assisted build and graph query. Saved keys stay on your backend; Docker preserves them in its runtime volume. Environment variables remain available as a deployment default. See [model setup](docs/question-set-evaluation.md#model-setup).
 
 <details>
 <summary>Sample data, persistence, and demo write settings</summary>

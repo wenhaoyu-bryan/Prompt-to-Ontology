@@ -1,7 +1,16 @@
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useState } from "react";
+import { Button } from "antd";
+import { SettingOutlined } from "@ant-design/icons";
+import LlmConfigDialog from "../query/LlmConfigDialog";
 
-export default function BuildNavigation({ mode, disabled = false }) {
+export default function BuildNavigation({
+  mode,
+  disabled = false,
+  onModelsChanged,
+}) {
+  const [modelsOpen, setModelsOpen] = useState(false);
   const { i18n } = useTranslation();
   const location = useLocation();
   const zh = i18n.language.startsWith("zh");
@@ -50,6 +59,22 @@ export default function BuildNavigation({ mode, disabled = false }) {
           {item.label}
         </Link>
       ))}
+      <Button
+        type="text"
+        icon={<SettingOutlined />}
+        disabled={disabled}
+        style={{ marginLeft: "auto", flexShrink: 0 }}
+        onClick={() => setModelsOpen(true)}
+      >
+        {zh ? "模型配置" : "Model settings"}
+      </Button>
+      <LlmConfigDialog
+        open={modelsOpen}
+        onClose={() => {
+          setModelsOpen(false);
+          onModelsChanged?.();
+        }}
+      />
     </nav>
   );
 }

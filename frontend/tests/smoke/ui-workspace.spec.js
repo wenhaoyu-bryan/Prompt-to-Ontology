@@ -212,3 +212,181 @@ test("clicking the active schema tab retains unsaved definition edits", async ({
     await request.delete(`/api/assisted-build/schema-designs/${run.id}`);
   }
 });
+
+test("model settings preserve assignments without exposing saved keys", async ({
+  page,
+  request,
+}) => {
+  const before = await (await request.get("/api/llm/connections")).json();
+  const key = "fake-ci-model-key-for-contract-only";
+  const name = `CI connection ${Date.now()}`;
+  const created = await request.post("/api/llm/connections", {
+    data: {
+      name,
+      provider: "openai_compatible",
+      model: "ui-contract-model",
+      base_url: "http://localhost:8769/v1",
+      api_key: key,
+    },
+  });
+  expect(created.ok()).toBeTruthy();
+  expect(await created.text()).not.toContain(key);
+  const id = (await created.json()).connections.find((c) => c.name === name).id;
+  try {
+    await page.goto("/models");
+    await expect(page.locator(".sidebar-brand")).not.toContainText("Pet Food");
+    await page.getByLabel("Assisted build model").click();
+    const saved = page.waitForResponse(
+      (r) =>
+        r.url().endsWith("/api/llm/bindings") && r.request().method() === "PUT",
+    );
+    await page
+      .locator(".ant-select-item-option-content")
+      .filter({ hasText: name })
+      .click();
+    expect((await saved).ok()).toBeTruthy();
+    await page.reload();
+    const current = await (await request.get("/api/llm/connections")).json();
+    expect(current.bindings.build).toBe(id);
+    expect(current.bindings.query).toBe(before.bindings.query);
+    await page.getByRole("button", { name, exact: true }).click();
+    await expect(page.getByLabel("API key", { exact: true })).toHaveValue("");
+    await page
+      .getByLabel("Model ID", { exact: true })
+      .fill("ui-contract-revised");
+    const updated = page.waitForResponse(
+      (r) =>
+        r.url().endsWith("/api/llm/connections/" + id) &&
+        r.request().method() === "PUT",
+    );
+    await page
+      .getByRole("button", { name: "Save connection", exact: true })
+      .click();
+    expect((await updated).ok()).toBeTruthy();
+    expect(
+      await page.evaluate(() =>
+        JSON.stringify({ ...localStorage, ...sessionStorage }),
+      ),
+    ).not.toContain(key);
+    expect(
+      (await (await request.get("/api/llm/connections")).json()).agents.build
+        .model,
+    ).toBe("ui-contract-revised");
+  } finally {
+    await request.put("/api/llm/bindings", { data: before.bindings });
+    await request.delete("/api/llm/connections/" + id);
+  }
+});
+
+test("build model configuration closes without losing the current goal", async ({
+  page,
+}) => {
+  await page.goto("/pipeline");
+  await page
+    .getByLabel("Build goal", { exact: true })
+    .fill("Keep this import goal");
+  await page
+    .getByRole("button", { name: "Model settings", exact: false })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Agent models", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(page.getByLabel("Build goal", { exact: true })).toHaveValue(
+    "Keep this import goal",
+  );
+});
+
+test("model administration token stays in tab memory and is required again after reload", async ({
+  page,
+}) => {
+  const token = "fake-ci-administration-token";
+  await page.route("**/api/llm/connections", async (route) => {
+    if (route.request().headers().authorization === `Bearer ${token}`)
+      return route.continue();
+    return route.fulfill({
+      status: 401,
+      json: { detail: "Model configuration authorization required" },
+    });
+  });
+  await page.goto("/models");
+  await page.getByLabel("Administration token", { exact: true }).fill(token);
+  await page
+    .getByRole("button", { name: "Unlock settings", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Agent models", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      JSON.stringify({ ...localStorage, ...sessionStorage }),
+    ),
+  ).not.toContain(token);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", {
+      name: "Model administration access",
+      exact: true,
+    }),
+  ).toBeVisible();
+});
+
+test("unauthorized model status stays unknown and questions remain usable", async ({
+  page,
+}) => {
+  await page.route("**/api/llm/config", (route) =>
+    route.fulfill({ status: 401, json: { detail: "Unauthorized" } }),
+  );
+  let question;
+  await page.route("**/api/pet-food/agent/chat", (route) => {
+    question = route.request().postDataJSON().question;
+    return route.fulfill({ status: 503, json: { detail: "Test response" } });
+  });
+  await page.goto("/agent");
+  await expect(page.getByText("Model status unavailable")).toBeVisible();
+  await expect(page.getByText("Deterministic demo")).toHaveCount(0);
+  await page.getByLabel("Ask about the ontology").fill("What products exist?");
+  await page.getByRole("button", { name: "Ask", exact: false }).click();
+  await expect.poll(() => question).toBe("What products exist?");
+});
+
+test("connection test shows safe validation and unlocks after authorization expires", async ({
+  page,
+}) => {
+  let status = 400;
+  await page.route("**/api/llm/connections/test", (route) =>
+    route.fulfill({
+      status,
+      json: {
+        detail:
+          status === 400
+            ? "api_key is required when provider or base_url changes"
+            : "Unauthorized",
+      },
+    }),
+  );
+  await page.goto("/models");
+  await page
+    .getByRole("button", { name: "Add connection", exact: false })
+    .click();
+  await page.getByLabel("Connection name").fill("Test connection");
+  await page.getByLabel("Model ID").fill("test-model");
+  await page.getByLabel("API key", { exact: true }).fill("secret-test-key");
+  await page
+    .getByRole("button", { name: "Test connection", exact: true })
+    .click();
+  await expect(
+    page.getByText("api_key is required when provider or base_url changes"),
+  ).toBeVisible();
+  status = 401;
+  await page
+    .getByRole("button", { name: "Test connection", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Model administration access" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Add connection" }),
+  ).toBeHidden();
+  await expect(page.getByLabel("API key", { exact: true })).toHaveValue("");
+});

@@ -295,7 +295,7 @@ def reason(node_id: str) -> dict:
                 "timestamp": time.strftime("%H:%M:%S"),
             })
     except Exception as e:
-        return _fallback_reason(node_id, f"推理失败: {e}")
+        return _fallback_reason(node_id, "推理失败，请检查模型配置。")
 
     # 提取 decision
     decision = None
@@ -326,20 +326,21 @@ def reason(node_id: str) -> dict:
 # LLM 调用（统一接口，支持 tool calling）
 # ============================================================
 
-def _call_llm(messages: list[dict], tools: list[dict] | None = None) -> dict:
+def _call_llm(messages: list[dict], tools: list[dict] | None = None, tool_choice=None) -> dict:
     """统一 LLM 调用，返回 OpenAI 格式的 response dict"""
     from llm_config_manager import get_active_llm_config
     config = get_active_llm_config()
     provider = config.get("provider") or LLM_BACKEND
+    kwargs = {"tool_choice": tool_choice} if tool_choice is not None else {}
     if provider == "anthropic":
-        return _call_anthropic_with_tools(messages, tools)
+        return _call_anthropic_with_tools(messages, tools, **kwargs)
     elif provider == "openai" or provider == "openai_compatible":
-        return _call_openai_compat(messages, tools)
+        return _call_openai_compat(messages, tools, **kwargs)
     else:  # minimax
-        return _call_openai_compat(messages, tools)
+        return _call_openai_compat(messages, tools, **kwargs)
 
 
-def _call_openai_compat(messages: list[dict], tools: list[dict] | None = None) -> dict:
+def _call_openai_compat(messages: list[dict], tools: list[dict] | None = None, tool_choice=None) -> dict:
     """OpenAI 兼容接口（MiniMax 也用这个）"""
     import requests
     from llm_config_manager import get_active_llm_config
@@ -378,7 +379,7 @@ def _call_openai_compat(messages: list[dict], tools: list[dict] | None = None) -
         body["thinking"] = {"type": "disabled"}
     if tools:
         body["tools"] = tools
-        body["tool_choice"] = "auto"
+        body["tool_choice"] = tool_choice or "auto"
 
     resp = requests.post(
         f"{base_url.rstrip('/')}/chat/completions",
@@ -403,7 +404,7 @@ def _call_openai_compat(messages: list[dict], tools: list[dict] | None = None) -
     return {"message": msg, "model": data.get("model"), "usage": data.get("usage")}
 
 
-def _call_anthropic_with_tools(messages: list[dict], tools: list[dict] | None = None) -> dict:
+def _call_anthropic_with_tools(messages: list[dict], tools: list[dict] | None = None, tool_choice=None) -> dict:
     """Anthropic Claude API，转换 OpenAI tool 格式"""
     import anthropic
     from llm_config_manager import get_active_llm_config
@@ -413,45 +414,40 @@ def _call_anthropic_with_tools(messages: list[dict], tools: list[dict] | None = 
     if not api_key:
         raise RuntimeError("ANTHROPIC_API_KEY not configured")
 
-    # 提取 system prompt
-    system = ""
+    system = "\n".join(str(m.get("content") or "") for m in messages if m["role"] == "system")
     user_msgs = []
     for m in messages:
-        if m["role"] == "system":
-            system = m["content"]
-        elif m["role"] == "user":
-            user_msgs.append({"role": "user", "content": m["content"]})
-        elif m["role"] == "assistant":
-            user_msgs.append({"role": "assistant", "content": m.get("content") or ""})
-        elif m["role"] == "tool":
-            user_msgs.append({"role": "user", "content": f"[工具返回]: {m['content']}"})
+        role = m["role"]
+        if role == "system":
+            continue
+        if role == "tool":
+            block = {"type": "tool_result", "tool_use_id": m["tool_call_id"], "content": str(m.get("content") or "")}
+            if user_msgs and user_msgs[-1]["role"] == "user" and isinstance(user_msgs[-1]["content"], list):
+                user_msgs[-1]["content"].append(block)
+            else:
+                user_msgs.append({"role": "user", "content": [block]})
+        elif role == "assistant":
+            blocks = []
+            if m.get("content"):
+                blocks.append({"type": "text", "text": m["content"]})
+            for call in m.get("tool_calls") or []:
+                fn = call["function"]
+                blocks.append({"type": "tool_use", "id": call["id"], "name": fn["name"], "input": json.loads(fn.get("arguments") or "{}")})
+            user_msgs.append({"role": "assistant", "content": blocks or ""})
+        else:
+            user_msgs.append({"role": "user", "content": m.get("content") or ""})
 
-    # Anthropic tool 格式
-    anthropic_tools = None
-    if tools:
-        anthropic_tools = []
-        for t in tools:
-            func = t.get("function", {})
-            anthropic_tools.append({
-                "name": func["name"],
-                "description": func["description"],
-                "input_schema": {
-                    "type": "object",
-                    "properties": func.get("parameters", {}).get("properties", {}),
-                    "required": func.get("parameters", {}).get("required", []),
-                },
-            })
-
-    client = anthropic.Anthropic(api_key=api_key)
-    kwargs = {
-        "model": "claude-sonnet-4-20250514",
-        "max_tokens": 4096,
-        "temperature": 0.3,
-        "system": system,
-        "messages": user_msgs,
-    }
+    anthropic_tools = [{"name": t["function"]["name"], "description": t["function"].get("description", ""), "input_schema": t["function"].get("parameters", {"type": "object", "properties": {}})} for t in (tools or [])]
+    from llm_config_manager import normalize_url
+    base_url = normalize_url(config.get("base_url") or "https://api.anthropic.com", "anthropic")
+    client = anthropic.Anthropic(api_key=api_key, base_url=base_url, timeout=90.0)
+    kwargs = {"model": config.get("model") or "claude-sonnet-4", "max_tokens": 4096, "temperature": 0.3, "messages": user_msgs}
+    if system:
+        kwargs["system"] = system
     if anthropic_tools:
         kwargs["tools"] = anthropic_tools
+        if tool_choice is not None:
+            kwargs["tool_choice"] = {"type": tool_choice}
 
     resp = client.messages.create(**kwargs)
 
@@ -460,7 +456,7 @@ def _call_anthropic_with_tools(messages: list[dict], tools: list[dict] | None = 
     tool_calls = []
     for block in resp.content:
         if block.type == "text":
-            content = block.text
+            content += block.text
         elif block.type == "tool_use":
             tool_calls.append({
                 "id": block.id,
@@ -736,7 +732,7 @@ def infer_schema(filename: str, headers: list[str], rows: list[dict]) -> dict:
             return parsed
         return _fallback_infer_schema(headers)
     except Exception as e:
-        print(f"[infer_schema] LLM 失败: {e}")
+        print("[infer_schema] LLM request failed")
         return _fallback_infer_schema(headers)
 
 
@@ -911,7 +907,7 @@ def infer_schema_multi(tables: list[dict]) -> dict:
             return parsed
         return _fallback_infer_multi(tables)
     except Exception as e:
-        print(f"[infer_schema_multi] LLM 失败: {e}")
+        print("[infer_schema_multi] LLM request failed")
         return _fallback_infer_multi(tables)
 
 

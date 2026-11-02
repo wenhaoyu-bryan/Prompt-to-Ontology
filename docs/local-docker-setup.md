@@ -25,7 +25,9 @@ docker compose up --build
 
 ## 可选 LLM 配置
 
-编辑 `.env` 文件，填写 LLM API Key：
+推荐从侧栏的**模型配置**添加 OpenAI 兼容或 Anthropic 连接，并为辅助构建、图谱问答分别选择模型。配置保存在服务端的 `backend_runtime` 卷，重启后仍保留。
+
+也可编辑 `.env`，为未单独分配连接的 Agent 提供部署默认模型：
 
 ```
 # OpenAI
@@ -37,6 +39,8 @@ OPENAI_BASE_URL=https://api.openai.com/v1
 # 或 Anthropic
 # LLM_BACKEND=anthropic
 # ANTHROPIC_API_KEY=sk-ant-your-key-here
+# ANTHROPIC_MODEL=claude-sonnet-4
+# ANTHROPIC_BASE_URL=https://api.anthropic.com
 
 # 或 MiniMax
 # LLM_BACKEND=minimax
@@ -45,7 +49,9 @@ OPENAI_BASE_URL=https://api.openai.com/v1
 # MINIMAX_BASE_URL=https://api.minimaxi.com/v1
 ```
 
-支持的 Provider: OpenAI, Anthropic, MiniMax
+OpenAI 兼容服务可设置 `LLM_BACKEND=openai_compatible` 并配合 `OPENAI_*` 变量。环境变量修改后执行 `docker compose up -d --force-recreate backend`。
+
+共享部署请配置 `MODEL_CONFIG_TOKEN` 和准确的 `MODEL_CONFIG_ALLOWED_ORIGINS`，公开部署使用认证反向代理保护应用。配置文件含明文密钥，应保护运行时卷及备份，不要提交到 Git。详见[模型接入与存储](question-set-evaluation.md#model-setup)。
 
 不配置 LLM 时，Agent 使用 deterministic fallback 模式。
 

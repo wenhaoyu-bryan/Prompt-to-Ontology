@@ -15,7 +15,15 @@ DEEPSEEK_MODEL=deepseek-flash
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 ```
 
-Start or rebuild with `docker compose up --build -d`. Native backend development can use the same values in `backend/.env`. Environment files are ignored by Git and excluded from the root Docker build context. Keys entered through Model settings remain in backend memory until restart; the API returns a masked status.
+Start or rebuild with `docker compose up --build -d`. Native backend development can use the same values in `backend/.env`. Environment files are ignored by Git and excluded from the root Docker build context. The **Model configuration** sidebar page saves reusable OpenAI-compatible Chat Completions or Anthropic Messages connections. Assign build and query models independently: schema design uses the build binding and evaluations use the query binding. **Deployment default** uses the legacy in-memory override, if present, then environment variables. Without a model the deterministic baseline remains available.
+
+Saved connections and bindings persist in `backend/.runtime/llm-connections.json`, atomically written with mode `0600`. This server-only file contains plaintext keys: protect the runtime volume and its backups. APIs return masked keys. Docker's `backend_runtime` volume survives container recreation; deleting the volume deletes the settings. Native development can override `LLM_CONNECTIONS_PATH`. The file store supports one backend process, not concurrent multi-worker writes.
+
+For Anthropic defaults set `LLM_BACKEND=anthropic`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, and `ANTHROPIC_BASE_URL=https://api.anthropic.com`. A pasted trailing `/v1` is normalized. For custom OpenAI-compatible services use `LLM_BACKEND=openai_compatible` with `OPENAI_*` variables. Include the provider-required version prefix in the OpenAI base URL; `/chat/completions` is appended. Enter the exact model ID supplied by your provider.
+
+**Test connection** sends a short text request; it does not certify tool-workflow quality. A blank key on edit retains the saved key only when protocol and endpoint are unchanged. Re-enter the key when changing either. No secrets are stored in browser local/session storage.
+
+For shared deployments set a strong `MODEL_CONFIG_TOKEN` and enter it in Model configuration. The browser retains it only in the current tab's memory. Configure exact frontend origins in `MODEL_CONFIG_ALLOWED_ORIGINS` (comma-separated); local loopback origins work by default. The origin guard mitigates cross-origin browser requests; it is not authentication. Protect the whole application with an authenticated reverse proxy before exposing it publicly. Settings are deployment-wide, not per-user accounts.
 
 Each query captures its model configuration. Evaluation batches retain that configuration in memory for their callbacks, so changing settings during a batch does not mix providers or models. Credentials are not saved in question or run records.
 

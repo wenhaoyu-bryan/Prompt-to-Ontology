@@ -41,7 +41,7 @@ docker compose up --build
 
 请在可信的本地网络运行。演示登录只用于前端体验，不提供后端身份认证。
 
-安装与排障参见[本地 Docker 环境搭建](docs/local-docker-setup.md)。需要外部模型时，可打开 **Settings → LLM Config**；支持 DeepSeek、OpenAI、Anthropic 和 MiniMax。DeepSeek 使用 OpenAI 兼容协议，配置方法参见[模型接入](docs/question-set-evaluation.md#model-setup)。API 密钥只保存在本地设置或被 Git 忽略的环境文件中。
+安装与排障参见[本地 Docker 环境搭建](docs/local-docker-setup.md)。打开侧栏的**模型配置**，可保存 OpenAI 兼容协议或 Anthropic 连接，分别为辅助构建和图谱问答分配模型。密钥保存在服务端，Docker 使用运行时卷持久化；也可通过环境变量设置部署默认模型。详见[模型接入](docs/question-set-evaluation.md#model-setup)。
 
 <details>
 <summary>样例数据、持久化与演示写入设置</summary>
