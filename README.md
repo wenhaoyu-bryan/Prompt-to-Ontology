@@ -2,9 +2,9 @@
 
 Map source data, review graph changes, and trace sample answers to source records.
 
-https://github.com/user-attachments/assets/97bf16a6-b8e2-4364-af25-73ef42201fea
+https://github.com/user-attachments/assets/cb35e078-3699-43fc-94d3-1f6bfcd70766
 
-**96-second product demo** · [Download MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.3.1/prompt-to-ontology-product-demo.mp4) · [中文](README.zh-CN.md)
+**103-second product demo · v0.6.0 · light theme · DeepSeek** · [Download MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.6.0/prompt-to-ontology-v0.6.0-demo.mp4) · [中文](README.zh-CN.md)
 
 [![CI](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
@@ -73,6 +73,10 @@ The reference also includes object and graph exploration, four-state rule evalua
 
 ![Dashboard with the seeded Pet Food runtime](media/dashboard.png)
 
+### Assisted build
+
+![Describe the build goal and upload three source files](media/build-sources.png)
+
 ### Source mapping
 
 ![Source column types, missing values, and sample records](media/data-profile.png)
@@ -85,7 +89,7 @@ Confirm mappings before preparing candidates. A confirmed mapping records a deci
 
 ![Review Queue with a candidate product and its properties](media/review-queue.png)
 
-Inspect a candidate before approval. The recording applies one reviewed product to an already seeded graph, rather than rebuilding the whole graph from scratch.
+Inspect a candidate before approval. The recording adds PF101, two ingredients, and two `CONTAINS` relationships to an already seeded graph. All five changes are reviewed and applied; this is not a full rebuild from an empty graph.
 
 ![PetFoodProduct definition and schema draft controls](media/ontology-manager.png)
 
@@ -103,17 +107,17 @@ Search for an object, inspect its neighborhood, or expand the overview's relatio
 
 The fixed Q03 answer reads checked-in sample files. Graph Explorer separately checks whether the corresponding relationship exists in the runtime graph.
 
-![PF001 neighborhood with a matching relationship and source evidence](media/graph-evidence.png)
+![PF101 neighborhood with a matching runtime relationship from the Agent query](media/graph-evidence.png)
 
 ### Analyst Agent
 
-![Deterministic tool query for products containing chicken](media/analyst-agent.png)
+![Live DeepSeek answer for the ingredients in newly imported PF101](media/analyst-agent.png)
 
-The recording shows the answer and tool name in deterministic fallback mode.
+The recording uses DeepSeek for the build proposal and for query planning and answer summarization. It shows recorded tool calls and checks the returned relationship in the runtime graph.
 
 </details>
 
-The video and screenshots capture an earlier reference UI. The current app uses a light-first workspace with assisted build, schema draft design, and centralized model configuration. See [Assisted build](docs/assisted-build.md), [Query Workbench](docs/query-workbench.md), and [Evaluation & feedback](docs/question-set-evaluation.md) for current flows.
+The video and screenshots capture the v0.6.0 light workspace. The video follows assisted import, human review, runtime verification, and a live model query about the imported product. See [Assisted build](docs/assisted-build.md), [Query Workbench](docs/query-workbench.md), and [Evaluation & feedback](docs/question-set-evaluation.md) for current flows.
 
 [Product workflow](docs/product-workflow.md) · [Recording notes and additional captures](media/README.md)
 
@@ -122,7 +126,7 @@ The video and screenshots capture an earlier reference UI. The current app uses 
 This repository is a learning reference. Production readiness, enterprise identity and access management, and applicability across multiple business domains have not been established.
 
 - **Reference answers and Agent queries use different evidence.** Reference tests read checked-in CSV/YAML files; graph highlighting checks for matching runtime relationships. Agent queries use runtime tools. Their returned evidence strings are not original file-row or document citations.
-- **Evaluation scores cover configured checks.** Agent evaluation records actual answers, tools, and traces. Scores reflect the configured checks, with separate manual review where needed. They do not establish general Agent accuracy. The video uses deterministic fallback without an LLM key.
+- **Evaluation scores cover configured checks.** Agent evaluation records actual answers, tools, and traces. Scores reflect the configured checks, with separate manual review where needed. They do not establish general Agent accuracy. The video uses a configured DeepSeek model; the key is not included in the recording or repository.
 - **Schema edits remain drafts.** Ontology Manager saves local review drafts; active definitions continue to use checked-in YAML.
 - **Rules describe the sample.** Results reflect the available data and configured conditions, not veterinary advice. Missing evidence can make a rule not evaluable.
 

@@ -1,0 +1,3 @@
+ingredient_id,ingredient_name,ingredient_type,risk_tag,common_allergen
+ING101,chicken,protein,yes,no
+ING102,brown rice,carbohydrate,no,no
