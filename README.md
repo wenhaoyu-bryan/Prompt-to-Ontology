@@ -2,7 +2,7 @@
 
 Map source data, review graph changes, and trace sample answers to source records.
 
-https://github.com/user-attachments/assets/97bf16a6-b8e2-4364-af25-73ef42201fea
+https://github.com/user-attachments/assets/cb35e078-3699-43fc-94d3-1f6bfcd70766
 
 **103-second product demo · v0.6.0 · light theme · DeepSeek** · [Download MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.6.0/prompt-to-ontology-v0.6.0-demo.mp4) · [中文](README.zh-CN.md)
 
