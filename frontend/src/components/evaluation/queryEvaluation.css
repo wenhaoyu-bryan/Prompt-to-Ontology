@@ -1,5 +1,5 @@
 .eval-workspace {
-  height: calc(100dvh - 104px);
+  height: var(--pto-workspace-height);
   min-height: 560px;
   display: flex;
   flex-direction: column;
@@ -135,7 +135,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(330px, 42%);
   border: 1px solid var(--eval-border);
   background: var(--eval-bg);
-  border-radius: 10px;
+  border-radius: 4px;
   overflow: hidden;
 }
 .eval-list {

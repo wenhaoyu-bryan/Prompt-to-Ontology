@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field
 from assisted_build.service import AssistedBuildService
 from llm_config_manager import (
     get_active_llm_config,
-    get_active_status,
+    get_agent_status,
+    get_agent_llm_config,
     llm_config_scope,
 )
 from ontology_kernel import load_pet_food_schema
@@ -60,7 +61,7 @@ def call(operation, *args):
 def schema():
     return {
         "schema": load_pet_food_schema().model_dump(mode="json"),
-        "model": get_active_status(),
+        "model": get_agent_status("build"),
     }
 
 
@@ -96,13 +97,14 @@ def analyze(run_id, config):
 
 @router.post("/runs", status_code=202)
 def create_run(request: BuildInput, background: BackgroundTasks):
+    config = call(get_agent_llm_config, "build")
     run = call(
         service.create,
         request.goal.strip(),
         [f.model_dump() for f in request.files],
         request.execution_mode,
     )
-    background.add_task(analyze, run["id"], get_active_llm_config())
+    background.add_task(analyze, run["id"], config)
     return run
 
 
@@ -146,8 +148,9 @@ def recover_interrupted_builds():
 
 @router.post("/runs/{run_id}/retry", status_code=202)
 def retry_run(run_id: str, request: RevisionInput, background: BackgroundTasks):
+    config = call(get_agent_llm_config, "build")
     run = call(service.retry, run_id, request.expected_revision)
-    background.add_task(analyze, run_id, get_active_llm_config())
+    background.add_task(analyze, run_id, config)
     return run
 
 
@@ -196,13 +199,14 @@ def analyze_schema_design(rid, config):
 
 @router.post("/schema-designs", status_code=202)
 def create_schema_design(request: BuildInput, background: BackgroundTasks):
+    config = call(get_agent_llm_config, "build")
     run = call(
         schema_design_service.create,
         request.goal.strip(),
         [f.model_dump() for f in request.files],
         request.execution_mode,
     )
-    background.add_task(analyze_schema_design, run["id"], get_active_llm_config())
+    background.add_task(analyze_schema_design, run["id"], config)
     return run
 
 
@@ -241,8 +245,9 @@ def schema_design_export(rid: str):
 
 @router.post("/schema-designs/{rid}/retry", status_code=202)
 def schema_design_retry(rid: str, request: RevisionInput, background: BackgroundTasks):
+    config = call(get_agent_llm_config, "build")
     run = call(schema_design_service.retry, rid, request.expected_revision)
-    background.add_task(analyze_schema_design, rid, get_active_llm_config())
+    background.add_task(analyze_schema_design, rid, config)
     return run
 
 

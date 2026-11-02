@@ -1,5 +1,5 @@
 .query-workspace {
-  height: calc(100dvh - 104px);
+  height: var(--pto-workspace-height);
   min-height: 520px;
   display: flex;
   flex-direction: column;
@@ -34,7 +34,7 @@
   grid-template-columns: 228px minmax(0, 1fr);
   border: 1px solid var(--query-border);
   background: var(--query-bg);
-  border-radius: 12px;
+  border-radius: 6px;
   overflow: hidden;
 }
 .query-shell.is-collapsed {
@@ -302,7 +302,7 @@
   background: color-mix(in srgb, var(--query-accent) 9%, var(--query-bg));
   border: 1px solid
     color-mix(in srgb, var(--query-accent) 16%, var(--query-border));
-  border-radius: 10px 10px 2px 10px;
+  border-radius: 4px 10px 2px 10px;
   padding: 11px 15px;
   font-size: 13px;
   line-height: 1.7;

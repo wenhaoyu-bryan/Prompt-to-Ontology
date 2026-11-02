@@ -40,3 +40,5 @@
 | [Full Build Scenario](full-build-scenario.md) | Build ontology from empty graph |
 | [Local Docker Setup](local-docker-setup.md) | One-command local startup with Docker Compose |
 | [QA Checklist](qa-checklist.md) | Manual QA checklist |
+
+Product UI and brand conventions: [Design system](../DESIGN.md).

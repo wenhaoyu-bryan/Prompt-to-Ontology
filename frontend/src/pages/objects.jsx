@@ -25,15 +25,6 @@ const TYPE_COLORS = {
   LifeStage: 'orange',
 };
 
-const TYPE_ICONS = {
-  PetFoodProduct: '📦',
-  Brand: '🏷️',
-  Ingredient: '🧪',
-  RiskRule: '⚠️',
-  Species: '🐾',
-  LifeStage: '📅',
-};
-
 export default function ObjectsPage() {
   const { t } = useTranslation();
   const { token } = theme.useToken();
@@ -129,10 +120,7 @@ export default function ObjectsPage() {
       dataIndex: 'label',
       key: 'label',
       render: (text, record) => (
-        <Space>
-          <span>{TYPE_ICONS[record.type || record.objectType] || '📋'}</span>
-          <Text strong>{text || record.id}</Text>
-        </Space>
+        <div style={{ minWidth: 180, overflowWrap: 'anywhere' }}><Text strong>{text || record.id}</Text></div>
       ),
       sorter: (a, b) => (a.label || '').localeCompare(b.label || ''),
     },
@@ -140,7 +128,8 @@ export default function ObjectsPage() {
       title: t('common.id'),
       dataIndex: 'id',
       key: 'id',
-      width: 100,
+      width: 160,
+      responsive: ['md'],
       render: (id) => <Text type="secondary" style={{ fontFamily: 'monospace', fontSize: 12 }}>{id}</Text>,
     },
     {
@@ -167,7 +156,7 @@ export default function ObjectsPage() {
       render: (_, record) => {
         const stats = nodeStats[record.id] || {};
         const count = stats.riskCount || 0;
-        if (count === 0) return <Tag color="green">{t('objects.low')}</Tag>;
+        if (count === 0) return <Tag>{t('objects.unassessed')}</Tag>;
         if (count === 1) return <Tag color="orange">{t('objects.medium')}</Tag>;
         return <Tag color="red">{t('objects.high')}</Tag>;
       },
@@ -179,7 +168,7 @@ export default function ObjectsPage() {
       width: 100,
       render: (_, record) => {
         const stats = nodeStats[record.id] || {};
-        return <Badge count={stats.outgoingCount || 0} showZero style={{ backgroundColor: token.colorPrimary }} overflowCount={99} />;
+        return <Text>{stats.outgoingCount || 0}</Text>;
       },
       sorter: (a, b) => (nodeStats[a.id]?.outgoingCount || 0) - (nodeStats[b.id]?.outgoingCount || 0),
     },
@@ -190,10 +179,10 @@ export default function ObjectsPage() {
       render: (_, record) => (
         <Space size={4}>
           <Tooltip title={t('objects.viewDetail')}>
-            <Button size="small" type="text" icon={<EyeOutlined />} onClick={() => handleViewDetail(record)} />
+            <Button size="small" type="text" aria-label={t('objects.viewDetail')} icon={<EyeOutlined />} onClick={e => { e.stopPropagation(); handleViewDetail(record); }} />
           </Tooltip>
           <Tooltip title={t('objects.viewGraph')}>
-            <Button size="small" type="text" icon={<BranchesOutlined />} onClick={() => navigate(`/graph?node=${record.id}`)} />
+            <Button size="small" type="text" aria-label={t('objects.viewGraph')} icon={<BranchesOutlined />} onClick={e => { e.stopPropagation(); navigate(`/graph?node=${encodeURIComponent(record.id)}`); }} />
           </Tooltip>
         </Space>
       ),
@@ -203,7 +192,7 @@ export default function ObjectsPage() {
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div className="page-heading">
         <div>
           <Title level={3} style={{ margin: 0 }}>{t('objects.title')}</Title>
           <Text type="secondary">{t('objects.subtitle')}</Text>
@@ -214,18 +203,11 @@ export default function ObjectsPage() {
       </div>
 
       {/* Type selector + Search in one row */}
-      <Card size="small" styles={{ body: { padding: '12px 16px' } }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <div className="workspace-toolbar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <FilterOutlined style={{ color: token.colorTextSecondary }} />
           {Object.keys(TYPE_COLORS).map(type => (
-            <Tag
-              key={type}
-              color={selectedType === type ? TYPE_COLORS[type] : undefined}
-              style={{ cursor: 'pointer', padding: '4px 12px', fontSize: 13 }}
-              onClick={() => setSelectedType(type)}
-            >
-              {TYPE_ICONS[type] || '📋'} {type} ({typeCounts[type] || 0})
-            </Tag>
+            <Button key={type} size="small" type={selectedType === type ? "primary" : "text"} aria-pressed={selectedType === type} onClick={() => setSelectedType(type)}>{type} ({typeCounts[type] || 0})</Button>
           ))}
           <div style={{ flex: 1 }} />
           <Input
@@ -238,7 +220,7 @@ export default function ObjectsPage() {
             size="small"
           />
         </div>
-      </Card>
+      </div>
 
       {/* Table */}
       <Card styles={{ body: { padding: 0 } }}>
@@ -270,7 +252,6 @@ export default function ObjectsPage() {
       <Drawer
         title={
           <Space>
-            <span>{TYPE_ICONS[selectedNode?.type || selectedNode?.objectType] || '📋'}</span>
             <span>{selectedNode?.label || selectedNode?.id || t('common.detail')}</span>
             <Tag color={TYPE_COLORS[selectedNode?.type || selectedNode?.objectType]}>
               {selectedNode?.type || selectedNode?.objectType}

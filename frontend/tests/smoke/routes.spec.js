@@ -10,9 +10,10 @@ import { test, expect } from '@playwright/test';
  */
 
 const ROUTES = [
-  { path: '/dashboard',          titleKey: 'heroTitle',     fallback: 'Operational Ontology' },
+  { path: '/models', titleKey: null, fallback: 'Model configuration' },
+  { path: '/dashboard',          titleKey: 'title',         fallback: 'Dashboard' },
   { path: '/demo-center',        titleKey: null,            fallback: 'Demo Center' },
-  { path: '/pipeline',           titleKey: null,            fallback: 'Data Pipeline' },
+  { path: '/pipeline',           titleKey: null,            fallback: 'Build with your data' },
   { path: '/schema',             titleKey: null,            fallback: 'Ontology Manager' },
   { path: '/review',             titleKey: null,            fallback: 'Review Queue' },
   { path: '/objects',            titleKey: null,            fallback: 'Objects' },

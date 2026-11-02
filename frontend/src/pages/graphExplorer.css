@@ -9,7 +9,7 @@
 .graph-legend-label { font-weight: 600; margin-right: 2px; }
 .graph-legend { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .graph-legend i, .graph-inspector-kicker i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 9%, transparent); }
-.graph-stage { flex: 1; min-height: 460px; display: grid; grid-template-columns: minmax(0, 1fr); border: 1px solid var(--graph-border); border-radius: 12px; overflow: hidden; background: var(--graph-surface); }
+.graph-stage { flex: 1; min-height: 460px; display: grid; grid-template-columns: minmax(0, 1fr); border: 1px solid var(--graph-border); border-radius: 6px; overflow: hidden; background: var(--graph-surface); }
 .graph-stage-with-inspector { grid-template-columns: minmax(0, 1fr) 310px; }
 .graph-canvas { position: relative; min-width: 0; min-height: 460px; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--graph-bg) 86%, var(--graph-surface)) 0%, var(--graph-bg) 85%); }
 .graph-centered { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; }

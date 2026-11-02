@@ -169,8 +169,8 @@
     "openRuleStudio": "Open Rule Studio",
     "triggered": "Triggered",
     "passed": "Passed",
-    "notEvaluable": "Not Evaluable",
-    "notApplicable": "Not Applicable",
+    "notEvaluable": "Not evaluable",
+    "notApplicable": "Not applicable",
     "graphGov": "Graph Governance",
     "openGov": "Open Governance",
     "snapshots": "Snapshots",
@@ -187,7 +187,17 @@
     "agentRunsAvailable": "Agent runs are available in the Analyst Agent page",
     "heroEyebrow": "Operational Ontology",
     "heroPipeline": "Structured data → typed graph → rules and evidence → human review → agent operations",
-    "activeCount": "active"
+    "activeCount": "active",
+    "startDemo": "Start Demo",
+    "buildData": "Build from Data",
+    "runtimeStatus": "Runtime status",
+    "notEvaluated": "Not evaluated",
+    "reviewUnavailable": "Review summary unavailable",
+    "partialUnavailable": "Some data is unavailable: {{domains}}",
+    "domain": {
+      "graph": "Graph",
+      "schema": "Ontology definitions"
+    }
   },
   "objects": {
     "title": "Objects",
@@ -206,7 +216,8 @@
     "connections": "Connections",
     "objectInfo": "Object Info",
     "relatedObjects": "Related Objects",
-    "items": "items"
+    "items": "items",
+    "unassessed": "Unassessed"
   },
   "graph": {
     "title": "Graph Explorer",
@@ -254,7 +265,8 @@
     "objectTypeExplanation": "What it represents and why it is modeled as an object",
     "linkTypeExplanation": "Business meaning and why it matters for reasoning",
     "ruleExplanation": "Inputs, logic, output edge, and evidence example",
-    "required": "Required"
+    "required": "Required",
+    "contextHelp": "About ontology definitions"
   },
   "agent": {
     "title": "Agent",

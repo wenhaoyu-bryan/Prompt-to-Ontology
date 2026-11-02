@@ -39,6 +39,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { api, apiLong } from "../providers/dataProvider";
+import { modelApi } from "../providers/modelConfigClient";
 import LlmConfigDialog from "../components/query/LlmConfigDialog";
 import AnswerEvidence from "../components/query/AnswerEvidence";
 import "./queryWorkspace.css";
@@ -169,7 +170,7 @@ export default function AgentPage() {
       ];
 
   useEffect(() => {
-    api
+    modelApi
       .get("/llm/config")
       .then(({ data }) => setStatus(data))
       .catch(() => setStatus(null));
@@ -579,7 +580,9 @@ export default function AgentPage() {
               <Tag color={status?.configured ? "success" : "default"}>
                 {status?.configured
                   ? text("LLM enabled", "模型已配置")
-                  : text("Deterministic demo", "确定性演示")}
+                  : status?.configured === false
+                    ? text("Deterministic demo", "确定性演示")
+                    : text("Model status unavailable", "模型状态暂不可用")}
               </Tag>
               <Button
                 type="text"

@@ -1,0 +1,109 @@
+.model-settings {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+.model-loading {
+  padding: 64px 0;
+  text-align: center;
+}
+.model-section {
+  padding: 8px 0 24px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--pto-border);
+}
+.model-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.model-settings h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+.model-settings h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+.model-agent-row {
+  display: grid;
+  grid-template-columns: 1fr minmax(240px, 1fr);
+  align-items: start;
+  gap: 24px;
+  padding: 18px 0;
+}
+.model-agent-choice .ant-select {
+  width: 100%;
+}
+.model-effective {
+  display: block;
+  font-size: 12px;
+  margin-top: 7px;
+  overflow-wrap: anywhere;
+}
+.model-note {
+  color: var(--pto-text-secondary);
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 12px 0 0;
+}
+.model-connection-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 0;
+  border-top: 1px solid var(--pto-border);
+}
+.model-connection-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+.model-connection-name.ant-btn {
+  font-weight: 600;
+  padding: 0;
+  height: auto;
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+}
+.model-connection-name span,
+.model-endpoint {
+  overflow-wrap: anywhere;
+}
+.model-connection-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.model-editor-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+@media (max-width: 700px) {
+  .model-agent-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .model-connection-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .model-connection-actions {
+    align-self: flex-end;
+    flex-wrap: wrap;
+  }
+  .model-section-heading {
+    flex-wrap: wrap;
+  }
+}

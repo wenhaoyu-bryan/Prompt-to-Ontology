@@ -64,7 +64,7 @@ test('metric and action contracts answer concrete questions in the UI', async ({
 });
 
 test('JSON upload reaches the existing source and mapping workflow', async ({ page }) => {
-  await page.goto('/pipeline');
+  await page.goto("/pipeline?mode=manual");
   await page.getByText('Upload Custom Data').click();
   await page.locator('input[type="file"]').setInputFiles({
     name: 'ci-products.json',

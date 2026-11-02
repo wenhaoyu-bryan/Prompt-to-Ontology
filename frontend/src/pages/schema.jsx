@@ -231,7 +231,7 @@ export default function SchemaPage() {
   return (
     <Space orientation="vertical" size={20} style={{ width: '100%' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div className="page-heading">
         <div>
           <Title level={3} style={{ margin: 0 }}>{t('schema.title')}</Title>
           <Text type="secondary">{t('schema.subtitle')}</Text>
@@ -239,28 +239,7 @@ export default function SchemaPage() {
         <Button icon={<ReloadOutlined />} onClick={loadSchema}>{t('common.refresh')}</Button>
       </div>
 
-      {/* Schema vs Instance explanation */}
-      <Alert type="info" showIcon icon={<InfoCircleOutlined />} title={t('pipeline.schemaExplanation')} style={{ fontSize: 12 }} />
-
-      {/* Summary stats */}
-      <Row gutter={[16, 16]}>
-        {[
-          { title: t('schema.objectTypes'), value: objectTypes.length, icon: <ApartmentOutlined />, color: token.colorPrimary },
-          { title: t('schema.linkTypes'), value: linkTypes.length, icon: <LinkOutlined />, color: token.colorSuccess },
-          { title: t('schema.rules'), value: rules.length, icon: <AlertOutlined />, color: token.colorError },
-          { title: t('schema.actions'), value: actions.length, icon: <ThunderboltOutlined />, color: token.colorWarning },
-        ].map((s, i) => (
-          <Col xs={12} sm={6} key={i}>
-            <Card size="small" hoverable>
-              <Statistic
-                title={s.title}
-                value={s.value}
-                prefix={React.cloneElement(s.icon, { style: { color: s.color } })}
-              />
-            </Card>
-          </Col>
-        ))}
-      </Row>
+      <details className="page-section"><summary><InfoCircleOutlined /> {t('schema.contextHelp')}</summary><Text type="secondary">{t('pipeline.schemaExplanation')}</Text></details>
 
       {/* Tabbed content */}
       <Card styles={{ body: { padding: '0 16px 16px' } }}>

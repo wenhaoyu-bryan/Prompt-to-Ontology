@@ -75,7 +75,10 @@ PET_FOOD_TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "product_id_or_name": {"type": "string", "description": "Product ID (e.g. PF001) or product name keyword"}
+                    "product_id_or_name": {
+                        "type": "string",
+                        "description": "Product ID (e.g. PF001) or product name keyword",
+                    }
                 },
                 "required": ["product_id_or_name"],
             },
@@ -89,7 +92,10 @@ PET_FOOD_TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "product_id_or_name": {"type": "string", "description": "Product ID or name keyword"}
+                    "product_id_or_name": {
+                        "type": "string",
+                        "description": "Product ID or name keyword",
+                    }
                 },
                 "required": ["product_id_or_name"],
             },
@@ -103,7 +109,10 @@ PET_FOOD_TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "ingredient_name": {"type": "string", "description": "Ingredient name (e.g. chicken, taurine)"}
+                    "ingredient_name": {
+                        "type": "string",
+                        "description": "Ingredient name (e.g. chicken, taurine)",
+                    }
                 },
                 "required": ["ingredient_name"],
             },
@@ -117,8 +126,14 @@ PET_FOOD_TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "ingredient_name": {"type": "string", "description": "Ingredient to avoid"},
-                    "species": {"type": "string", "description": "Optional: filter by species (cat/dog)"}
+                    "ingredient_name": {
+                        "type": "string",
+                        "description": "Ingredient to avoid",
+                    },
+                    "species": {
+                        "type": "string",
+                        "description": "Optional: filter by species (cat/dog)",
+                    },
                 },
                 "required": ["ingredient_name"],
             },
@@ -163,7 +178,7 @@ PET_FOOD_TOOLS = [
                 "type": "object",
                 "properties": {
                     "product_a": {"type": "string", "description": "Product A ID"},
-                    "product_b": {"type": "string", "description": "Product B ID"}
+                    "product_b": {"type": "string", "description": "Product B ID"},
                 },
                 "required": ["product_a", "product_b"],
             },
@@ -177,8 +192,14 @@ PET_FOOD_TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "product_id": {"type": "string", "description": "Current product ID"},
-                    "avoid_ingredient": {"type": "string", "description": "Ingredient to avoid"}
+                    "product_id": {
+                        "type": "string",
+                        "description": "Current product ID",
+                    },
+                    "avoid_ingredient": {
+                        "type": "string",
+                        "description": "Ingredient to avoid",
+                    },
                 },
                 "required": ["product_id"],
             },
@@ -197,6 +218,7 @@ PET_FOOD_TOOLS = [
 # =====================================================
 # Tool Implementations (unified output schema)
 # =====================================================
+
 
 def _wrap(tool_name, data, evidence=None, limitations=None, paths=None):
     return {
@@ -464,10 +486,18 @@ def tool_recommend_alternatives(product_id: str, avoid_ingredient: str = None) -
 # =====================================================
 
 TOOL_MAP = {
-    "get_product_risk_explanation": lambda args: tool_get_product_risk_explanation(**args),
-    "get_product_rule_evaluations": lambda args: tool_get_product_rule_evaluations(**args),
-    "find_products_by_ingredient": lambda args: tool_find_products_by_ingredient(**args),
-    "find_products_without_ingredient": lambda args: tool_find_products_without_ingredient(**args),
+    "get_product_risk_explanation": lambda args: tool_get_product_risk_explanation(
+        **args
+    ),
+    "get_product_rule_evaluations": lambda args: tool_get_product_rule_evaluations(
+        **args
+    ),
+    "find_products_by_ingredient": lambda args: tool_find_products_by_ingredient(
+        **args
+    ),
+    "find_products_without_ingredient": lambda args: tool_find_products_without_ingredient(
+        **args
+    ),
     "find_products_by_species": lambda args: tool_find_products_by_species(**args),
     "find_high_risk_products": lambda args: tool_find_high_risk_products(),
     "find_products_with_not_evaluable_rules": lambda args: tool_find_products_with_not_evaluable_rules(),
@@ -511,10 +541,13 @@ def _execute_tool(name: str, args: dict) -> dict:
 # LLM Planner + Grounded Answer
 # =====================================================
 
-def _call_llm_safe(messages, tools=None):
+
+def _call_llm_safe(messages, tools=None, tool_choice=None):
     """Call LLM via llm_client, return None on failure."""
     try:
         from llm_client import _call_llm
+        if tool_choice is not None:
+            return _call_llm(messages, tools, tool_choice=tool_choice)
         return _call_llm(messages, tools)
     except Exception:
         return None
@@ -529,12 +562,15 @@ def _llm_plan(question: str, context: dict = None) -> list[dict] | None:
     messages = [
         {"role": "system", "content": AGENT_SYSTEM_PROMPT},
         *_conversation_history(context),
-        {"role": "user", "content": (
-            f"User question: {question}{ctx_hint}\n\n"
-            "Select the appropriate tools to answer this question. Output a JSON array:\n"
-            '[{"tool": "tool_name", "args": {...}}]\n'
-            "Output only JSON, no other text. You may call multiple tools."
-        )},
+        {
+            "role": "user",
+            "content": (
+                f"User question: {question}{ctx_hint}\n\n"
+                "Select the appropriate tools to answer this question. Output a JSON array:\n"
+                '[{"tool": "tool_name", "args": {...}}]\n'
+                "Output only JSON, no other text. You may call multiple tools."
+            ),
+        },
     ]
 
     resp = _call_llm_safe(messages, PET_FOOD_TOOLS)
@@ -547,6 +583,14 @@ def _llm_plan(question: str, context: dict = None) -> list[dict] | None:
     # Try function calling first
     tool_calls = msg.get("tool_calls")
     if tool_calls:
+        if context is not None and all(tc.get("id") for tc in tool_calls):
+            context["_planner_transcript"] = messages + [
+                {
+                    "role": "assistant",
+                    "content": content or None,
+                    "tool_calls": tool_calls,
+                }
+            ]
         calls = []
         for tc in tool_calls:
             fn = tc.get("function", {})
@@ -560,7 +604,7 @@ def _llm_plan(question: str, context: dict = None) -> list[dict] | None:
     # Try parsing JSON from content
     try:
         # Find JSON array in content
-        match = re.search(r'\[.*\]', content, re.DOTALL)
+        match = re.search(r"\[.*\]", content, re.DOTALL)
         if match:
             calls = json.loads(match.group())
             if isinstance(calls, list) and all("tool" in c for c in calls):
@@ -571,23 +615,62 @@ def _llm_plan(question: str, context: dict = None) -> list[dict] | None:
     return None
 
 
-def _llm_compose_answer(question: str, tool_results: list[dict], context: dict = None) -> str | None:
+def _llm_compose_answer(
+    question: str, tool_results: list[dict], context: dict = None
+) -> str | None:
     """Ask LLM to compose a grounded answer from tool results. Returns markdown or None."""
     results_text = json.dumps(tool_results, ensure_ascii=False, indent=2)
 
     messages = [
         {"role": "system", "content": AGENT_SYSTEM_PROMPT},
         *_conversation_history(context),
-        {"role": "user", "content": (
-            f"User question: {question}\n\n"
-            f"Tool results:\n{results_text}\n\n"
-            + ("请用中文回答，包括各节标题。\n" if _is_chinese(question) else "Answer in English.\n") +
-            "Answer the user's question based strictly on the tool results above. Follow the required format. "
-            "Do not fabricate data. If data is insufficient, state this explicitly."
-        )},
+        {
+            "role": "user",
+            "content": (
+                f"User question: {question}\n\n"
+                f"Tool results:\n{results_text}\n\n"
+                + (
+                    "请用中文回答，包括各节标题。\n"
+                    if _is_chinese(question)
+                    else "Answer in English.\n"
+                )
+                + "Answer the user's question based strictly on the tool results above. Follow the required format. "
+                "Do not fabricate data. If data is insufficient, state this explicitly."
+            ),
+        },
     ]
 
-    resp = _call_llm_safe(messages)
+    transcript = (context or {}).get("_planner_transcript")
+    if transcript:
+        calls = transcript[-1]["tool_calls"]
+        if len(calls) == len(tool_results):
+            messages = (
+                transcript
+                + [
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc["id"],
+                        "content": json.dumps(result, ensure_ascii=False),
+                    }
+                    for tc, result in zip(calls, tool_results)
+                ]
+                + [
+                    {
+                        "role": "user",
+                        "content": (
+                            "请用中文回答，包括各节标题。"
+                            if _is_chinese(question)
+                            else "Answer in English."
+                        )
+                        + " Answer strictly from the tool results; do not fabricate data.",
+                    }
+                ]
+            )
+
+    if transcript and len(transcript[-1]["tool_calls"]) == len(tool_results):
+        resp = _call_llm_safe(messages, PET_FOOD_TOOLS, tool_choice="none")
+    else:
+        resp = _call_llm_safe(messages)
     if not resp:
         return None
 
@@ -598,6 +681,7 @@ def _llm_compose_answer(question: str, tool_results: list[dict], context: dict =
 # =====================================================
 # Deterministic fallback (keyword routing)
 # =====================================================
+
 
 def _conversation_history(context: dict | None) -> list[dict]:
     """Bounded conversation context; client history is not source evidence."""
@@ -662,6 +746,7 @@ def _keyword_route(question: str, context: dict = None) -> list[dict]:
 # Main entry point
 # =====================================================
 
+
 def chat(question: str, context: dict = None) -> dict:
     """
     Pet Food Agent v2 entry point.
@@ -671,6 +756,8 @@ def chat(question: str, context: dict = None) -> dict:
     2. Execute tools
     3. LLM composes grounded answer (fallback: template answer)
     """
+    context = dict(context or {})
+    context.pop("_planner_transcript", None)
     run_started = time.perf_counter()
     started_at = datetime.now(timezone.utc).isoformat()
     ts = lambda: time.strftime("%H:%M:%S", time.localtime())
@@ -679,20 +766,48 @@ def chat(question: str, context: dict = None) -> dict:
     step = 1
 
     # 1. Plan tool calls
-    logs.append({"step": step, "type": "thought", "icon": "🧠", "color": "orange",
-                 "message": f"Analyzing question: {question}", "timestamp": ts()})
+    logs.append(
+        {
+            "step": step,
+            "type": "thought",
+            "icon": "🧠",
+            "color": "orange",
+            "message": f"Analyzing question: {question}",
+            "timestamp": ts(),
+        }
+    )
     step += 1
 
     llm_used = False
-    calls = None if (context or {}).get("execution_mode") == "deterministic" else _llm_plan(question, context)
+    calls = (
+        None
+        if (context or {}).get("execution_mode") == "deterministic"
+        else _llm_plan(question, context)
+    )
     if calls:
         llm_used = True
-        logs.append({"step": step, "type": "thought", "icon": "🧠", "color": "cyan",
-                     "message": f"LLM selected tools: {[c['tool'] for c in calls]}", "timestamp": ts()})
+        logs.append(
+            {
+                "step": step,
+                "type": "thought",
+                "icon": "🧠",
+                "color": "cyan",
+                "message": f"LLM selected tools: {[c['tool'] for c in calls]}",
+                "timestamp": ts(),
+            }
+        )
     else:
         calls = _keyword_route(question, context)
-        logs.append({"step": step, "type": "thought", "icon": "🧠", "color": "amber",
-                     "message": f"LLM planning unavailable, using deterministic router: {[c['tool'] for c in calls]}", "timestamp": ts()})
+        logs.append(
+            {
+                "step": step,
+                "type": "thought",
+                "icon": "🧠",
+                "color": "amber",
+                "message": f"LLM planning unavailable, using deterministic router: {[c['tool'] for c in calls]}",
+                "timestamp": ts(),
+            }
+        )
     step += 1
 
     # 2. Execute tools
@@ -705,11 +820,16 @@ def chat(question: str, context: dict = None) -> dict:
         call_started = time.perf_counter()
         call_started_at = datetime.now(timezone.utc).isoformat()
         result = _execute_tool(tool_name, args)
-        tool_calls.append({"tool_name": tool_name, "arguments": args,
-                           "status": result.get("status", "error"),
-                           "started_at": call_started_at,
-                           "completed_at": datetime.now(timezone.utc).isoformat(),
-                           "duration_ms": round((time.perf_counter() - call_started) * 1000)})
+        tool_calls.append(
+            {
+                "tool_name": tool_name,
+                "arguments": args,
+                "status": result.get("status", "error"),
+                "started_at": call_started_at,
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "duration_ms": round((time.perf_counter() - call_started) * 1000),
+            }
+        )
 
         tool_results.append(result)
         used_tools.append(tool_name)
@@ -721,9 +841,17 @@ def chat(question: str, context: dict = None) -> dict:
         elif isinstance(result.get("data"), dict):
             data_summary = f" (dict)"
 
-        logs.append({"step": step, "type": "observation", "icon": status_emoji, "color": "green" if result["status"] == "success" else "amber",
-                     "message": f"Tool {tool_name}{data_summary}\n{result.get('message', '') or ''}",
-                     "data": result.get("data"), "timestamp": ts()})
+        logs.append(
+            {
+                "step": step,
+                "type": "observation",
+                "icon": status_emoji,
+                "color": "green" if result["status"] == "success" else "amber",
+                "message": f"Tool {tool_name}{data_summary}\n{result.get('message', '') or ''}",
+                "data": result.get("data"),
+                "timestamp": ts(),
+            }
+        )
         step += 1
 
     # 3. Compose answer
@@ -733,28 +861,63 @@ def chat(question: str, context: dict = None) -> dict:
         answer = _llm_compose_answer(question, tool_results, context)
         if answer:
             answer_llm_used = True
-            logs.append({"step": step, "type": "thought", "icon": "🧠", "color": "cyan",
-                         "message": "LLM generated answer", "timestamp": ts()})
+            logs.append(
+                {
+                    "step": step,
+                    "type": "thought",
+                    "icon": "🧠",
+                    "color": "cyan",
+                    "message": "LLM generated answer",
+                    "timestamp": ts(),
+                }
+            )
             step += 1
 
     if not answer:
         zh = _is_chinese(question)
         if not tool_results:
-            answer = ("## 结论\n\n当前演示无法确定该问题对应的本体查询。请明确产品 ID、成分或比较的两个产品；例如：解释 PF001 的风险。"
-                      if zh else "## Conclusion\n\nThe demo could not identify an ontology query for this question. Specify a product ID, ingredient, or two products to compare; for example: Explain PF001’s risks.")
+            answer = (
+                "## 结论\n\n当前演示无法确定该问题对应的本体查询。请明确产品 ID、成分或比较的两个产品；例如：解释 PF001 的风险。"
+                if zh
+                else "## Conclusion\n\nThe demo could not identify an ontology query for this question. Specify a product ID, ingredient, or two products to compare; for example: Explain PF001’s risks."
+            )
         elif _is_recommendation_question(question):
             answer = _recommendation_template(question, tool_results, zh)
-            logs.append({"step": step, "type": "thought", "icon": "📝", "color": "amber",
-                         "message": "Using recommendation template to generate answer", "timestamp": ts()})
+            logs.append(
+                {
+                    "step": step,
+                    "type": "thought",
+                    "icon": "📝",
+                    "color": "amber",
+                    "message": "Using recommendation template to generate answer",
+                    "timestamp": ts(),
+                }
+            )
         else:
             answer = _template_answer(question, tool_results)
-            logs.append({"step": step, "type": "thought", "icon": "📝", "color": "amber",
-                         "message": "Using template to generate answer", "timestamp": ts()})
+            logs.append(
+                {
+                    "step": step,
+                    "type": "thought",
+                    "icon": "📝",
+                    "color": "amber",
+                    "message": "Using template to generate answer",
+                    "timestamp": ts(),
+                }
+            )
         step += 1
 
     # 4. Disclaimer
-    logs.append({"step": step, "type": "thought", "icon": "📌", "color": "blue",
-                 "message": "This answer is based only on the current ontology data and rules. It is not veterinary diagnosis.", "timestamp": ts()})
+    logs.append(
+        {
+            "step": step,
+            "type": "thought",
+            "icon": "📌",
+            "color": "blue",
+            "message": "This answer is based only on the current ontology data and rules. It is not veterinary diagnosis.",
+            "timestamp": ts(),
+        }
+    )
 
     # Ensure disclaimer is in the answer, in the correct language
     zh = _is_chinese(question)
@@ -776,6 +939,7 @@ def chat(question: str, context: dict = None) -> dict:
             answer += "\n\n---\n*This answer is based only on the current ontology data and rules. It is not veterinary diagnosis.*"
 
     from llm_config_manager import get_active_status
+
     model_status = get_active_status() if llm_used else {}
     return {
         "logs": logs,

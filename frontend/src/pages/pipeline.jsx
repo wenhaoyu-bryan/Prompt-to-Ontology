@@ -25,6 +25,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import AssistedBuildWorkspace from '../components/build/AssistedBuildWorkspace';
+import BuildNavigation from '../components/build/BuildNavigation';
 import SchemaDesignWorkspace from '../components/build/SchemaDesignWorkspace';
 import { api } from '../providers/dataProvider';
 
@@ -38,10 +39,10 @@ const STATUS_COLORS = {
 };
 
 const SAMPLE_INFO = {
-  pet_food_products: { icon: '📦', objectType: 'PetFoodProduct', linkType: '', desc_en: 'Product catalog with nutrition values', desc_zh: '包含营养成分的产品目录' },
-  pet_food_ingredients: { icon: '🧪', objectType: 'Ingredient', linkType: '', desc_en: 'Ingredient definitions with allergen flags', desc_zh: '含过敏原标记的成分定义' },
-  product_ingredients: { icon: '🔗', objectType: '', linkType: 'CONTAINS', desc_en: 'Product-to-ingredient relationships', desc_zh: '产品与成分的关联关系' },
-  risk_rules: { icon: '⚠️', objectType: 'RiskRule', linkType: '', desc_en: 'Domain risk rules with conditions', desc_zh: '含条件的领域风险规则' },
+  pet_food_products: { icon: <DatabaseOutlined />, objectType: 'PetFoodProduct', linkType: '', desc_en: 'Product catalog with nutrition values', desc_zh: '包含营养成分的产品目录' },
+  pet_food_ingredients: { icon: <ExperimentOutlined />, objectType: 'Ingredient', linkType: '', desc_en: 'Ingredient definitions with allergen flags', desc_zh: '含过敏原标记的成分定义' },
+  product_ingredients: { icon: <LinkOutlined />, objectType: '', linkType: 'CONTAINS', desc_en: 'Product-to-ingredient relationships', desc_zh: '产品与成分的关联关系' },
+  risk_rules: { icon: <SafetyCertificateOutlined />, objectType: 'RiskRule', linkType: '', desc_en: 'Domain risk rules with conditions', desc_zh: '含条件的领域风险规则' },
 };
 
 const TARGET_OBJECT_TYPES = ['PetFoodProduct', 'Ingredient', 'Brand', 'RiskRule', 'Species', 'LifeStage'];
@@ -64,15 +65,15 @@ function formatTime(ts) {
 }
 
 export default function PipelinePage() {
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
   return params.get('mode') === 'schema'
     ? <SchemaDesignWorkspace />
-    : params.get('mode') === 'assisted'
-    ? <AssistedBuildWorkspace />
-    : <ManualPipelinePage onAssisted={() => setParams({ mode: 'assisted' })} />;
+    : params.get('mode') === 'manual'
+    ? <ManualPipelinePage />
+    : <AssistedBuildWorkspace />;
 }
 
-function ManualPipelinePage({ onAssisted }) {
+function ManualPipelinePage() {
   const { t, i18n } = useTranslation();
   const { token } = theme.useToken();
   const navigate = useNavigate();
@@ -583,9 +584,6 @@ function ManualPipelinePage({ onAssisted }) {
           <Text type="secondary">{t('pipeline.subtitle')}</Text>
         </div>
         <Space wrap>
-          <Button type="primary" icon={<RocketOutlined />} onClick={onAssisted}>
-            {isZh ? '辅助构建' : 'Build with assistant'}
-          </Button>
           <Button icon={<HistoryOutlined />} onClick={() => { setHistoryOpen(true); loadRecentPlans(); }}>
             {t('pipeline.planHistory')}
           </Button>
@@ -595,6 +593,7 @@ function ManualPipelinePage({ onAssisted }) {
         </Space>
       </div>
 
+      <BuildNavigation mode="manual" />
       <div className="pipeline-stepper" ref={stepperRef}>
           <div className="pipeline-stepper-heading">
             <div className="pipeline-stepper-title">
@@ -638,10 +637,14 @@ function ManualPipelinePage({ onAssisted }) {
                         className="pipeline-source-card"
                         size="small"
                         hoverable
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={selected}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
                         onClick={() => { if (selectedSample !== s.name) { setSelectedSample(s.name); setProfile(null); setMappings(null); setLineage(null); setImportPlan(null); setMappingOverrides({}); } }}
                         style={{ borderColor: selected ? token.colorPrimary : undefined, cursor: 'pointer' }}
                       >
-                        <div style={{ fontSize: 24, marginBottom: 8 }}>{info.icon || '📋'}</div>
+                        <div style={{ fontSize: 24, marginBottom: 8 }}>{info.icon || <TableOutlined />}</div>
                         <Text strong style={{ display: 'block', fontSize: 13 }}>{s.name}</Text>
                         <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
                           {isZh ? info.desc_zh : info.desc_en}

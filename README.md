@@ -1,4 +1,4 @@
-# Prompt-to-Ontology
+# <img src="frontend/public/brand/ontology-reasoning.png" width="32" height="32" alt="" /> Prompt-to-Ontology
 
 Map source data, review graph changes, and trace sample answers to source records.
 
@@ -9,9 +9,10 @@ https://github.com/user-attachments/assets/97bf16a6-b8e2-4364-af25-73ef42201fea
 [![CI](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-Prompt-to-Ontology is an open-source learning project for operational ontologies. Its runnable Pet Food reference connects structured data, typed objects, explicit rules, human review, and an ontology-grounded Analyst Agent.
+Prompt-to-Ontology is an open-source ontology workbench for connecting source data, typed objects, explicit rules, human review, and ontology-grounded Agents. The included Pet Food reference provides a runnable example of the workflow.
 
-- **Build from source data.** Profile CSV files, flat JSON arrays, or NDJSON, review field mappings, and prepare candidate objects and relationships.
+- **Build with assistance.** Upload CSV files, flat JSON arrays, or NDJSON and describe your goal. Review proposed mappings, resolve ambiguous fields, and preview candidate objects and relationships.
+- **Design schema drafts.** Propose object and relationship definitions from source fields, edit them in a list or structure map, and save or export a reviewed draft.
 - **Review before applying.** Inspect proposed changes in an Import Plan and Review Queue, then approve and apply them to the graph.
 - **Inspect the evidence.** Follow sample answers through relationship paths, open cited source records, and check for matching runtime relationships.
 - **Evaluate Agent runs.** Edit evaluation questions, inspect actual answers and tool results, compare runs, and turn feedback into regression cases.
@@ -41,13 +42,13 @@ The backend seeds sample data on first startup by default. You can try the Analy
 
 Run the stack locally on a trusted network. The demo login is a frontend convenience, not backend authentication.
 
-For setup and troubleshooting, see [Local Docker setup](docs/local-docker-setup.md). To configure an external model, open **Settings → LLM Config**. Supported providers include DeepSeek, OpenAI, Anthropic, and MiniMax. See [model setup](docs/question-set-evaluation.md#model-setup) for DeepSeek with the OpenAI-compatible protocol. Keep API keys in local settings or ignored environment files.
+For setup and troubleshooting, see [Local Docker setup](docs/local-docker-setup.md). Open **Model configuration** in the sidebar to save OpenAI-compatible or Anthropic connections and assign models separately to assisted build and graph query. Saved keys stay on your backend; Docker preserves them in its runtime volume. Environment variables remain available as a deployment default. See [model setup](docs/question-set-evaluation.md#model-setup).
 
 <details>
 <summary>Sample data, persistence, and demo write settings</summary>
 
 - Set `AUTO_SEED_DEMO_DATA=false` in `.env` to disable automatic sample seeding.
-- Compose stores the source catalog, import plans, and review state in the `backend_runtime` volume. These survive container replacement; an explicit demo reset can clear them.
+- Compose stores source data, import plans, review state, and saved model connections in the `backend_runtime` volume. These survive container replacement. A demo reset clears workflow data; deleting the volume also deletes saved model settings.
 - Legacy direct-write operations, including demo reset and snapshot restore, return HTTP 403 by default. Enable `ENABLE_LEGACY_DEMO_WRITES=true` only for a disposable local demo, then restart the backend. Use **Import Plan → Review Queue** for the regular build workflow.
 - Review Queue demonstrates review decisions and graph application; it is not an authorization boundary.
 
@@ -55,11 +56,13 @@ For setup and troubleshooting, see [Local Docker setup](docs/local-docker-setup.
 
 ## Try the reference workflow
 
-1. **Map a source.** In **Data Pipeline**, select a sample source, inspect its profile, and review field mappings before preparing an Import Plan.
+1. **Build from your data.** Open **Data Pipeline → Import data**, describe your goal, and upload source files or load sample files. Review the assistant’s mappings, resolve pending decisions, and preview the changes before submitting for review. **Manual configuration** retains the six-stage import workflow.
 2. **Review a change.** In **Review Queue**, inspect a candidate's properties and audit trail, then approve and apply it. Approval and application are separate actions.
 3. **Trace a reference answer.** Open **Evaluation & feedback → Reference tests · 22**, then run **Q03: What is PF001's first ingredient?** Inspect the `CONTAINS` path and cited records. Select **Explore in graph** to check the runtime relationship.
 4. **Query with ontology tools.** Ask the **Analyst Agent**, “Which products contain chicken?” Inspect the answer, recorded tool calls, and returned relationship paths. Continue the conversation or leave feedback. Proposed updates go through Review Queue.
 5. **Evaluate answers.** In **Evaluation & feedback**, run the supplied Agent cases with the deterministic baseline or a configured model. Compare recorded runs, review answers that need judgment, and turn query feedback into an editable case.
+
+To explore a new schema, use **Data Pipeline → Design schema draft**. Confirm proposed definitions and source bindings, then save or export the draft. These drafts do not activate a new runtime schema.
 
 The reference also includes object and graph exploration, four-state rule evaluation, agent traces, and graph snapshots, diffs, and rollback. Use **Demo Center → Start Golden Demo** for the guided tour.
 
@@ -110,7 +113,7 @@ The recording shows the answer and tool name in deterministic fallback mode.
 
 </details>
 
-The video and screenshots show the recorded reference workflow. The current conversation and evaluation interfaces are described in [Query Workbench](docs/query-workbench.md) and [Evaluation & feedback](docs/question-set-evaluation.md).
+The video and screenshots capture an earlier reference UI. The current app uses a light-first workspace with assisted build, schema draft design, and centralized model configuration. See [Assisted build](docs/assisted-build.md), [Query Workbench](docs/query-workbench.md), and [Evaluation & feedback](docs/question-set-evaluation.md) for current flows.
 
 [Product workflow](docs/product-workflow.md) · [Recording notes and additional captures](media/README.md)
 
@@ -145,7 +148,8 @@ Regression evaluation scores conclusion, source evidence, evaluation path, and a
 | Guide | Contents |
 | --- | --- |
 | [Documentation index](docs/README.md) | Product, architecture, and development guides |
-| [Data pipeline](docs/data-pipeline.md) | Source profiling, mapping, and import plans |
+| [Assisted build and schema design](docs/assisted-build.md) | Multi-source assistance, mapping review, and schema drafts |
+| [Data pipeline](docs/data-pipeline.md) | Manual source profiling, mapping, and import plans |
 | [Review Queue](docs/review-queue-runtime.md) | Review decisions and graph application |
 | [Ontology kernel](docs/ontology-kernel.md) | Schema definitions and validation |
 | [Query Workbench](docs/query-workbench.md) | Conversations, runtime tools, relationship paths, and feedback |

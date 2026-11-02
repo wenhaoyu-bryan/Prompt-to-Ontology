@@ -687,7 +687,7 @@ export default function AgentTracePage() {
         }
         open={drawerOpen}
         onClose={() => { setDrawerOpen(false); setSelectedTrace(null); setSelectedEvaluation(null); }}
-        width={720}
+        size={720}
         destroyOnClose
       >
         {detailLoading ? (

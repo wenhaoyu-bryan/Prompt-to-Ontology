@@ -7,12 +7,18 @@ separate local demo opt-in.
 import json
 import os
 import uuid
+import hmac
+from urllib.parse import urlsplit
 from pathlib import Path
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import request_validation_exception_handler
 from pydantic import BaseModel, ValidationError
 from database import init_db
 from neo4j_connector import get_driver
@@ -27,9 +33,19 @@ from ontology import (
     get_supplier_risk_summary,
 )
 from agent import run_agent, execute_action
-from legacy_data_pipeline import DataValidator, import_objects, parse_csv, normalize_field_names
+from legacy_data_pipeline import (
+    DataValidator,
+    import_objects,
+    parse_csv,
+    normalize_field_names,
+)
 from ontology_registry import OntologyRegistry
-from schema_drafts import delete_schema_draft, load_schema_drafts, save_schema_draft, validate_schema_draft
+from schema_drafts import (
+    delete_schema_draft,
+    load_schema_drafts,
+    save_schema_draft,
+    validate_schema_draft,
+)
 from domain_config import list_domains, get_domain_config, get_default_domain
 
 app = FastAPI(
@@ -45,6 +61,61 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def is_model_route(path):
+    return path in {"/api/llm", "/api/llm-config"} or path.startswith("/api/llm/")
+
+
+@app.exception_handler(RequestValidationError)
+async def model_validation_error(request, exc):
+    if is_model_route(request.url.path):
+        return JSONResponse(status_code=422, content={"detail": "Invalid model configuration request"})
+    return await request_validation_exception_handler(request, exc)
+
+
+@app.middleware("http")
+async def protect_model_routes(request, call_next):
+    if is_model_route(request.url.path):
+        origin = request.headers.get("origin")
+        if origin:
+            allowed = {
+                v.strip()
+                for v in os.getenv("MODEL_CONFIG_ALLOWED_ORIGINS", "").split(",")
+                if v.strip()
+            }
+            try:
+                parsed = urlsplit(origin)
+                loopback = (
+                    parsed.scheme == "http"
+                    and parsed.hostname in {"localhost", "127.0.0.1", "::1"}
+                    and parsed.username is None
+                    and parsed.password is None
+                    and not parsed.path
+                    and not parsed.query
+                    and not parsed.fragment
+                    and parsed.port != 0
+                )
+            except ValueError:
+                loopback = False
+            if origin not in allowed and not loopback:
+                return JSONResponse(
+                    status_code=403, content={"detail": "Origin is not allowed"}
+                )
+        token = os.getenv("MODEL_CONFIG_TOKEN", "")
+        if (
+            token
+            and request.method != "OPTIONS"
+            and not hmac.compare_digest(
+                request.headers.get("authorization", "").encode(),
+                f"Bearer {token}".encode(),
+            )
+        ):
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Model configuration authorization required"},
+            )
+    return await call_next(request)
 
 
 def require_legacy_demo_writes() -> None:
@@ -154,6 +225,7 @@ class MultiNodeRequest(BaseModel):
 
 # ---- API 端点 ----
 
+
 @app.get("/api/health")
 def api_health():
     neo4j_status = "disconnected"
@@ -213,6 +285,7 @@ def api_clear_dataset(request: dict):
     refresh_graph()
     return {"status": "ok", "cleared": dataset}
 
+
 @app.get("/api/llm-config")
 def api_llm_config_legacy():
     """Legacy endpoint — redirects to /api/llm/config"""
@@ -268,6 +341,81 @@ def api_llm_test(req: LLMTestRequest | None = None):
     return result
 
 
+class ModelConnectionRequest(BaseModel):
+    name: str
+    provider: str
+    model: str
+    base_url: str = ""
+    api_key: str = ""
+
+
+class ModelConnectionTestRequest(BaseModel):
+    id: str | None = None
+    name: str = ""
+    provider: str = ""
+    model: str = ""
+    base_url: str = ""
+    api_key: str = ""
+
+
+class ModelBindingsRequest(BaseModel):
+    build: str | None
+    query: str | None
+
+
+def _model_registry_call(fn, *args):
+    try:
+        return fn(*args)
+    except KeyError:
+        raise HTTPException(404, "Connection not found")
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc))
+
+
+@app.get("/api/llm/connections")
+def api_model_connections():
+    from llm_config_manager import connections_snapshot
+
+    return _model_registry_call(connections_snapshot)
+
+
+@app.post("/api/llm/connections/test")
+def api_model_connection_test(req: ModelConnectionTestRequest):
+    from llm_config_manager import test_connection_draft
+
+    return _model_registry_call(test_connection_draft, req.model_dump())
+
+
+@app.post("/api/llm/connections")
+def api_model_connection_create(req: ModelConnectionRequest):
+    from llm_config_manager import save_connection
+
+    return _model_registry_call(save_connection, req.model_dump())
+
+
+@app.put("/api/llm/connections/{ident}")
+def api_model_connection_update(ident: str, req: ModelConnectionRequest):
+    from llm_config_manager import save_connection
+
+    return _model_registry_call(save_connection, req.model_dump(), ident)
+
+
+@app.delete("/api/llm/connections/{ident}")
+def api_model_connection_delete(ident: str):
+    from llm_config_manager import delete_connection
+
+    return _model_registry_call(delete_connection, ident)
+
+
+@app.put("/api/llm/bindings")
+def api_model_bindings(req: ModelBindingsRequest):
+    from llm_config_manager import set_bindings
+
+    return _model_registry_call(set_bindings, req.model_dump())
+
+
 @app.get("/api/graph")
 def api_get_graph(dataset: str | None = None):
     """返回 {nodes, links} 供 D3 渲染，支持 ?dataset=xxx 过滤"""
@@ -305,6 +453,7 @@ def api_action(req: ActionRequest):
 def api_impact_analysis(node_id: str, depth: int = 3):
     """影响分析：找出从某节点出发的下游受影响范围"""
     return get_impact_analysis(node_id, depth)
+
 
 @app.get("/api/blast-radius/{node_id}")
 def api_blast_radius_legacy(node_id: str, depth: int = 3):
@@ -446,6 +595,7 @@ async def api_export_data(object_type: str):
 # =====================================================
 # 通用导入端点 (Phase 5.4 — 两个 CSV 导入任意行业)
 # =====================================================
+
 
 @app.post("/api/data/import/nodes", dependencies=[Depends(require_legacy_demo_writes)])
 async def api_import_nodes(file: UploadFile = File(...)):
@@ -591,10 +741,10 @@ def _guess_object_type(filename: str, rows: list[dict]) -> str:
     return "raw-materials"
 
 
-
 # =====================================================
 # 数据流水线 API (Phase 6)
 # =====================================================
+
 
 @app.post("/api/pipeline/infer-schema")
 async def api_infer_schema(request: dict):
@@ -702,6 +852,7 @@ async def api_batch_import(req: MultiBatchImportRequest):
 # =====================================================
 # 本体 Schema API (Phase 8)
 # =====================================================
+
 
 @app.get("/api/ontology/schema")
 def api_ontology_schema(dataset: str | None = None):
@@ -1223,7 +1374,10 @@ from verified_qa import VerifiedQAService
 from verified_qa.evaluation import VerifiedEvaluator
 
 verified_qa_service = VerifiedQAService(_Path(__file__).resolve().parent.parent)
-verified_evaluator = VerifiedEvaluator(_Path(__file__).resolve().parent.parent, _Path(__file__).resolve().parent / ".runtime/verified-evaluations.json")
+verified_evaluator = VerifiedEvaluator(
+    _Path(__file__).resolve().parent.parent,
+    _Path(__file__).resolve().parent / ".runtime/verified-evaluations.json",
+)
 
 
 @app.get("/api/verified-qa/questions")
@@ -1281,7 +1435,9 @@ def api_verified_feedback(body: dict):
 
 # Phase 28 uses in-memory storage. Future phases can persist pipeline runs.
 from data_pipeline import PipelineService
+
 pipeline_service = PipelineService()
+
 
 @app.get("/api/pipeline/samples")
 def api_pipeline_samples():
@@ -1298,6 +1454,7 @@ def api_pipeline_mapping_targets(domain: str = "pet_food"):
         raise HTTPException(404, str(e))
     return {name: [p.name for p in obj.properties] for name, obj in schema.object_types.items()}
 
+
 @app.post("/api/pipeline/profile/sample")
 def api_pipeline_profile_sample(body: dict):
     """Profile a built-in sample data source."""
@@ -1309,6 +1466,7 @@ def api_pipeline_profile_sample(body: dict):
         return profile.model_dump()
     except (ValueError, FileNotFoundError) as e:
         raise HTTPException(404, str(e))
+
 
 @app.post("/api/pipeline/profile/csv")
 def api_pipeline_profile_csv(body: dict):
@@ -1336,6 +1494,7 @@ def api_pipeline_profile_structured(fmt: str, body: dict):
     except ValueError as exc:
         raise HTTPException(400, str(exc))
 
+
 @app.get("/api/pipeline/profile/{source_id}")
 def api_pipeline_get_profile(source_id: str):
     """Get a profiled data source."""
@@ -1343,6 +1502,7 @@ def api_pipeline_get_profile(source_id: str):
     if not profile:
         raise HTTPException(404, f"Profile not found: {source_id}")
     return profile.model_dump()
+
 
 @app.post("/api/pipeline/mappings/suggest")
 def api_pipeline_suggest_mappings(body: dict):
@@ -1385,6 +1545,7 @@ def api_pipeline_mapping_decision(body: dict):
     except ValueError as e:
         raise HTTPException(400, str(e))
 
+
 @app.post("/api/pipeline/import-plan")
 def api_pipeline_create_import_plan(body: dict):
     """Create an import plan from a profiled source."""
@@ -1399,6 +1560,7 @@ def api_pipeline_create_import_plan(body: dict):
         return plan.model_dump()
     except ValueError as e:
         raise HTTPException(404, str(e))
+
 
 @app.post("/api/pipeline/relationship-import-plan")
 def api_pipeline_create_relationship_import_plan(body: dict):
@@ -1428,6 +1590,7 @@ def api_pipeline_create_relationship_import_plan(body: dict):
     except ValueError as e:
         raise HTTPException(404, str(e))
 
+
 @app.get("/api/pipeline/link-types/{domain}")
 def api_pipeline_get_link_types(domain: str):
     """Get available link types and their source/target object types for a domain."""
@@ -1447,6 +1610,7 @@ def api_pipeline_get_link_types(domain: str):
     except Exception as e:
         raise HTTPException(500, str(e))
 
+
 @app.get("/api/pipeline/import-plan/{plan_id}")
 def api_pipeline_get_import_plan(plan_id: str):
     """Get an import plan by ID."""
@@ -1454,6 +1618,7 @@ def api_pipeline_get_import_plan(plan_id: str):
     if not plan:
         raise HTTPException(404, f"Import plan not found: {plan_id}")
     return plan.model_dump()
+
 
 @app.get("/api/pipeline/import-plans")
 def api_pipeline_list_import_plans():
@@ -1645,6 +1810,7 @@ def api_agent_submit_suggestions(body: dict):
 
 # ---- Demo Admin Endpoints ----
 
+
 def _get_demo_admin_service():
     from demo_admin import DemoAdminService
     return DemoAdminService(driver=get_driver(), pipeline_service=pipeline_service)
@@ -1698,6 +1864,7 @@ def api_demo_clear(body: dict):
 
 
 # ---- Build Scenario Endpoints ----
+
 
 @app.get("/api/pipeline/build-scenarios")
 def api_list_build_scenarios():
@@ -1765,10 +1932,12 @@ from graph_snapshot import (
     is_restore_enabled as gs_is_restore_enabled,
 )
 
+
 @app.get("/api/graph/snapshots")
 def api_list_snapshots():
     """List graph snapshots."""
     return {"snapshots": [s.model_dump() for s in gs_list_snapshots()]}
+
 
 @app.get("/api/graph/snapshots/{snapshot_id}")
 def api_get_snapshot(snapshot_id: str):
@@ -1777,6 +1946,7 @@ def api_get_snapshot(snapshot_id: str):
     if not snap:
         raise HTTPException(404, f"Snapshot {snapshot_id} not found")
     return snap.model_dump()
+
 
 @app.post("/api/graph/snapshots")
 def api_create_snapshot(body: dict):
@@ -1789,6 +1959,7 @@ def api_create_snapshot(body: dict):
         return snap.model_dump()
     except Exception as e:
         raise HTTPException(500, f"Failed to create snapshot: {e}")
+
 
 @app.post("/api/graph/snapshots/compare")
 def api_compare_snapshots(body: dict):
@@ -1805,10 +1976,12 @@ def api_compare_snapshots(body: dict):
     except Exception as e:
         raise HTTPException(500, f"Failed to compare snapshots: {e}")
 
+
 @app.get("/api/graph/diffs")
 def api_list_diffs():
     """List graph diffs."""
     return {"diffs": [d.model_dump() for d in gs_list_diffs()]}
+
 
 @app.get("/api/graph/diffs/{diff_id}")
 def api_get_diff(diff_id: str):
@@ -1817,6 +1990,7 @@ def api_get_diff(diff_id: str):
     if not diff:
         raise HTTPException(404, f"Diff {diff_id} not found")
     return diff.model_dump()
+
 
 @app.post("/api/graph/snapshots/{snapshot_id}/restore", dependencies=[Depends(require_legacy_demo_writes)])
 def api_restore_snapshot(snapshot_id: str, body: dict):
@@ -1846,11 +2020,13 @@ from rule_studio import (
 )
 from rule_studio.models import SimulationRequest
 
+
 @app.get("/api/rule-studio/rules")
 def api_rule_studio_list():
     """List all rules."""
     rules = rs_list_rules()
     return {"rules": [r.model_dump() for r in rules]}
+
 
 @app.get("/api/rule-studio/rules/{rule_id}")
 def api_rule_studio_detail(rule_id: str):
@@ -1861,6 +2037,7 @@ def api_rule_studio_detail(rule_id: str):
     except (KeyError, ValueError) as e:
         raise HTTPException(404, str(e))
 
+
 @app.get("/api/rule-studio/evaluation-summary")
 def api_rule_studio_evaluation():
     """Get rule evaluation coverage summary."""
@@ -1870,6 +2047,7 @@ def api_rule_studio_evaluation():
     except Exception as e:
         raise HTTPException(500, f"Failed to evaluate rules: {e}")
 
+
 @app.get("/api/rule-studio/products/{product_id}/rules")
 def api_rule_studio_product_rules(product_id: str):
     """Get all rule results for a specific product."""
@@ -1878,6 +2056,7 @@ def api_rule_studio_product_rules(product_id: str):
         return {"product_id": product_id, "results": results}
     except Exception as e:
         raise HTTPException(500, f"Failed to get product rules: {e}")
+
 
 @app.post("/api/rule-studio/simulate")
 def api_rule_studio_simulate(body: dict):
@@ -1913,10 +2092,23 @@ from agent_trace import (
     update_trace_review_info as at_update_review_info,
 )
 
-from agent_trace.feedback import QueryFeedback, read_feedback, save_feedback, review_feedback
-from agent_trace.evaluation_workbench import EvaluationWorkbench, EvaluationCase, EvaluationRequest, digest
+from agent_trace.feedback import (
+    QueryFeedback,
+    read_feedback,
+    save_feedback,
+    review_feedback,
+)
+from agent_trace.evaluation_workbench import (
+    EvaluationWorkbench,
+    EvaluationCase,
+    EvaluationRequest,
+    digest,
+)
 
-question_evaluator = EvaluationWorkbench(_Path(__file__).resolve().parent.parent, _Path(__file__).resolve().parent / '.runtime')
+question_evaluator = EvaluationWorkbench(
+    _Path(__file__).resolve().parent.parent,
+    _Path(__file__).resolve().parent / ".runtime",
+)
 
 
 @app.get('/api/agent/question-evaluations/cases')
@@ -2034,6 +2226,7 @@ def api_agent_traces(limit: int = 50, status: str = None):
     traces = at_list_traces(limit=limit, status=status)
     return {"traces": [t.model_dump() for t in traces]}
 
+
 @app.get("/api/agent/traces/{trace_id}")
 def api_agent_trace_detail(trace_id: str):
     """Get a single trace."""
@@ -2042,11 +2235,13 @@ def api_agent_trace_detail(trace_id: str):
         raise HTTPException(404, f"Trace {trace_id} not found")
     return trace.model_dump()
 
+
 @app.get("/api/agent/evaluations")
 def api_agent_evaluations(limit: int = 50):
     """List evaluations."""
     evals = at_list_evaluations(limit=limit)
     return {"evaluations": [e.model_dump() for e in evals]}
+
 
 @app.get("/api/agent/evaluations/{evaluation_id}")
 def api_agent_evaluation_detail(evaluation_id: str):
@@ -2056,6 +2251,7 @@ def api_agent_evaluation_detail(evaluation_id: str):
         raise HTTPException(404, f"Evaluation {evaluation_id} not found")
     return ev.model_dump()
 
+
 @app.post("/api/agent/traces/{trace_id}/evaluate")
 def api_agent_trace_evaluate(trace_id: str):
     """Re-run evaluation on a trace."""
@@ -2064,6 +2260,7 @@ def api_agent_trace_evaluate(trace_id: str):
         return ev.model_dump()
     except ValueError as e:
         raise HTTPException(404, str(e))
+
 
 @app.post("/api/agent/traces/{trace_id}/refresh-review-status")
 def api_agent_trace_refresh_review(trace_id: str):
@@ -2089,10 +2286,12 @@ from scenario_run import (
     get_demo_health,
 )
 
+
 @app.get("/api/scenario-runs/scenarios")
 def api_list_scenarios():
     """List predefined demo scenarios."""
     return {"scenarios": [s.model_dump() for s in list_predefined_scenarios()]}
+
 
 @app.post("/api/scenario-runs")
 def api_create_scenario_run(body: dict):
@@ -2106,10 +2305,12 @@ def api_create_scenario_run(body: dict):
     except ValueError as e:
         raise HTTPException(400, str(e))
 
+
 @app.get("/api/scenario-runs")
 def api_list_scenario_runs():
     """List recent scenario runs."""
     return {"runs": [r.model_dump() for r in list_scenario_runs()]}
+
 
 @app.get("/api/scenario-runs/{run_id}")
 def api_get_scenario_run(run_id: str):
@@ -2119,6 +2320,7 @@ def api_get_scenario_run(run_id: str):
         raise HTTPException(404, "Run not found")
     return run.model_dump()
 
+
 @app.post("/api/scenario-runs/{run_id}/steps/{step_id}/start")
 def api_start_step(run_id: str, step_id: str):
     """Start a scenario step."""
@@ -2127,6 +2329,7 @@ def api_start_step(run_id: str, step_id: str):
         return run.model_dump()
     except ValueError as e:
         raise HTTPException(400, str(e))
+
 
 @app.post("/api/scenario-runs/{run_id}/steps/{step_id}/complete")
 def api_complete_step(run_id: str, step_id: str, body: dict = None):
@@ -2138,6 +2341,7 @@ def api_complete_step(run_id: str, step_id: str, body: dict = None):
     except ValueError as e:
         raise HTTPException(400, str(e))
 
+
 @app.post("/api/scenario-runs/{run_id}/steps/{step_id}/skip")
 def api_skip_step(run_id: str, step_id: str):
     """Skip a scenario step."""
@@ -2146,6 +2350,7 @@ def api_skip_step(run_id: str, step_id: str):
         return run.model_dump()
     except ValueError as e:
         raise HTTPException(400, str(e))
+
 
 @app.post("/api/scenario-runs/{run_id}/attach-artifact")
 def api_attach_artifact(run_id: str, body: dict):
@@ -2160,6 +2365,7 @@ def api_attach_artifact(run_id: str, body: dict):
     except ValueError as e:
         raise HTTPException(400, str(e))
 
+
 @app.post("/api/scenario-runs/{run_id}/complete")
 def api_complete_scenario_run(run_id: str):
     """Mark a scenario run as completed."""
@@ -2169,6 +2375,7 @@ def api_complete_scenario_run(run_id: str):
     except ValueError as e:
         raise HTTPException(400, str(e))
 
+
 @app.get("/api/demo/health")
 def api_demo_health():
     """Check demo readiness."""
@@ -2177,9 +2384,11 @@ def api_demo_health():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8765)
 
 
 # Multi-source assisted import: explicit previews and Review Queue submission.
 from assisted_build_api import router as assisted_build_router
+
 app.include_router(assisted_build_router)

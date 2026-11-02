@@ -34,6 +34,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../providers/dataProvider";
 import MappingEditor from "./MappingEditor";
+import BuildNavigation from "./BuildNavigation";
 import "./assistedBuild.css";
 
 const { TextArea } = Input;
@@ -128,8 +129,15 @@ export default function AssistedBuildWorkspace() {
   useEffect(() => {
     let alive = true;
     let timer;
+    let initialized = false;
     if (!runId) {
       setRun(null);
+      setStage(0);
+      setDrafts([]);
+      setSourceId(null);
+      setReviewed(false);
+      setVerified(null);
+      setError("");
       return;
     }
     const poll = async () => {
@@ -137,6 +145,16 @@ export default function AssistedBuildWorkspace() {
         const { data } = await api.get(`/assisted-build/runs/${runId}`);
         if (!alive) return;
         setRun(data);
+        if (!initialized && !busyRun(data)) {
+          setStage(
+            ["submitted", "submitting"].includes(data.status)
+              ? 3
+              : data.preview
+                ? 2
+                : 1,
+          );
+          initialized = true;
+        }
         if (busyRun(data)) timer = setTimeout(poll, 1500);
       } catch (e) {
         if (alive) report(e);
@@ -309,12 +327,6 @@ export default function AssistedBuildWorkspace() {
           </Typography.Text>
         </div>
         <Space wrap>
-          <Button onClick={() => navigate("/pipeline?mode=schema")}>
-            {tr("Design new schema", "设计新本体")}
-          </Button>
-          <Button onClick={() => navigate("/pipeline")}>
-            {tr("Manual configuration", "手动配置")}
-          </Button>
           <Button
             icon={<HistoryOutlined />}
             onClick={() =>
@@ -334,6 +346,16 @@ export default function AssistedBuildWorkspace() {
           )}
         </Space>
       </header>
+      <BuildNavigation
+        mode="import"
+        disabled={pending}
+        onModelsChanged={() => {
+          api
+            .get("/assisted-build/schema")
+            .then((r) => setCatalog(r.data))
+            .catch(report);
+        }}
+      />
       <div className="ab-progress">
         <div className="ab-run-caption">
           <span>
@@ -385,7 +407,7 @@ export default function AssistedBuildWorkspace() {
           )}
         />
       )}
-      <main
+      <section
         className="ab-stage"
         aria-label={tr("Build stage content", "构建阶段内容")}
       >
@@ -842,7 +864,7 @@ export default function AssistedBuildWorkspace() {
             )}
           </section>
         )}
-      </main>
+      </section>
       <footer className="ab-footer">
         <Button
           icon={<ArrowLeftOutlined />}
@@ -919,7 +941,7 @@ export default function AssistedBuildWorkspace() {
         </div>
       </footer>
       <Drawer
-        width={480}
+        size={480}
         title={tr("Build history", "构建记录")}
         open={historyOpen}
         onClose={() => setHistoryOpen(false)}
@@ -953,7 +975,7 @@ export default function AssistedBuildWorkspace() {
         )}
       </Drawer>
       <Drawer
-        width={600}
+        size={600}
         title={tr("Candidate details", "候选详情")}
         open={!!detail}
         onClose={() => setDetail(null)}

@@ -1,6 +1,6 @@
 # Assisted Build
 
-Use **Data Pipeline → Build with assistant** to upload related source files together and prepare a reviewable import into the existing Pet Food definitions. The manual six-step workflow remains available.
+Use **Data Pipeline** (assisted import opens by default) to upload related source files together and prepare a reviewable import into the existing Pet Food definitions. The manual six-step workflow remains available.
 
 ## Design new definitions
 
@@ -61,3 +61,5 @@ npx playwright test tests/smoke/assisted-build.spec.js --workers=1
 ```
 
 The browser suite covers renamed multi-file uploads, preserved relationship properties, explicit submission/retry, reload, unit confirmation, missing endpoints, stale local edits, manual workflow access, and fixed controls on desktop/mobile. Live provider calls are separate checks, never a CI dependency.
+
+UI navigation: use **Import data** or **Design schema draft** in the build header. The six-stage manual workflow is available under **Manual configuration** at `/pipeline?mode=manual`.

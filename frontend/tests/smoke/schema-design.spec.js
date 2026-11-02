@@ -74,7 +74,12 @@ test("designs unseen types and a relationship, saves a draft, exports and invali
   const id = await begin(page);
   await expect(
     page.getByRole("region", { name: "Proposed schema map" }),
+  ).toHaveCount(0);
+  await page.getByText("Schema map", { exact: true }).click();
+  await expect(
+    page.getByRole("region", { name: "Proposed schema map" }),
   ).toBeVisible();
+  await page.getByText("Definition list", { exact: true }).click();
   await confirmVisible(page);
   await page.getByText("Relationships (1)", { exact: true }).click();
   await confirmVisible(page);
@@ -196,10 +201,10 @@ test("keeps design controls fixed while scrolling, supports mobile and preserves
   await expect(
     page.getByRole("button", { name: /Validate & preview changes/ }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Map to existing schema" }).click();
+  await page.getByRole("link", { name: "Import data", exact: true }).click();
   await expect(page.getByTestId("assisted-build")).toBeVisible();
   await page
-    .getByRole("button", { name: "Design new schema", exact: true })
+    .getByRole("link", { name: "Design schema draft", exact: true })
     .click();
   await expect(page.getByTestId("schema-design")).toBeVisible();
 });

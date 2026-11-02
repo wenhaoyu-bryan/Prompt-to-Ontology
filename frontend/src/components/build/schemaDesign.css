@@ -10,7 +10,7 @@
   padding: 18px;
   margin-top: 28px;
   background: var(--ab-tint);
-  border-radius: 10px;
+  border-radius: 4px;
 }
 .sd-boundary > span {
   color: var(--ab-accent);
@@ -199,7 +199,7 @@
   background: var(--ab-tint);
   color: var(--ab-accent);
   padding: 18px;
-  border-radius: 12px;
+  border-radius: 6px;
   font-size: 30px;
 }
 .sd-saved h3 {
@@ -250,3 +250,8 @@
     flex-wrap: wrap;
   }
 }
+
+.sd-view-switch { margin: 0 0 18px; }
+.sd-calibration-heading { margin-bottom: 12px; }
+.sd-map { margin: 0; border: 1px solid var(--ab-border); border-radius: 4px; height: max(260px, calc(100dvh - 420px)); }
+.sd-map-panel .ab-section-heading { padding-bottom: 0; }

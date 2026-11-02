@@ -1,24 +1,26 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="dark light" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#FFFFFF" />
     <script>
       // Apply the saved preference before React loads, so the initial frame matches the app.
       try {
-        const mode = localStorage.getItem('pto-theme-mode') === 'light' ? 'light' : 'dark';
+        const mode = localStorage.getItem('pto-theme-mode') === 'dark' ? 'dark' : 'light';
         document.documentElement.dataset.theme = mode;
         document.documentElement.style.colorScheme = mode;
+        document.querySelector('meta[name="theme-color"]').content = mode === 'dark' ? '#191919' : '#FFFFFF';
       } catch {}
     </script>
     <style>
-      html { background: #101827; color-scheme: dark; }
-      html[data-theme='light'] { background: #f3f6fa; color-scheme: light; }
+      html { background: #ffffff; color-scheme: light; }
+      html[data-theme='dark'] { background: #191919; color-scheme: dark; }
       body { margin: 0; }
     </style>
-    <title>Prompt-to-Ontology · Pet Food Ontology Demo</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>" />
+    <title>Prompt-to-Ontology · Ontology &amp; reasoning</title>
+    <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
   </head>
   <body>
     <div id="root"></div>
