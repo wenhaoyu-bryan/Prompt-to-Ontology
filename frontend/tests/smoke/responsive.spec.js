@@ -53,7 +53,7 @@ test.describe('Responsive Smoke (390 × 844)', () => {
 for (const viewport of [{ width: 1280, height: 800 }, MOBILE_VIEWPORT]) {
   test(`pipeline keeps its heading and stepper visible while content scrolls at ${viewport.width}px`, async ({ page }) => {
     await page.setViewportSize(viewport);
-    await page.goto('/pipeline');
+    await page.goto("/pipeline?mode=manual");
     await page.locator('.pipeline-source-card').filter({ hasText: 'pet_food_products' }).click();
     await page.locator('.pipeline-step-footer button').last().click();
     await expect(page.getByText('Column Profiles')).toBeVisible();

@@ -1,4 +1,4 @@
-# Prompt-to-Ontology
+# <img src="frontend/public/brand/ontology-reasoning.png" width="32" height="32" alt="" /> Prompt-to-Ontology
 
 Map source data, review graph changes, and trace sample answers to source records.
 

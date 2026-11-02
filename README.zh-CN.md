@@ -1,4 +1,4 @@
-# Prompt-to-Ontology
+# <img src="frontend/public/brand/ontology-reasoning.png" width="32" height="32" alt="" /> Prompt-to-Ontology
 
 映射来源数据，审核图谱变更，从样例答案追溯到来源记录。
 

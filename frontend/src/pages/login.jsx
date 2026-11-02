@@ -3,6 +3,7 @@ import { Form, Input, Button, Card, Typography, Space, Alert, theme } from 'antd
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useLogin } from '@refinedev/core';
 import { useTranslation } from 'react-i18next';
+import AppLogo from '../components/common/AppLogo';
 
 const { Title, Text } = Typography;
 
@@ -30,11 +31,7 @@ export default function LoginPage() {
       <div style={{ width: '100%', maxWidth: 420, padding: '0 16px' }}>
       <Card style={{ width: '100%', borderRadius: token.borderRadiusLG }} variant="borderless">
         <Space direction="vertical" size={4} style={{ width: '100%', marginBottom: 32, textAlign: 'center' }}>
-          <img
-            src="/project_profile.png"
-            alt="Prompt-to-Ontology"
-            style={{ width: 48, height: 48, borderRadius: token.borderRadiusLG, margin: '0 auto 12px', display: 'block' }}
-          />
+          <AppLogo size={56} className="login-logo" />
           <Title level={4} style={{ margin: 0 }}>{t('auth.loginTitle')}</Title>
           <Text type="secondary">{t('auth.loginSubtitle')}</Text>
         </Space>
@@ -42,10 +39,10 @@ export default function LoginPage() {
         {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
 
         <Form layout="vertical" onFinish={onFinish} initialValues={{ username: 'demo', password: 'demo' }}>
-          <Form.Item name="username" rules={[{ required: true, message: t('auth.username') }]}>
+          <Form.Item label={t('auth.username')} name="username" rules={[{ required: true, message: t('auth.username') }]}>
             <Input prefix={<UserOutlined />} placeholder={t('auth.username')} size="large" autoComplete="username" />
           </Form.Item>
-          <Form.Item name="password" rules={[{ required: true, message: t('auth.password') }]}>
+          <Form.Item label={t('auth.password')} name="password" rules={[{ required: true, message: t('auth.password') }]}>
             <Input.Password prefix={<LockOutlined />} placeholder={t('auth.password')} size="large" autoComplete="current-password" />
           </Form.Item>
           <Form.Item style={{ marginBottom: 8 }}>

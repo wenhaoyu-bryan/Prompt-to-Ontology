@@ -187,7 +187,17 @@
     "agentRunsAvailable": "智能体运行记录可在分析智能体页面查看",
     "heroEyebrow": "运行型本体",
     "heroPipeline": "结构化数据 → 类型化图谱 → 规则与证据 → 人工审核 → 智能体操作",
-    "activeCount": "项活跃"
+    "activeCount": "项活跃",
+    "startDemo": "开始演示",
+    "buildData": "从数据构建",
+    "runtimeStatus": "运行状态",
+    "notEvaluated": "未评估",
+    "reviewUnavailable": "审核摘要暂不可用",
+    "partialUnavailable": "部分数据暂不可用：{{domains}}",
+    "domain": {
+      "graph": "图谱",
+      "schema": "本体定义"
+    }
   },
   "objects": {
     "title": "对象",
@@ -206,7 +216,8 @@
     "connections": "连接数",
     "objectInfo": "对象信息",
     "relatedObjects": "关联对象",
-    "items": "个"
+    "items": "个",
+    "unassessed": "未评估"
   },
   "graph": {
     "title": "图谱浏览器",
@@ -254,7 +265,8 @@
     "objectTypeExplanation": "它代表什么，以及为什么被建模为对象",
     "linkTypeExplanation": "业务含义及其对推理的重要性",
     "ruleExplanation": "输入、逻辑、输出边和证据示例",
-    "required": "必填"
+    "required": "必填",
+    "contextHelp": "关于本体定义"
   },
   "agent": {
     "title": "智能体",

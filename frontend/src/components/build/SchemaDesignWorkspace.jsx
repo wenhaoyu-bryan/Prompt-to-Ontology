@@ -36,6 +36,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../providers/dataProvider";
 import SchemaDefinitionDrawer from "./SchemaDefinitionDrawer";
 import SchemaDesignMap from "./SchemaDesignMap";
+import BuildNavigation from "./BuildNavigation";
 import "./assistedBuild.css";
 import "./schemaDesign.css";
 
@@ -105,6 +106,7 @@ export default function SchemaDesignWorkspace() {
   const [epoch, setEpoch] = useState(0);
   const [detail, setDetail] = useState(null);
   const [category, setCategory] = useState("objects");
+  const [view, setView] = useState("list");
   const [history, setHistory] = useState([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [reviewed, setReviewed] = useState(false);
@@ -418,12 +420,6 @@ export default function SchemaDesignWorkspace() {
         </div>
         <Space wrap>
           <Button
-            disabled={pending}
-            onClick={() => navigate("/pipeline?mode=assisted")}
-          >
-            {tr("Map to existing schema", "映射到已有本体")}
-          </Button>
-          <Button
             icon={<HistoryOutlined />}
             disabled={pending}
             onClick={() =>
@@ -443,6 +439,7 @@ export default function SchemaDesignWorkspace() {
           )}
         </Space>
       </header>
+      <BuildNavigation mode="schema" disabled={pending} />
       <section className="ab-progress">
         <div className="ab-run-caption">
           <span>
@@ -481,7 +478,7 @@ export default function SchemaDesignWorkspace() {
           onClose={() => setError("")}
         />
       )}
-      <main
+      <section
         className="ab-stage"
         aria-label={tr("Schema design content", "Schema 设计内容")}
         key={stage}
@@ -685,118 +682,134 @@ export default function SchemaDesignWorkspace() {
                 {remaining} {tr("to review", "项待确认")}
               </Tag>
             </section>
-            <SchemaDesignMap
-              objects={objects}
-              links={links}
-              activeSchema={activeSchema}
-              onSelect={(category, id) => {
-                if (!pending) setDetail({ category, id });
-              }}
-              tr={tr}
+            <Segmented
+              className="sd-view-switch"
+              aria-label="Schema view"
+              value={view}
+              disabled={pending}
+              onChange={setView}
+              options={[
+                { value: "list", label: tr("Definition list", "定义列表") },
+                { value: "map", label: tr("Schema map", "结构图") },
+              ]}
             />
-            <section className="ab-panel">
-              <div className="ab-section-heading">
-                <Segmented
-                  aria-label="Definition category"
-                  value={category}
-                  onChange={setCategory}
-                  disabled={pending}
-                  options={[
+            {view === "map" ? (
+              <SchemaDesignMap
+                objects={objects}
+                links={links}
+                activeSchema={activeSchema}
+                onSelect={(category, id) => {
+                  if (!pending) setDetail({ category, id });
+                }}
+                tr={tr}
+              />
+            ) : (
+              <section className="ab-panel">
+                <div className="ab-section-heading">
+                  <Segmented
+                    aria-label="Definition category"
+                    value={category}
+                    onChange={setCategory}
+                    disabled={pending}
+                    options={[
+                      {
+                        value: "objects",
+                        label: `${tr("Objects", "对象")} (${objects.length})`,
+                      },
+                      {
+                        value: "links",
+                        label: `${tr("Relationships", "关系")} (${links.length})`,
+                      },
+                    ]}
+                  />
+                  <Button
+                    disabled={pending}
+                    icon={<PlusOutlined />}
+                    onClick={add}
+                  >
+                    {tr(
+                      category === "objects"
+                        ? "Add object"
+                        : "Add relationship",
+                      category === "objects" ? "添加对象" : "添加关系",
+                    )}
+                  </Button>
+                </div>
+                <Table
+                  rowKey="id"
+                  pagination={false}
+                  size="small"
+                  scroll={{ x: 660 }}
+                  dataSource={definitionRows}
+                  locale={{
+                    emptyText: tr(
+                      "No definitions yet. Add one or revise your source files.",
+                      "暂无定义，可手动添加或修改来源文件。",
+                    ),
+                  }}
+                  columns={[
                     {
-                      value: "objects",
-                      label: `${tr("Objects", "对象")} (${objects.length})`,
+                      title: tr("Definition", "定义"),
+                      render: (_, item) => (
+                        <div>
+                          <b>{item.name || tr("Unnamed", "未命名")}</b>
+                          <div className="ab-muted">
+                            {category === "objects"
+                              ? `${item.properties?.length || 0} ${tr("properties", "个属性")}`
+                              : `${item.from || "?"} → ${item.to || "?"}`}
+                          </div>
+                        </div>
+                      ),
                     },
                     {
-                      value: "links",
-                      label: `${tr("Relationships", "关系")} (${links.length})`,
+                      title: tr("Source", "来源"),
+                      render: (_, item) =>
+                        run.sources.find((s) => s.id === item.source_id)
+                          ?.name || "—",
+                    },
+                    {
+                      title: tr("Intent", "变更"),
+                      dataIndex: "intent",
+                      render: (intent) =>
+                        ({
+                          new: tr("New", "新增"),
+                          extend: tr("Extend", "扩展"),
+                          reuse: tr("Reuse", "复用"),
+                        })[intent],
+                    },
+                    {
+                      title: tr("Decision", "确认状态"),
+                      dataIndex: "decision",
+                      render: (decision) => (
+                        <Tag
+                          color={
+                            decision === "accepted"
+                              ? "green"
+                              : decision === "excluded"
+                                ? "default"
+                                : "orange"
+                          }
+                        >
+                          {decisions[decision]}
+                        </Tag>
+                      ),
+                    },
+                    {
+                      title: tr("Action", "操作"),
+                      render: (_, item) => (
+                        <Button
+                          type="link"
+                          disabled={pending}
+                          onClick={() => setDetail({ id: item.id, category })}
+                        >
+                          {tr("View & edit", "查看并编辑")}
+                        </Button>
+                      ),
                     },
                   ]}
                 />
-                <Button
-                  disabled={pending}
-                  icon={<PlusOutlined />}
-                  onClick={add}
-                >
-                  {tr(
-                    category === "objects" ? "Add object" : "Add relationship",
-                    category === "objects" ? "添加对象" : "添加关系",
-                  )}
-                </Button>
-              </div>
-              <Table
-                rowKey="id"
-                pagination={false}
-                size="small"
-                scroll={{ x: 660 }}
-                dataSource={definitionRows}
-                locale={{
-                  emptyText: tr(
-                    "No definitions yet. Add one or revise your source files.",
-                    "暂无定义，可手动添加或修改来源文件。",
-                  ),
-                }}
-                columns={[
-                  {
-                    title: tr("Definition", "定义"),
-                    render: (_, item) => (
-                      <div>
-                        <b>{item.name || tr("Unnamed", "未命名")}</b>
-                        <div className="ab-muted">
-                          {category === "objects"
-                            ? `${item.properties?.length || 0} ${tr("properties", "个属性")}`
-                            : `${item.from || "?"} → ${item.to || "?"}`}
-                        </div>
-                      </div>
-                    ),
-                  },
-                  {
-                    title: tr("Source", "来源"),
-                    render: (_, item) =>
-                      run.sources.find((s) => s.id === item.source_id)?.name ||
-                      "—",
-                  },
-                  {
-                    title: tr("Intent", "变更"),
-                    dataIndex: "intent",
-                    render: (intent) =>
-                      ({
-                        new: tr("New", "新增"),
-                        extend: tr("Extend", "扩展"),
-                        reuse: tr("Reuse", "复用"),
-                      })[intent],
-                  },
-                  {
-                    title: tr("Decision", "确认状态"),
-                    dataIndex: "decision",
-                    render: (decision) => (
-                      <Tag
-                        color={
-                          decision === "accepted"
-                            ? "green"
-                            : decision === "excluded"
-                              ? "default"
-                              : "orange"
-                        }
-                      >
-                        {decisions[decision]}
-                      </Tag>
-                    ),
-                  },
-                  {
-                    title: tr("Action", "操作"),
-                    render: (_, item) => (
-                      <Button
-                        type="link"
-                        disabled={pending}
-                        onClick={() => setDetail({ id: item.id, category })}
-                      >
-                        {tr("View & edit", "查看并编辑")}
-                      </Button>
-                    ),
-                  },
-                ]}
-              />
-            </section>
+              </section>
+            )}
             {(run.steps || []).length > 0 && (
               <details className="ab-panel sd-analysis">
                 <summary>
@@ -999,7 +1012,7 @@ export default function SchemaDesignWorkspace() {
             </section>
           </>
         )}
-      </main>
+      </section>
       <footer className="ab-footer">
         <Button
           aria-label={tr("Previous", "上一步")}
@@ -1068,7 +1081,7 @@ export default function SchemaDesignWorkspace() {
       )}
       <Drawer
         title={tr("Schema design history", "Schema 设计记录")}
-        width={560}
+        size={560}
         open={historyOpen}
         onClose={() => setHistoryOpen(false)}
       >

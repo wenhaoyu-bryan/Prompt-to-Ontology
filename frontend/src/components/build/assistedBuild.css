@@ -1,5 +1,5 @@
 .assisted-build {
-  height: calc(100dvh - 104px);
+  height: var(--pto-workspace-height);
   min-height: 520px;
   display: flex;
   flex-direction: column;
@@ -26,7 +26,7 @@
   flex: none;
   background: var(--ab-bg);
   border: 1px solid var(--ab-border);
-  border-radius: 12px;
+  border-radius: 6px;
   padding: 16px 22px;
   overflow: auto;
 }
@@ -59,7 +59,7 @@
 .ab-panel {
   border: 1px solid var(--ab-border);
   background: var(--ab-bg);
-  border-radius: 12px;
+  border-radius: 6px;
   padding: 24px;
   min-width: 0;
   margin-bottom: 16px;
@@ -141,7 +141,7 @@
   gap: 16px;
   border: 1px solid var(--ab-border);
   background: var(--ab-bg);
-  border-radius: 12px;
+  border-radius: 6px;
   padding: 14px 20px;
 }
 .ab-footer > button {
@@ -176,7 +176,7 @@
   top: 0;
   background: var(--ab-bg);
   border: 1px solid var(--ab-border);
-  border-radius: 12px;
+  border-radius: 6px;
   padding: 14px 10px;
 }
 .ab-source-nav h4 {
@@ -233,7 +233,7 @@
 }
 .ab-mapping-card {
   border: 1px solid var(--ab-border);
-  border-radius: 10px;
+  border-radius: 4px;
   padding: 16px;
   margin-bottom: 16px;
 }
@@ -297,7 +297,7 @@
   grid-template-columns: repeat(4, 1fr);
   gap: 1px;
   border: 1px solid var(--ab-border);
-  border-radius: 12px;
+  border-radius: 6px;
   overflow: hidden;
   margin-bottom: 18px;
   background: var(--ab-border);
@@ -420,7 +420,7 @@
 }
 @media (max-width: 700px) {
   .assisted-build {
-    height: calc(100dvh - 100px);
+    height: var(--pto-workspace-height);
     min-height: 480px;
     gap: 10px;
   }
@@ -555,4 +555,22 @@
     white-space: normal;
     text-align: center;
   }
+}
+
+/* Flat build workspace, consistent with the list and query workspaces. */
+.assisted-build { gap: 12px; }
+.ab-page-header .ant-typography { font-size: 23px; }
+.ab-progress { border: 0; border-bottom: 1px solid var(--ab-border); border-radius: 0; padding: 8px 0 14px; background: transparent; }
+.ab-run-caption { margin-bottom: 10px; font-size: 12px; }
+.ab-stage { background: var(--ab-bg); border: 1px solid var(--ab-border); border-radius: 6px; padding: 20px; }
+.ab-panel { border: 0; border-radius: 0; padding: 0; background: transparent; margin-bottom: 20px; }
+.ab-panel + .ab-panel { border-top: 1px solid var(--ab-border); padding-top: 18px; }
+.ab-source-layout > .ab-panel + .ab-panel { border-top: 0; border-left: 1px solid var(--ab-border); padding-top: 0; padding-left: 24px; }
+.ab-section-heading { margin-bottom: 14px; }
+.ab-section-heading h3, .ab-panel > h3 { font-size: 14px; }
+.ab-label { margin-top: 18px; }
+.ab-footer { border: 0; border-top: 1px solid var(--ab-border); border-radius: 0; padding: 10px 0 0; background: transparent; }
+@media (max-width: 760px) {
+ .ab-stage { padding: 14px; }
+ .ab-source-layout > .ab-panel + .ab-panel { border-left: 0; border-top: 1px solid var(--ab-border); padding: 18px 0 0; }
 }

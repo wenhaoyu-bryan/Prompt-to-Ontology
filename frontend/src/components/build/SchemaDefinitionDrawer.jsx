@@ -112,7 +112,7 @@ export default function SchemaDefinitionDrawer({
   return (
     <Drawer
       open
-      width={860}
+      size={860}
       onClose={onClose}
       title={tr(
         object ? "Object definition" : "Relationship definition",

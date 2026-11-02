@@ -200,12 +200,12 @@ test("missing endpoints stay blocked; unsaved edits cannot reuse an old preview"
 test("manual workflow remains accessible and assisted controls stay fixed on desktop/mobile", async ({
   page,
 }) => {
-  await page.goto("/pipeline");
+  await page.goto("/pipeline?mode=manual");
   await expect(
     page.getByText("Select Source", { exact: true }).first(),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "rocket Build with assistant", exact: true })
+    .getByRole("link", { name: "Import data", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "Build with your data" }),
