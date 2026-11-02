@@ -9,9 +9,10 @@ https://github.com/user-attachments/assets/97bf16a6-b8e2-4364-af25-73ef42201fea
 [![CI](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-Prompt-to-Ontology 是一个通过动手构建来研究业务本体的开源学习项目。仓库提供可运行的 Pet Food 参考实现，将结构化数据、类型化对象、显式规则、人工审核和基于本体工具的 Analyst Agent 连接起来。
+Prompt-to-Ontology 是一个开源本体工作台，连接来源数据、类型化对象、显式规则、人工审核和基于本体工具的 Agent。仓库以可运行的 Pet Food 参考实现展示完整流程。
 
-- **从来源数据构建。** 为 CSV、扁平 JSON 数组或 NDJSON 生成画像，审核字段映射，准备候选对象与关系。
+- **辅助构建。** 上传 CSV、扁平 JSON 数组或 NDJSON，并描述构建目标。审核助手提出的映射，校准不明确的字段，预览候选对象与关系。
+- **设计 Schema 草稿。** 从来源字段提出对象与关系定义，在列表或结构图中编辑，确认后保存或导出草稿。
 - **审核后应用变更。** 通过 Import Plan 和 Review Queue 检查候选，再批准并应用到图谱。
 - **检查答案依据。** 沿样例答案的关系路径打开来源记录，核对运行时图谱中是否存在匹配关系。
 - **评测 Agent 执行。** 编辑评测问题，检查实际回答与工具结果，比较历史执行，并将反馈转为回归用例。
@@ -47,7 +48,7 @@ docker compose up --build
 <summary>样例数据、持久化与演示写入设置</summary>
 
 - 在 `.env` 设置 `AUTO_SEED_DEMO_DATA=false` 可关闭自动导入样例。
-- Compose 通过 `backend_runtime` 卷保存来源目录、Import Plan 和审核状态。容器重建后仍可读取；显式执行演示重置可清理这些状态。
+- Compose 通过 `backend_runtime` 卷保存来源数据、Import Plan、审核状态和模型连接，容器重建后仍可读取。演示重置会清理工作流数据；删除卷也会删除模型配置。
 - 旧版直接写入操作（包括演示重置和快照恢复）默认返回 HTTP 403。仅在可丢弃的本地演示中设置 `ENABLE_LEGACY_DEMO_WRITES=true` 并重启后端。常规构建使用 **Import Plan → Review Queue**。
 - Review Queue 展示审核决定与图谱应用过程，本身不构成权限边界。
 
@@ -55,11 +56,13 @@ docker compose up --build
 
 ## 体验参考流程
 
-1. **映射来源。** 在 **Data Pipeline** 选择样例来源，检查字段画像与映射建议，再准备 Import Plan。
+1. **从数据辅助构建。** 打开**数据管道 → 导入数据**，描述目标并上传来源文件或载入样例。检查助手提出的映射、处理待确认项，预览变更后提交审核。**手动配置**保留原有的六步导入流程。
 2. **审核变更。** 在 **Review Queue** 查看候选属性与审核记录，然后批准并应用。批准和应用是两个独立步骤。
 3. **追溯参考答案。** 打开**评测与反馈 → 参考样例 · 22 题**，运行 **Q03：PF001 的第一种原料是什么？** 查看 `CONTAINS` 路径和来源记录，再点击 **Explore in graph** 核对运行时关系。
 4. **使用本体工具查询。** 向 **Analyst Agent** 提问“Which products contain chicken?”，检查答案、工具调用记录和返回的关系路径，继续追问或提交反馈。修改建议需进入 Review Queue。
 5. **评测回答。** 在**评测与反馈**中，选择确定性基线或已配置的模型运行 Agent 用例。比较历史执行，人工审核需要判断的回答，并将查询反馈转为可编辑用例。
+
+如需探索新的 Schema，可进入**数据管道 → 设计本体草稿**，确认定义与来源绑定后保存或导出。这些草稿不会直接激活新的运行时 Schema。
 
 参考实现还包含对象与图谱探索、四状态规则评估、Agent Trace，以及图谱快照、差异比较和回滚。可通过 **Demo Center → Start Golden Demo** 进入引导式体验。
 
@@ -110,7 +113,7 @@ Ontology Manager 展示定义与本地编辑草稿，不改变生效的 YAML。
 
 </details>
 
-视频与截图展示录制时的参考流程；当前会话与评测界面参见[查询工作台](docs/query-workbench.md)和[评测与反馈](docs/question-set-evaluation.md)。
+视频和截图保留了较早版本的参考界面。当前应用采用默认浅色工作区，提供辅助构建、Schema 草稿设计和统一模型配置。最新流程参见[辅助构建](docs/assisted-build.md)、[问答工作台](docs/query-workbench.md)和[评测与反馈](docs/question-set-evaluation.md)。
 
 [完整产品流程](docs/product-workflow.md) · [录制说明与其他截图](media/README.md)
 
@@ -145,6 +148,7 @@ Prompt 用于提出决策问题与建模假设，随后逐步完成：
 | 指南 | 内容 |
 | --- | --- |
 | [文档索引](docs/README.md) | 产品、架构与开发文档 |
+| [辅助构建与 Schema 设计](docs/assisted-build.md) | 多来源辅助、映射审核和本体草稿 |
 | [数据管道](docs/data-pipeline.md) | 来源画像、映射与 Import Plan |
 | [Review Queue](docs/review-queue-runtime.md) | 审核决定与图谱应用 |
 | [本体内核](docs/ontology-kernel.md) | Schema 定义与校验 |
