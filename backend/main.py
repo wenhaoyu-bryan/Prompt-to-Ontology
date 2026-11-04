@@ -2070,6 +2070,7 @@ def api_rule_studio_simulate(body: dict):
             object_type=body.get("object_type", "PetFoodProduct"),
             properties=body.get("properties", {}),
             ingredient_names=body.get("ingredient_names", []),
+            ingredients_complete=body.get("ingredients_complete", False),
         )
         result = rs_simulate_rule(req)
         return result.model_dump()

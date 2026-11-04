@@ -7,7 +7,7 @@ coverage evaluation, and simulation endpoints.
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictBool
 
 
 # ================================================================
@@ -93,6 +93,7 @@ class SimulationRequest(BaseModel):
     object_type: str = "PetFoodProduct"
     properties: dict[str, Any]
     ingredient_names: list[str] = Field(default_factory=list)
+    ingredients_complete: StrictBool = False
 
 
 class SimulationResult(BaseModel):
@@ -104,5 +105,6 @@ class SimulationResult(BaseModel):
     reason: str
     input_fields: dict[str, Any]
     missing_fields: list[str]
+    missing_relations: list[str] = Field(default_factory=list)
     would_generate_evidence: bool
     generated_link_type: str = "TRIGGERS_RISK"
