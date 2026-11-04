@@ -99,9 +99,11 @@ export default function SchemaDesignWorkspace() {
   const [files, setFiles] = useState([]);
   const [showDdl, setShowDdl] = useState(false);
   const [ddlText, setDdlText] = useState("");
-  const ddlMode = run?.source_kind === "ddl" || files.some(isDdl);
+  const ddlMode = run ? run.source_kind === "ddl" : files.some(isDdl);
   const [goal, setGoal] = useState("");
   const [mode, setMode] = useState("auto");
+  const [ddlExecutionMode, setDdlExecutionMode] = useState("deterministic");
+  const executionMode = ddlMode ? ddlExecutionMode : mode;
   const [activeSchema, setActiveSchema] = useState({});
   const [objects, setObjects] = useState([]);
   const [links, setLinks] = useState([]);
@@ -243,6 +245,7 @@ export default function SchemaDesignWorkspace() {
     setRun(null);
     setFiles([]);
     setGoal("");
+    setDdlExecutionMode("deterministic");
     setObjects([]);
     setLinks([]);
     setDetail(null);
@@ -255,6 +258,7 @@ export default function SchemaDesignWorkspace() {
         "/assisted-build/schema-design-sample-files",
       );
       setFiles(data.files);
+      setDdlExecutionMode("deterministic");
       setGoal(
         zh
           ? "扩展宠物食品的供应商与生产批次定义，保留供应商和批次标识，明确批次与供应商的关系。"
@@ -304,7 +308,7 @@ export default function SchemaDesignWorkspace() {
       const { data } = await scopedApi.post(base, {
         goal,
         files,
-        execution_mode: ddlMode ? "deterministic" : mode,
+        execution_mode: executionMode,
       });
       choose(data);
     });
@@ -575,17 +579,20 @@ export default function SchemaDesignWorkspace() {
               <Select
                 id="schema-mode"
                 aria-label="Schema execution mode"
-                value={ddlMode ? "deterministic" : run?.execution_mode || mode}
-                disabled={!!run || pending || ddlMode}
-                onChange={setMode}
+                aria-describedby="schema-mode-explanation"
+                value={run?.execution_mode || executionMode}
+                disabled={!!run || pending}
+                onChange={ddlMode ? setDdlExecutionMode : setMode}
                 style={{ width: "100%" }}
                 options={[
                   {
                     value: "auto",
-                    label: tr(
-                      "Configured model · deterministic fallback",
-                      "已配置模型 · 不可用时确定性回退",
-                    ),
+                    label: ddlMode
+                      ? tr("Build Agent · semantic suggestions", "Build Agent · 语义建议")
+                      : tr(
+                          "Configured model · deterministic fallback",
+                          "已配置模型 · 不可用时确定性回退",
+                        ),
                   },
                   {
                     value: "deterministic",
@@ -596,15 +603,16 @@ export default function SchemaDesignWorkspace() {
                   },
                 ]}
               />
-              <p className="ab-muted sd-explanation">
-                {tr(
-                  ddlMode
-                    ? "PostgreSQL CREATE TABLE supplies types and key constraints. Confirm the business meaning before saving the draft."
-                    : "The baseline proposes structure from actual fields. Every definition needs your confirmation.",
-                  ddlMode
-                    ? "PostgreSQL CREATE TABLE 提供类型和键约束。保存草稿前，请确认业务含义。"
-                    : "基线从真实字段提出结构。每项定义都需要你确认。",
-                )}
+              <p id="schema-mode-explanation" className="ab-muted sd-explanation">
+                {ddlMode
+                  ? tr(
+                      "DDL determines types, keys, and relationships. If selected, the configured Build Agent receives your goal and selected schema metadata, including comments, and suggests only labels and descriptions. Review every definition before saving.",
+                      "DDL 决定类型、键和关系。选择 Build Agent 后，当前配置的模型将收到设计目标和部分结构元数据（含注释），仅建议显示名称和描述。保存前请逐项确认。",
+                    )
+                  : tr(
+                      "The baseline proposes structure from actual fields. Every definition needs your confirmation.",
+                      "基线从真实字段提出结构。每项定义都需要你确认。",
+                    )}
               </p>
               <div className="sd-boundary">
                 <ApartmentOutlined />
@@ -706,9 +714,10 @@ export default function SchemaDesignWorkspace() {
                         aria-label={`Remove ${f.name}`}
                         type="text"
                         icon={<DeleteOutlined />}
-                        onClick={() =>
-                          setFiles((items) => items.filter((_, n) => n !== i))
-                        }
+                        onClick={() => {
+                          setFiles((items) => items.filter((_, n) => n !== i));
+                          if (isDdl(f)) setDdlExecutionMode("deterministic");
+                        }}
                       />
                     )}
                   </div>

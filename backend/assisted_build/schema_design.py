@@ -19,6 +19,7 @@ from ontology_kernel.models import PropertyType, Cardinality
 from assisted_build.service import atomic, digest
 from assisted_build.sources import parse_sources
 from assisted_build.ddl_design import is_ddl_filename, prepare_ddl_sources, propose_ddl, resolve_reference
+from assisted_build.ddl_semantics import suggest_ddl_semantics
 
 _LOCK = threading.RLock()
 IDENT = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,63}$")
@@ -115,7 +116,6 @@ class SchemaDesignService:
                 raise ValueError("Use one PostgreSQL DDL file per design task")
             sources = prepare_ddl_sources(ddl_files[0])
             rows = {}
-            execution_mode = "deterministic"
         else:
             sources, rows = parse_sources(files)
         # Phase 1 normalizes structured scalars to strings. Retain original scalar
@@ -248,7 +248,17 @@ class SchemaDesignService:
             rows = json.loads((self._path(rid) / "rows.json").read_text())
         if r.get("source_kind") == "ddl":
             self._step(r, "ddl", "Proposed definitions from declared table, column and key metadata")
-            return self._finish_analysis(rid, rev, r, r["objects"])
+            objects = r["objects"]
+            if r["execution_mode"] == "auto":
+                try:
+                    suggested_objects, suggested_links = suggest_ddl_semantics(r)
+                    self._shape(suggested_objects, suggested_links)
+                except Exception:
+                    self._step(r, "model", "Model unavailable or invalid; retained the parsed DDL draft", "fallback")
+                else:
+                    objects, r["links"] = suggested_objects, suggested_links
+                    self._step(r, "model", "Build Agent suggested editable business labels and descriptions")
+            return self._finish_analysis(rid, rev, r, objects)
         objects = []
         for s in r["sources"]:
             cols = [x["name"] for x in s["columns"]]

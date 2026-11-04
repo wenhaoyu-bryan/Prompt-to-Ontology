@@ -201,12 +201,15 @@ def analyze_schema_design(rid, config):
 @router.post("/schema-designs", status_code=202)
 def create_schema_design(request: BuildInput, background: BackgroundTasks):
     ddl_input = any(is_ddl_filename(f.name) for f in request.files)
-    config = {} if ddl_input else call(get_agent_llm_config, "build")
+    mode = request.execution_mode
+    if ddl_input and "execution_mode" not in request.model_fields_set:
+        mode = "deterministic"
+    config = {} if ddl_input and mode == "deterministic" else call(get_agent_llm_config, "build")
     run = call(
         schema_design_service.create,
         request.goal.strip(),
         [f.model_dump() for f in request.files],
-        request.execution_mode,
+        mode,
     )
     background.add_task(analyze_schema_design, run["id"], config)
     return run

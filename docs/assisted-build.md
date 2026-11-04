@@ -32,7 +32,9 @@ The parser proposes objects, typed properties and foreign-key relationships. It 
 
 Physical metadata and the source hash accompany the reviewed export. The draft uses string object identities and preserves SQL types in the source mapping. A table needs a declared single-column primary key to enter the draft. Composite keys and unresolved references are reported for review. Unqualified references use the source table's schema within the upload.
 
-This path parses SQL locally and makes no model call. A successful parse describes the uploaded structure. A database connection, instance rows, and a queryable runtime each require their own verification. To continue with data today, export approved query results to CSV or JSON and use **Import data** with the active ontology.
+DDL is parsed locally. **Deterministic baseline** is the default and makes no model call. To request semantic suggestions, select **Build Agent · semantic suggestions**. The configured Build Agent provider receives the design goal and a bounded subset of parsed metadata, including identifiers and excerpts from comments. It can suggest object and relationship labels and descriptions, plus property descriptions. Types, keys, source bindings, and relationships come from the parsed DDL. If the model is unavailable or its response is invalid, the draft keeps the parsed definitions. Review every definition before saving.
+
+A successful parse describes the uploaded structure. A database connection, instance rows, and a queryable runtime each require their own verification. To continue with data today, export approved query results to CSV or JSON and use **Import data** with the active ontology.
 
 Design tasks are retained under ignored `backend/.runtime/assisted-build/schema_designs/` until deleted from **Design history**. The draft preview is tied to both a revision and the active schema fingerprint; stale previews cannot be saved or exported. Restarted analyses can be retried. This is the same local, single-process storage boundary as assisted imports.
 

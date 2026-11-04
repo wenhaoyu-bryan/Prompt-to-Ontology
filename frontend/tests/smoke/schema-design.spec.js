@@ -289,8 +289,24 @@ test("turns pasted PostgreSQL DDL into a reviewed draft with source metadata", a
     "COMMENT ON TABLE vendor IS 'A registered supplier';",
   );
   await page.getByRole("button", { name: "Add DDL source" }).click();
-  await expect(page.getByRole("combobox", { name: "Schema execution mode" })).toBeDisabled();
+  const mode = page.getByRole("combobox", { name: "Schema execution mode" });
+  const baseline = "Deterministic baseline · no model call";
+  const assistant = "Build Agent · semantic suggestions";
+  const design = page.getByRole("region", { name: "Schema design content" });
+  const visibleText = (scope, name) =>
+    scope.getByText(name, { exact: true }).filter({ visible: true });
+  await expect(mode).toBeEnabled();
+  await expect(visibleText(design, baseline)).toBeVisible();
+  await mode.click();
+  await visibleText(page, assistant).click();
+  await expect(visibleText(design, assistant)).toBeVisible();
+  await mode.click();
+  await visibleText(page, baseline).click();
+  const create = page.waitForRequest(
+    (request) => request.url().endsWith("/schema-designs") && request.method() === "POST",
+  );
   await page.getByRole("button", { name: /Propose schema/ }).click();
+  expect((await create).postDataJSON().execution_mode).toBe("deterministic");
   await expect(page.getByRole("button", { name: "View & edit", exact: true })).toHaveCount(2);
   await confirmVisible(page);
   await page.getByText("Relationships (1)", { exact: true }).click();
