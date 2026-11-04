@@ -15,6 +15,25 @@ Select **Design new schema** in the assisted workspace to propose objects, prope
 
 The deterministic baseline proposes conservative string properties, unambiguous identity columns and generic reference relationships from matching keys. Those references do not establish business meaning or referential integrity. Numeric samples do not prove units; identity values must remain unique, nonblank strings, so leading zeroes are preserved. All proposals require human confirmation. Auto mode uses bounded source context and the existing provider configuration; invalid or unavailable model output explicitly falls back to the baseline.
 
+### Start from PostgreSQL DDL
+
+In **Design schema draft**, upload one `.sql` or `.ddl` file, or select **Paste PostgreSQL DDL**. Start with explicit table definitions:
+
+```sql
+CREATE TABLE vendor (id BIGINT PRIMARY KEY, name TEXT NOT NULL);
+CREATE TABLE lot (
+    lot_no TEXT PRIMARY KEY,
+    vendor_id BIGINT NOT NULL REFERENCES vendor(id),
+    received_at TIMESTAMP
+);
+```
+
+The parser proposes objects, typed properties and foreign-key relationships. It accepts the supported PostgreSQL `CREATE TABLE` subset, `ALTER TABLE ... ADD` for primary, foreign and unique keys, and `COMMENT ON TABLE/COLUMN` on tables declared earlier in the upload. Comments become editable descriptions. Defaults and check expressions are outside the exported metadata. The input limit is 256 KiB and 32 tables. Use the supported statements from a dump when it also contains setup, ownership, or data statements.
+
+Physical metadata and the source hash accompany the reviewed export. The draft uses string object identities and preserves SQL types in the source mapping. A table needs a declared single-column primary key to enter the draft. Composite keys and unresolved references are reported for review. Unqualified references use the source table's schema within the upload.
+
+This path parses SQL locally and makes no model call. A successful parse describes the uploaded structure. A database connection, instance rows, and a queryable runtime each require their own verification. To continue with data today, export approved query results to CSV or JSON and use **Import data** with the active ontology.
+
 Design tasks are retained under ignored `backend/.runtime/assisted-build/schema_designs/` until deleted from **Design history**. The draft preview is tied to both a revision and the active schema fingerprint; stale previews cannot be saved or exported. Restarted analyses can be retried. This is the same local, single-process storage boundary as assisted imports.
 
 ## Build workflow
@@ -26,6 +45,8 @@ Design tasks are retained under ignored `backend/.runtime/assisted-build/schema_
 5. **Check runtime graph** compares expected objects, properties and relationships with Neo4j. Graph matching and the review batch's application status are independent: matching previously existing data does not establish that this batch was applied.
 
 Changing mappings invalidates the preview. Submission checks the revision, schema fingerprint and preview hash, and rechecks the live graph. If runtime facts have changed, generate a new preview. Interrupted analysis is marked on backend startup and can be retried from the workspace using its retained uploads. An interrupted submission retains the accepted preview and stable batch identity so retry does not create a second batch. Submitted mappings remain immutable.
+
+For Assisted Build candidates, applying an approved item compares the graph against its reviewed before-values and endpoint identities inside the write transaction. A conflict calls for a fresh preview. Transient failures keep the approval available for retry. A batch reports individual outcomes because each item commits separately. Older Assisted Build review items created without these preconditions require a fresh preview and review.
 
 ## Model behavior
 

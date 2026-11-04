@@ -24,6 +24,7 @@ from data_pipeline.profiler import profile_rows
 from assisted_build.sources import parse_sources
 from data_pipeline.mapper import suggest_object_mappings
 from data_pipeline.models import ObjectMapping, LinkMapping
+from data_pipeline.property_values import coerce_property, requires_per_100g_confirmation
 from ontology_kernel import load_pet_food_schema
 from ontology_kernel.models import OntologyGraphPayload, RuntimeObject, RuntimeLink
 from ontology_kernel.validator import validate_graph_payload
@@ -463,10 +464,8 @@ class AssistedBuildService:
                         v = row.get(col)
                         if v is None or str(v).strip() == "":
                             continue
-                        typ = pdefs[prop].type.value
                         if (
-                            prop.endswith("_100g")
-                            and col != prop
+                            requires_per_100g_confirmation(col, prop)
                             and s["unit_confirmations"].get(col) != "per_100g"
                         ):
                             issue(
@@ -477,23 +476,8 @@ class AssistedBuildService:
                                 idx,
                             )
                         try:
-                            if typ in ("number", "integer"):
-                                v = float(v)
-                                if not math.isfinite(v) or (
-                                    typ == "integer" and not v.is_integer()
-                                ):
-                                    raise ValueError()
-                                if typ == "integer":
-                                    v = int(v)
-                            elif typ == "boolean":
-                                if str(v).lower() not in ("true", "false"):
-                                    raise ValueError()
-                                v = str(v).lower() == "true"
-                            elif typ in ("list", "object"):
-                                raise ValueError()
-                            else:
-                                v = str(v)
-                        except (ValueError, TypeError):
+                            props[prop] = coerce_property(v, pdefs[prop].type)
+                        except (ValueError, TypeError, OverflowError):
                             issue(
                                 "INVALID_PROPERTY_TYPE",
                                 "Value does not match schema type",
@@ -501,7 +485,6 @@ class AssistedBuildService:
                                 col,
                                 idx,
                             )
-                        props[prop] = v
                     props[td.primary_key] = oid
                     o = {
                         "id": oid,
@@ -656,6 +639,11 @@ class AssistedBuildService:
         for o in objects:
             old = byid.get(o["id"])
             o["existing"] = bool(old)
+            o["existing_properties"] = (
+                {k: old.get("properties", {}).get(k) for k in o["properties"]} if old else {}
+            )
+            if old and old.get("element_id"):
+                o["element_id"] = old["element_id"]
             if old and old["type"] != o["type"]:
                 issue(
                     "EXISTING_TYPE_CONFLICT",
@@ -681,6 +669,12 @@ class AssistedBuildService:
                 (link["source_id"], link["type"], link["target_id"])
             )
             link["existing"] = bool(old)
+            if old and old.get("element_id"):
+                link["element_id"] = old["element_id"]
+            for side in ("source", "target"):
+                endpoint = byid.get(link[f"{side}_id"], {})
+                if endpoint.get("element_id"):
+                    link[f"{side}_element_id"] = endpoint["element_id"]
             before = old.get("properties", {}) if old else {}
             link["property_diffs"] = {
                 k: {"before": before.get(k), "after": v}
@@ -1012,7 +1006,8 @@ class AssistedBuildService:
         with drv.session() as session:
             objects = []
             for rec in session.run(
-                "MATCH (n) WHERE n.id IN $ids RETURN n.id AS id, labels(n) AS labels, properties(n) AS properties",
+                "MATCH (n) WHERE n.id IN $ids "
+                "RETURN n.id AS id, elementId(n) AS element_id, labels(n) AS labels, properties(n) AS properties",
                 ids=ids,
             ):
                 props = dict(rec["properties"])
@@ -1022,16 +1017,19 @@ class AssistedBuildService:
                     (x for x in labels if x in schema.object_types),
                     props.get("type", ""),
                 )
-                objects.append({"id": rec["id"], "type": typ, "properties": props})
+                objects.append({"id": rec["id"], "element_id": rec["element_id"], "type": typ, "properties": props})
             links = [
                 {
                     "source_id": rec["source_id"],
                     "target_id": rec["target_id"],
                     "type": rec["type"],
+                    "element_id": rec["element_id"],
                     "properties": dict(rec["properties"]),
                 }
                 for rec in session.run(
-                    "MATCH (a)-[r]->(b) WHERE a.id IN $ids AND b.id IN $ids RETURN a.id AS source_id,b.id AS target_id,type(r) AS type,properties(r) AS properties",
+                    "MATCH (a)-[r]->(b) WHERE a.id IN $ids AND b.id IN $ids "
+                    "RETURN a.id AS source_id, b.id AS target_id, type(r) AS type, "
+                    "elementId(r) AS element_id, properties(r) AS properties",
                     ids=ids,
                 )
             ]
@@ -1055,6 +1053,7 @@ class AssistedBuildService:
         bundle.batch.id = batch_id
         bundle.batch.title = "Assisted Build: " + run["goal"][:100]
         candidates = preview["objects"] + preview["links"]
+        link_types = self.schema_snapshot()["schema"]["link_types"]
         for i, item in enumerate(bundle.items):
             item.batch_id = batch_id
             item.id = "ri-ab-" + digest({"batch": batch_id, "index": i})[:24]
@@ -1067,7 +1066,24 @@ class AssistedBuildService:
                 }
             )
             if i < len(candidates):
-                item.metadata["lineage"] = candidates[i]["lineage"]
+                candidate = candidates[i]
+                item.metadata["lineage"] = candidate["lineage"]
+                exists = candidate["existing"]
+                precondition = {
+                    "exists": exists,
+                    "properties": candidate.get("existing_properties", {
+                        key: candidate["property_diffs"].get(key, {}).get("before", value)
+                        for key, value in candidate["properties"].items()
+                    } if exists else {}),
+                }
+                for key in ("element_id", "source_element_id", "target_element_id"):
+                    if key in candidate:
+                        precondition[key] = candidate[key]
+                if i >= len(preview["objects"]):
+                    definition = link_types[candidate["type"]]
+                    precondition["source_type"] = definition["source_type"]
+                    precondition["target_type"] = definition["target_type"]
+                item.metadata["apply_precondition"] = precondition
         storage.insert_bundle(bundle.batch, bundle.items)
 
     def _read_review(self, batch_id):

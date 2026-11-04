@@ -28,6 +28,30 @@ class AssistedFixture:
 
 
 class AssistedTests(AssistedFixture, unittest.TestCase):
+    def test_review_receipt_retains_object_and_endpoint_preconditions(self):
+        self.graph["objects"] = [
+            {"id": "p1", "type": "PetFoodProduct", "element_id": "product-token",
+             "properties": {"product_id": "p1", "product_name": "Old"}},
+            {"id": "b1", "type": "Brand", "element_id": "brand-token",
+             "properties": {"brand_id": "b1"}},
+        ]
+        run = self.run_file("product_id,product_name,brand_id\np1,New,b1\n")
+        run = self.s.preview(run["id"], run["revision"])
+        self.assertEqual(run["preview"]["summary"]["errors"], 0)
+        self.s.submitter = self.s._submit_review
+        with patch("review_queue.storage.insert_bundle") as insert:
+            self.s.submit(run["id"], run["revision"], run["preview"]["hash"])
+        items = insert.call_args.args[1]
+        obj = next(item for item in items if item.candidate_object and item.candidate_object["id"] == "p1")
+        obj_guard = obj.metadata["apply_precondition"]
+        self.assertEqual(obj_guard["element_id"], "product-token")
+        self.assertEqual(obj_guard["properties"]["product_name"], "Old")
+        link = next(item for item in items if item.candidate_link)
+        link_guard = link.metadata["apply_precondition"]
+        self.assertEqual(link_guard["source_type"], "PetFoodProduct")
+        self.assertEqual(link_guard["target_type"], "Brand")
+        self.assertEqual(link_guard["target_element_id"], "brand-token")
+
     def test_persistence_revision_idempotence_and_delete(self):
         r = self.run_file()
         self.assertEqual(r["sources"][0]["format"], "csv")

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 from typing import Any
 
 from ontology_kernel.models import (
@@ -24,7 +23,6 @@ from .models import (
     LinkMapping,
     ObjectMapping,
     PlanStatus,
-    ValidationSummary,
 )
 from .transformer import generate_candidate_links, generate_candidate_objects
 
@@ -36,18 +34,20 @@ def create_import_plan(
     object_mappings: list[ObjectMapping],
     link_mappings: list[LinkMapping],
     schema: OntologySchema,
+    unit_confirmations: dict[str, str] | None = None,
 ) -> ImportPlan:
     """Create a validated import plan from profiled data and mappings."""
     plan_id = f"plan-{uuid.uuid4().hex[:8]}"
 
     # 1. Generate candidates
+    field_issues: list[dict[str, Any]] = []
     all_objects: list[CandidateObject] = []
     for om in object_mappings:
-        all_objects.extend(generate_candidate_objects(rows, om, schema))
+        all_objects.extend(generate_candidate_objects(rows, om, schema, field_issues, unit_confirmations or {}))
 
     all_links: list[CandidateLink] = []
     if link_mappings:
-        all_links = generate_candidate_links(rows, link_mappings, schema)
+        all_links = generate_candidate_links(rows, link_mappings, schema, field_issues)
 
     # 2. Convert to OntologyGraphPayload for validation
     runtime_objects = [
@@ -75,7 +75,7 @@ def create_import_plan(
 
     # 3. Validate
     issues = validate_graph_payload(payload, schema)
-    issue_dicts = [
+    issue_dicts = field_issues + [
         {
             "level": issue.level.value,
             "code": issue.code,
@@ -88,13 +88,12 @@ def create_import_plan(
     ]
 
     # 4. Determine status
-    has_critical = any(i.level == IssueLevel.CRITICAL for i in issues)
-    has_error = any(i.level == IssueLevel.ERROR for i in issues)
-    has_warning = any(i.level == IssueLevel.WARNING for i in issues)
+    error_count = sum(issue["level"] in (IssueLevel.ERROR, IssueLevel.CRITICAL) for issue in issue_dicts)
+    warning_count = sum(issue["level"] == IssueLevel.WARNING for issue in issue_dicts)
 
-    if has_critical or has_error:
+    if error_count:
         status = PlanStatus.HAS_ERRORS
-    elif has_warning:
+    elif warning_count:
         status = PlanStatus.READY_FOR_REVIEW
     elif all_objects:
         status = PlanStatus.VALIDATED
@@ -108,9 +107,9 @@ def create_import_plan(
     summary = ImportPlanSummary(
         new_objects=len(all_objects),
         new_links=len(all_links),
-        validation_errors=sum(1 for i in issues if i.level in (IssueLevel.ERROR, IssueLevel.CRITICAL)),
-        validation_warnings=sum(1 for i in issues if i.level == IssueLevel.WARNING),
-        review_required=len(all_objects) + len(all_links) if has_warning else 0,
+        validation_errors=error_count,
+        validation_warnings=warning_count,
+        review_required=len(all_objects) + len(all_links) if warning_count else 0,
         confidence_avg=round(avg_conf, 3),
     )
 

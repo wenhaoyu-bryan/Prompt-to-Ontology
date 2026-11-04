@@ -278,3 +278,34 @@ test("a delayed preview cannot overwrite another design after browser Back", asy
     page.getByRole("button", { name: "Save schema draft", exact: true }),
   ).toHaveCount(0);
 });
+
+test("turns pasted PostgreSQL DDL into a reviewed draft with source metadata", async ({ page, request }) => {
+  await page.goto("/pipeline?mode=schema");
+  await page.getByLabel("Design goal", { exact: true }).fill("Describe suppliers and lots");
+  await page.getByRole("button", { name: "Paste PostgreSQL DDL" }).click();
+  await page.getByRole("textbox", { name: "PostgreSQL DDL" }).fill(
+    "CREATE TABLE vendor (id BIGINT PRIMARY KEY, name TEXT NOT NULL);" +
+    "CREATE TABLE lot (lot_no TEXT PRIMARY KEY, vendor_id BIGINT REFERENCES vendor(id));" +
+    "COMMENT ON TABLE vendor IS 'A registered supplier';",
+  );
+  await page.getByRole("button", { name: "Add DDL source" }).click();
+  await expect(page.getByRole("combobox", { name: "Schema execution mode" })).toBeDisabled();
+  await page.getByRole("button", { name: /Propose schema/ }).click();
+  await expect(page.getByRole("button", { name: "View & edit", exact: true })).toHaveCount(2);
+  await confirmVisible(page);
+  await page.getByText("Relationships (1)", { exact: true }).click();
+  await confirmVisible(page);
+  const result = await preview(page);
+  expect(result.preview.summary).toMatchObject({ objects: 2, links: 1, errors: 0, pending: 0 });
+  await page.getByRole("checkbox", { name: /I reviewed the definitions/ }).check();
+  await page.getByRole("button", { name: "Save schema draft", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Your schema design is saved" })).toBeVisible();
+  const id = new URL(page.url()).searchParams.get("design");
+  const response = await request.get(`/api/assisted-build/schema-designs/${id}/export`);
+  expect(response.ok()).toBeTruthy();
+  const exported = await response.json();
+  const mappings = JSON.parse(exported.files.find((file) => file.name === "source_mappings.json").content);
+  expect(exported.manifest.status).toBe("draft");
+  expect(mappings.ddl_sources[0].table.comment).toBe("A registered supplier");
+  expect(mappings.ddl_sources[1].table.foreign_keys[0].target_table).toBe("vendor");
+});

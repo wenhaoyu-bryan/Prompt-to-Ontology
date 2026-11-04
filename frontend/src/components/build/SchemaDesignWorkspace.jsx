@@ -43,6 +43,8 @@ import "./schemaDesign.css";
 const base = "/assisted-build/schema-designs";
 const busy = (run) => ["queued", "analyzing"].includes(run?.status);
 const json = (value) => JSON.stringify(value, null, 2);
+const isDdl = (file) => /\.(sql|ddl)$/i.test(file.name);
+const DDL_MAX_BYTES = 256 * 1024;
 const download = (name, content) => {
   const url = URL.createObjectURL(
     new Blob([content], { type: "text/plain;charset=utf-8" }),
@@ -95,6 +97,9 @@ export default function SchemaDesignWorkspace() {
   );
   const [run, setRun] = useState(null);
   const [files, setFiles] = useState([]);
+  const [showDdl, setShowDdl] = useState(false);
+  const [ddlText, setDdlText] = useState("");
+  const ddlMode = run?.source_kind === "ddl" || files.some(isDdl);
   const [goal, setGoal] = useState("");
   const [mode, setMode] = useState("auto");
   const [activeSchema, setActiveSchema] = useState({});
@@ -256,28 +261,39 @@ export default function SchemaDesignWorkspace() {
           : data.goal,
       );
     });
+  const addSource = (file) => {
+    setFiles((all) => {
+      if (all.length && (isDdl(file) || all.some(isDdl))) {
+        message.error(tr("Use one DDL file in a separate design task.", "DDL 请单独创建任务，每次使用一个文件。"));
+        return all;
+      }
+      if (all.length >= 8) {
+        message.error(tr("Up to 8 files.", "最多 8 个文件。"));
+        return all;
+      }
+      return [...all, file];
+    });
+  };
   const upload = async (file) => {
+    if (isDdl(file) && file.size > DDL_MAX_BYTES) {
+      message.error(tr("DDL must be at most 256 KiB.", "DDL 不能超过 256 KiB。"));
+      return false;
+    }
     if (
       file.size > 2_000_000 ||
-      !/\.(csv|json|ndjson|jsonl)$/i.test(file.name)
+      !/\.(csv|json|ndjson|jsonl|sql|ddl)$/i.test(file.name)
     ) {
       message.error(
         tr(
-          "Choose CSV, JSON or NDJSON under 2 MB.",
-          "请选择小于 2 MB 的 CSV、JSON 或 NDJSON 文件。",
+          "Choose CSV, JSON, NDJSON or PostgreSQL DDL under 2 MB.",
+          "请选择小于 2 MB 的 CSV、JSON、NDJSON 或 PostgreSQL DDL 文件。",
         ),
       );
       return false;
     }
     try {
       const content = await file.text();
-      setFiles((all) => {
-        if (all.length >= 8) {
-          message.error(tr("Up to 8 files.", "最多 8 个文件。"));
-          return all;
-        }
-        return [...all, { name: file.name, content }];
-      });
+      addSource({ name: file.name, content });
     } catch {
       message.error(tr("Could not read this file.", "无法读取文件。"));
     }
@@ -288,7 +304,7 @@ export default function SchemaDesignWorkspace() {
       const { data } = await scopedApi.post(base, {
         goal,
         files,
-        execution_mode: mode,
+        execution_mode: ddlMode ? "deterministic" : mode,
       });
       choose(data);
     });
@@ -559,8 +575,8 @@ export default function SchemaDesignWorkspace() {
               <Select
                 id="schema-mode"
                 aria-label="Schema execution mode"
-                value={run?.execution_mode || mode}
-                disabled={!!run || pending}
+                value={ddlMode ? "deterministic" : run?.execution_mode || mode}
+                disabled={!!run || pending || ddlMode}
                 onChange={setMode}
                 style={{ width: "100%" }}
                 options={[
@@ -582,8 +598,12 @@ export default function SchemaDesignWorkspace() {
               />
               <p className="ab-muted sd-explanation">
                 {tr(
-                  "The baseline proposes structure from actual fields. It cannot determine your business meaning or units. Every definition needs your confirmation.",
-                  "基线仅从真实字段提出结构，不能确定业务语义和单位。每项定义都需要你确认。",
+                  ddlMode
+                    ? "PostgreSQL CREATE TABLE supplies types and key constraints. Confirm the business meaning before saving the draft."
+                    : "The baseline proposes structure from actual fields. Every definition needs your confirmation.",
+                  ddlMode
+                    ? "PostgreSQL CREATE TABLE 提供类型和键约束。保存草稿前，请确认业务含义。"
+                    : "基线从真实字段提出结构。每项定义都需要你确认。",
                 )}
               </p>
               <div className="sd-boundary">
@@ -608,7 +628,7 @@ export default function SchemaDesignWorkspace() {
               <div className="ab-section-heading">
                 <div>
                   <h3>{tr("Source files", "来源文件")}</h3>
-                  <p>CSV · JSON · NDJSON</p>
+                  <p>CSV · JSON · NDJSON · PostgreSQL DDL</p>
                 </div>
                 {!run && (
                   <Button size="small" disabled={pending} onClick={loadExample}>
@@ -620,7 +640,7 @@ export default function SchemaDesignWorkspace() {
                 <Upload.Dragger
                   multiple
                   disabled={pending}
-                  accept=".csv,.json,.ndjson,.jsonl"
+                  accept=".csv,.json,.ndjson,.jsonl,.sql,.ddl"
                   beforeUpload={upload}
                   showUploadList={false}
                 >
@@ -634,6 +654,39 @@ export default function SchemaDesignWorkspace() {
                   </small>
                 </Upload.Dragger>
               )}
+              {!run && !files.length && (
+                <div className="ab-files">
+                  <Button size="small" disabled={pending} onClick={() => setShowDdl(!showDdl)}>
+                    {tr("Paste PostgreSQL DDL", "粘贴 PostgreSQL DDL")}
+                  </Button>
+                  {showDdl && (
+                    <Space orientation="vertical" style={{ width: "100%" }}>
+                      <Input.TextArea
+                        aria-label="PostgreSQL DDL"
+                        rows={6}
+                        maxLength={DDL_MAX_BYTES}
+                        value={ddlText}
+                        onChange={(event) => setDdlText(event.target.value)}
+                        placeholder="CREATE TABLE vendor (id BIGINT PRIMARY KEY, name TEXT NOT NULL);"
+                      />
+                      <Button
+                        disabled={!ddlText.trim()}
+                        onClick={() => {
+                          if (new Blob([ddlText]).size > DDL_MAX_BYTES) {
+                            message.error(tr("DDL must be at most 256 KiB.", "DDL 不能超过 256 KiB。"));
+                            return;
+                          }
+                          addSource({ name: "schema.sql", content: ddlText });
+                          setShowDdl(false);
+                          setDdlText("");
+                        }}
+                      >
+                        {tr("Add DDL source", "添加 DDL 来源")}
+                      </Button>
+                    </Space>
+                  )}
+                </div>
+              )}
               <div className="ab-files">
                 {(run?.sources || files).map((f, i) => (
                   <div className="ab-file" key={f.id || i}>
@@ -641,7 +694,9 @@ export default function SchemaDesignWorkspace() {
                     <div>
                       <b>{f.name}</b>
                       <small>
-                        {f.row_count
+                        {f.format === "ddl"
+                          ? `${f.filename} · ${f.columns.length} ${tr("columns", "列")}`
+                          : f.row_count
                           ? `${f.row_count} ${tr("rows", "行")}`
                           : `${new Blob([f.content]).size.toLocaleString()} bytes`}
                       </small>

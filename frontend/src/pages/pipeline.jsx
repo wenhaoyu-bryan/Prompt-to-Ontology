@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Card, Button, Space, Typography, Tag, Steps, Table, Alert, Row, Col, Statistic, message, Progress, Divider, Collapse, Radio, Upload, Select, Modal, Drawer, theme } from 'antd';
+import { Card, Button, Checkbox, Space, Typography, Tag, Steps, Table, Alert, Row, Col, Statistic, message, Progress, Divider, Collapse, Radio, Upload, Select, Modal, Drawer, theme } from 'antd';
 import {
   DatabaseOutlined,
   FileSearchOutlined,
@@ -98,6 +98,7 @@ function ManualPipelinePage() {
   const [sourceMode, setSourceMode] = useState('sample');
   const [targetObjectType, setTargetObjectType] = useState('PetFoodProduct');
   const [mappingOverrides, setMappingOverrides] = useState({});
+  const [unitConfirmations, setUnitConfirmations] = useState({});
   const [mappingTargets, setMappingTargets] = useState({});
   const [csvImportType, setCsvImportType] = useState('object');
   const [linkTypes, setLinkTypes] = useState({});
@@ -149,6 +150,7 @@ function ManualPipelinePage() {
       setLineage(null);
       setImportPlan(null);
       setMappingOverrides({});
+      setUnitConfirmations({});
       setRelSourceIdCol('');
       setRelTargetIdCol('');
       setRelPropertyCols([]);
@@ -168,6 +170,7 @@ function ManualPipelinePage() {
       setLineage(null);
       setImportPlan(null);
       setMappingOverrides({});
+      setUnitConfirmations({});
       setRelSourceIdCol('');
       setRelTargetIdCol('');
       setRelPropertyCols([]);
@@ -238,7 +241,7 @@ function ManualPipelinePage() {
     }
     setLoading(true);
     try {
-      const body = { source_id: profile.source_id, domain: 'pet_food' };
+      const body = { source_id: profile.source_id, domain: 'pet_food', unit_confirmations: unitConfirmations };
       // Apply mapping overrides for custom CSV
       if (sourceMode === 'custom' && mappings && Object.keys(mappingOverrides).length > 0) {
         const ignored = new Set();
@@ -315,6 +318,7 @@ function ManualPipelinePage() {
       setMappings(null);
       setLineage(null);
       setMappingOverrides({});
+      setUnitConfirmations({});
       setImportPlan(data);
       setStep(5);
       setHistoryOpen(false);
@@ -494,6 +498,11 @@ function ManualPipelinePage() {
       const effectiveType = override?.objectType || (record.recorded_mapping?.status === 'confirmed' ? record.recorded_mapping.target_object_type : record.suggested_object_type);
       const effectiveProperty = override?.objectType ? override.property : (record.recorded_mapping?.status === 'confirmed' ? record.recorded_mapping.target_property : record.suggested_property);
       const saved = record.recorded_mapping;
+      const column = record.source_column;
+      const planProperty = saved?.status === 'confirmed' ? saved.target_property : effectiveProperty;
+      const needsUnitConfirmation = saved?.status !== 'separate'
+        && (saved?.status === 'confirmed' || override !== 'ignore')
+        && planProperty?.endsWith('_100g') && column !== planProperty;
       const changed = override && override !== 'ignore' && saved?.status === 'confirmed'
         && (saved.target_object_type !== effectiveType || saved.target_property !== effectiveProperty);
       return <Space direction="vertical" size={4}>
@@ -508,6 +517,19 @@ function ManualPipelinePage() {
           <Button size="small" onClick={() => handleMappingDecision(record, 'alias')}>{isZh ? '标为别名' : 'Alias'}</Button>
           <Button size="small" onClick={() => handleMappingDecision(record, 'separate')}>{isZh ? '不映射' : 'Separate'}</Button>
         </Space>
+        {needsUnitConfirmation && <Checkbox
+          checked={unitConfirmations[column] === 'per_100g'}
+          onChange={event => {
+            const checked = event.target.checked;
+            setUnitConfirmations(previous => {
+              const next = { ...previous };
+              if (checked) next[column] = 'per_100g';
+              else delete next[column];
+              return next;
+            });
+            setImportPlan(null);
+          }}
+        >{isZh ? '源值已使用目标字段的每 100 克单位' : 'Source values already use the target’s per-100 g unit'}</Checkbox>}
       </Space>;
     } },
     ...(sourceMode === 'custom' ? [{

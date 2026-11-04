@@ -156,6 +156,7 @@ def retry_run(run_id: str, request: RevisionInput, background: BackgroundTasks):
 
 # Schema design is a draft-only workspace, separate from import runs.
 from assisted_build.schema_design import SchemaDesignService
+from assisted_build.ddl_design import is_ddl_filename
 
 schema_design_service = SchemaDesignService(
     ROOT, Path(__file__).resolve().parent / ".runtime" / "assisted-build"
@@ -199,7 +200,8 @@ def analyze_schema_design(rid, config):
 
 @router.post("/schema-designs", status_code=202)
 def create_schema_design(request: BuildInput, background: BackgroundTasks):
-    config = call(get_agent_llm_config, "build")
+    ddl_input = any(is_ddl_filename(f.name) for f in request.files)
+    config = {} if ddl_input else call(get_agent_llm_config, "build")
     run = call(
         schema_design_service.create,
         request.goal.strip(),

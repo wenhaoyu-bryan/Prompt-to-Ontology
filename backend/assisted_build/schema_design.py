@@ -18,6 +18,7 @@ from ontology_kernel.schema_loader import (
 from ontology_kernel.models import PropertyType, Cardinality
 from assisted_build.service import atomic, digest
 from assisted_build.sources import parse_sources
+from assisted_build.ddl_design import is_ddl_filename, prepare_ddl_sources, propose_ddl, resolve_reference
 
 _LOCK = threading.RLock()
 IDENT = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,63}$")
@@ -105,10 +106,21 @@ class SchemaDesignService:
             or not 1 <= len(files) <= 8
         ):
             raise ValueError("Invalid design input")
-        sources, rows = parse_sources(files)
+        ddl_files = [
+            f for f in files
+            if isinstance(f, dict) and is_ddl_filename(f.get("name"))
+        ]
+        if ddl_files:
+            if len(files) != 1:
+                raise ValueError("Use one PostgreSQL DDL file per design task")
+            sources = prepare_ddl_sources(ddl_files[0])
+            rows = {}
+            execution_mode = "deterministic"
+        else:
+            sources, rows = parse_sources(files)
         # Phase 1 normalizes structured scalars to strings. Retain original scalar
         # types for identity safety: numeric JSON IDs must not become strings.
-        for source, file in zip(sources, files):
+        for source, file in zip(sources if not ddl_files else [], files):
             content = file["content"].lstrip("\ufeff")
             if source["format"] == "json":
                 rows[source["id"]] = json.loads(content)
@@ -131,9 +143,14 @@ class SchemaDesignService:
             "preview": None,
             "saved_at": None,
         }
+        if ddl_files:
+            objects, links, warnings = propose_ddl(sources)
+            self._shape(objects, links)
+            r.update(source_kind="ddl", objects=objects, links=links, ddl_issues=warnings, issues=warnings)
         with _LOCK:
             atomic(self._path(r["id"]) / "rows.json", rows)
-            self._step(r, "create", "Uploaded bounded source profiles")
+            message = "Parsed PostgreSQL table definitions" if ddl_files else "Uploaded bounded source profiles"
+            self._step(r, "create", message)
             self._save(r)
         return r
 
@@ -229,6 +246,9 @@ class SchemaDesignService:
             self._save(r)
             rev = r["revision"]
             rows = json.loads((self._path(rid) / "rows.json").read_text())
+        if r.get("source_kind") == "ddl":
+            self._step(r, "ddl", "Proposed definitions from declared table, column and key metadata")
+            return self._finish_analysis(rid, rev, r, r["objects"])
         objects = []
         for s in r["sources"]:
             cols = [x["name"] for x in s["columns"]]
@@ -420,6 +440,9 @@ class SchemaDesignService:
                     "Model unavailable or invalid; deterministic fallback used",
                     "fallback",
                 )
+        return self._finish_analysis(rid, rev, r, objects)
+
+    def _finish_analysis(self, rid, rev, r, objects):
         with _LOCK:
             try:
                 current = self._load(rid)
@@ -463,9 +486,12 @@ class SchemaDesignService:
         schema = self._schema()
         oldo = schema["object_types"]
         oldl = schema["link_types"]
-        issues = []
+        issues = list(r.get("ddl_issues", []))
         changes = []
         sources = {s["id"]: {c["name"] for c in s["columns"]} for s in r["sources"]}
+        ddl_tables = {s["id"]: s["table"] for s in r["sources"] if s["format"] == "ddl"}
+        ddl_table_names = {table["name"] for table in ddl_tables.values()}
+        candidate_objects = {o["name"]: o for o in r["objects"] if o["decision"] != "excluded"}
 
         def issue(code, msg, x, level="error"):
             issues.append(
@@ -572,7 +598,11 @@ class SchemaDesignService:
                                 "INVALID_BINDING", "Unknown property source column", x
                             )
                     key = next((p for p in ps if p["name"] == x["primary_key"]), None)
-                    if key:
+                    if key and x["source_id"] in ddl_tables:
+                        table = ddl_tables[x["source_id"]]
+                        if key["type"] != "string" or table["primary_key"] != [key["source_column"]]:
+                            issue("DDL_KEY_BINDING", "Bind identity to the declared single-column primary key", x)
+                    elif key:
                         vals = [
                             row.get(key["source_column"])
                             for row in rows.get(key["source_id"], [])
@@ -647,6 +677,23 @@ class SchemaDesignService:
                         issue(
                             "INVALID_BINDING", "Unknown relationship source column", x
                         )
+                    if x["source_id"] in ddl_tables:
+                        source = ddl_tables[x["source_id"]]
+                        from_obj = candidate_objects.get(x["from"], {})
+                        to_obj = candidate_objects.get(x["to"], {})
+                        target = ddl_tables.get(to_obj.get("source_id"), {})
+                        if (
+                            from_obj.get("source_id") != x["source_id"]
+                            or source["primary_key"] != [x["source_column"]]
+                            or not any(
+                                fk["columns"] == [x["target_column"]]
+                                and target.get("primary_key")
+                                and (fk["target_columns"] or target["primary_key"]) == target["primary_key"]
+                                and resolve_reference(source["name"], fk["target_table"], ddl_table_names) == target["name"]
+                                for fk in source["foreign_keys"]
+                            )
+                        ):
+                            issue("DDL_FK_BINDING", "Bind endpoints and columns to a declared foreign key", x)
                     after = {
                         k: x[k]
                         for k in ("label", "description", "from", "to", "cardinality")
@@ -756,6 +803,7 @@ class SchemaDesignService:
                 "objects": r["objects"],
                 "links": r["links"],
                 "preview": p,
+                **({"ddl_sources": r["sources"]} if ddl_tables else {}),
             }
         )
         return p
@@ -871,6 +919,7 @@ class SchemaDesignService:
                             "links": [
                                 x for x in r["links"] if x["decision"] == "accepted"
                             ],
+                            **({"ddl_sources": r["sources"]} if r.get("source_kind") == "ddl" else {}),
                         },
                         ensure_ascii=False,
                         indent=2,
