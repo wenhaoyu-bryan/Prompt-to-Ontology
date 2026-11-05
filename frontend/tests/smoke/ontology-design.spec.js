@@ -235,3 +235,93 @@ test("creates a relationship with cardinality and typed relationship properties"
     page.getByRole("dialog", { name: "SUPPLIED_BY", exact: true }),
   ).toContainText("MANY_TO_ONE");
 });
+
+test("keeps the definition drawer open until a delayed save completes", async ({
+  page,
+}) => {
+  let finishSave;
+  let saveStarted;
+  const saved = new Promise((resolve) => {
+    finishSave = resolve;
+  });
+  const started = new Promise((resolve) => {
+    saveStarted = resolve;
+  });
+  const lot = { ...supplier, name: "Lot", label: "Lot" };
+  const catalog = {
+    domain: "pet_food",
+    revision: 1,
+    object_types: { Supplier: supplier, Lot: lot },
+    link_types: {},
+  };
+  await page.route("**/api/ontology/pet_food/schema", (route) =>
+    route.fulfill({ json: {} }),
+  );
+  await page.route("**/api/ontology/pet_food/design", (route) =>
+    route.fulfill({ json: catalog }),
+  );
+  await page.route(
+    "**/api/ontology/pet_food/design/definitions",
+    async (route) => {
+      const body = route.request().postDataJSON();
+      saveStarted();
+      await saved;
+      await route.fulfill({
+        json: {
+          ...catalog,
+          revision: 2,
+          object_types: {
+            ...catalog.object_types,
+            Supplier: body.object_types[0],
+          },
+        },
+      });
+    },
+  );
+  await page.goto("/schema?tab=objectTypes&asset=Supplier");
+  const drawer = page.getByRole("dialog", { name: "Supplier", exact: true });
+  await drawer
+    .getByRole("button", { name: "Edit definition", exact: true })
+    .click();
+  await drawer
+    .getByRole("textbox", { name: "Display label", exact: true })
+    .fill("Approved supplier");
+  await drawer
+    .getByRole("button", { name: "Save definition", exact: true })
+    .click();
+  await started;
+  try {
+    await expect(
+      drawer.getByRole("button", { name: "Close", exact: true }),
+    ).toBeDisabled();
+    await expect(
+      drawer.getByRole("button", { name: "Cancel", exact: true }),
+    ).toBeDisabled();
+    await page.keyboard.press("Escape");
+    await expect(drawer).toBeVisible();
+    await page.locator(".ant-drawer-mask").click({ position: { x: 8, y: 8 } });
+    await expect(drawer).toBeVisible();
+    await expect(
+      drawer.getByRole("textbox", { name: "Display label", exact: true }),
+    ).toHaveValue("Approved supplier");
+  } finally {
+    finishSave();
+  }
+  const completed = page.getByRole("dialog", {
+    name: "Approved supplier",
+    exact: true,
+  });
+  await expect(completed).toBeVisible();
+  await completed
+    .getByRole("button", { name: "Close", exact: true })
+    .last()
+    .click();
+  await page
+    .getByRole("row")
+    .filter({ hasText: "Lot" })
+    .getByRole("button", { name: "View details", exact: true })
+    .click();
+  await expect(
+    page.getByRole("dialog", { name: "Lot", exact: true }),
+  ).toBeVisible();
+});

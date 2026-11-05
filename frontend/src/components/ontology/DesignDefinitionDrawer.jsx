@@ -581,7 +581,12 @@ export default function DesignDefinitionDrawer({
       open={!!asset}
       title={title}
       size="min(900px, 100vw)"
-      onClose={onClose}
+      onClose={() => {
+        if (!saving) onClose();
+      }}
+      closable={{ disabled: saving }}
+      mask={{ closable: !saving }}
+      keyboard={!saving}
       className="ontology-design-drawer"
       footer={
         <div className="od-drawer-footer">
