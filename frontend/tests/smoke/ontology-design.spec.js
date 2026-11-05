@@ -216,13 +216,19 @@ test("creates a relationship with cardinality and typed relationship properties"
     .getByRole("textbox", { name: "Technical name", exact: true })
     .fill("SUPPLIED_BY");
   const choose = async (name, value) => {
-    await drawer.getByRole("combobox", { name, exact: true }).click();
-    await page
-      .locator(".ant-select-dropdown")
-      .filter({ visible: true })
+    const control = drawer.getByRole("combobox", { name, exact: true });
+    await control.click();
+    const listId = await control.getAttribute("aria-controls");
+    expect(listId).toBeTruthy();
+    const popup = page.locator(".ant-select-dropdown").filter({
+      has: page.locator(`[id="${listId}"]`),
+    });
+    await popup
       .locator(".ant-select-item-option-content")
       .filter({ hasText: new RegExp(`^${value}$`) })
       .click();
+    await expect(control).toHaveAttribute("aria-expanded", "false");
+    await expect(popup).toBeHidden();
   };
   await choose("Source object", "Lot");
   await choose("Target object", "Supplier");
