@@ -14,6 +14,7 @@ def parse_sources(files, *, allow_xlsx=False):
     sources = []
     allrows = {}
     total = 0
+    workbook_cells = 0
     for n, f in enumerate(files):
         content = f.get("content")
         name = f.get("name", "source")
@@ -23,7 +24,7 @@ def parse_sources(files, *, allow_xlsx=False):
         if is_xlsx and not allow_xlsx:
             raise ValueError("Use the Import data workspace for XLSX sources")
         if is_xlsx:
-            from assisted_build.xlsx import decode_workbook, read_worksheet
+            from assisted_build.xlsx import MAX_WORKBOOK_CELLS, decode_workbook, read_worksheet
 
             data = decode_workbook(content)
             size = len(data)
@@ -41,6 +42,9 @@ def parse_sources(files, *, allow_xlsx=False):
             selected = read_worksheet(data, f["sheet"], f["header_row"])
             if selected["error"]:
                 raise ValueError(selected["error"])
+            workbook_cells += len(selected["rows"]) * len(selected["columns"])
+            if workbook_cells > MAX_WORKBOOK_CELLS:
+                raise ValueError("XLSX sources exceed the 250,000-cell limit per build")
             fmt = "xlsx"
             rows = [dict(zip(selected["columns"], row)) for row in selected["rows"]]
             source_details = {key: selected[key] for key in ("sheet", "header_row", "row_numbers")}

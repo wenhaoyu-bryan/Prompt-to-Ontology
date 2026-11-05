@@ -12,6 +12,7 @@ MAX_WORKBOOK_BYTES = 2_000_000
 MAX_HEADER_ROW = 100
 MAX_ROWS = 10_000
 MAX_COLUMNS = 100
+MAX_WORKBOOK_CELLS = 250_000
 PREVIEW_ROWS = 10
 
 
@@ -74,9 +75,9 @@ def _read_rows(worksheet, header_row):
     for number, cells in enumerate(worksheet.iter_rows(min_row=header_row), header_row):
         if number > header_row + MAX_ROWS:
             raise WorksheetError("Worksheet exceeds the 10,000-row range after the header")
-        used_columns = max((i for i, cell in enumerate(cells, 1) if cell.value is not None), default=0)
-        if used_columns > MAX_COLUMNS:
+        if len(cells) > MAX_COLUMNS:
             raise WorksheetError(f"Excel row {number} exceeds the 100-column limit")
+        used_columns = max((i for i, cell in enumerate(cells, 1) if cell.value is not None), default=0)
         if number == header_row:
             columns = [_cell_text(cell, number).strip() for cell in cells[:used_columns]]
             if not columns or any(not col for col in columns) or len(set(columns)) != len(columns):
@@ -84,6 +85,8 @@ def _read_rows(worksheet, header_row):
         elif used_columns:
             if used_columns > len(columns):
                 raise WorksheetError(f"Excel row {number} has values outside the selected header columns")
+            if (len(rows) + 1) * len(columns) > MAX_WORKBOOK_CELLS:
+                raise WorksheetError("Worksheet exceeds the 250,000-cell limit")
             values = [_cell_text(cell, number) for cell in cells[:len(columns)]]
             text_bytes += sum(len(value.encode()) for value in values)
             if text_bytes > 8 * 1024 * 1024:

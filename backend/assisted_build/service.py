@@ -441,6 +441,9 @@ class AssistedBuildService:
             source_rows = rows[s["id"]]
             positions = s.get("row_numbers", range(len(source_rows)))
             lineage_source = {"sheet": s["sheet"]} if "sheet" in s else {}
+            source_evidence = f"Assisted Build {r['id']} source {s['id']}"
+            if lineage_source:
+                source_evidence += f" worksheet {s['sheet']}"
             if not s["object_mappings"] and not s["link_mappings"]:
                 issue(
                     "UNASSIGNED_SOURCE",
@@ -503,7 +506,7 @@ class AssistedBuildService:
                                 **lineage_source,
                             }
                         ],
-                        "evidence": f"Assisted Build {r['id']} source {s['id']} row {idx}",
+                        "evidence": f"{source_evidence} row {idx}",
                     }
                     objects.append(o)
             for m in s["link_mappings"]:
@@ -567,7 +570,7 @@ class AssistedBuildService:
                                     **lineage_source,
                                 }
                             ],
-                            "evidence": f"Assisted Build {r['id']} source {s['id']} row {idx}",
+                            "evidence": f"{source_evidence} row {idx}",
                         }
                     )
         unique = {}

@@ -2,6 +2,7 @@ import base64
 import unittest
 from io import BytesIO
 from pathlib import Path
+from unittest.mock import patch
 
 from openpyxl import Workbook
 
@@ -39,3 +40,9 @@ class XlsxSourcesTests(unittest.TestCase):
             parse_sources([{
                 "name": "formula.xlsx", "content": content, "sheet": "Sheet", "header_row": 1,
             }], allow_xlsx=True)
+
+    def test_worksheet_cell_budget_includes_rectangular_output(self):
+        workbook = Path(__file__).resolve().parents[2] / "frontend/tests/fixtures/product-import.xlsx"
+        content = base64.b64encode(workbook.read_bytes()).decode()
+        with patch("assisted_build.xlsx.MAX_WORKBOOK_CELLS", 1):
+            self.assertIn("cell limit", preview_workbook(content, "Products", 2)["error"])

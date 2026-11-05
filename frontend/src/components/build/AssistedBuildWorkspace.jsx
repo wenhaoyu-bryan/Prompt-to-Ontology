@@ -1028,7 +1028,9 @@ export default function AssistedBuildWorkspace() {
                       {run.sources.find((s) => s.id === item.source_id)?.name ||
                         item.source_id}
                     </Button>{" "}
-                    · {tr("data row", "数据行")} {item.row + 1}
+                    · {item.sheet
+                      ? `${item.sheet} · ${tr("Excel row", "Excel 行")} ${item.row}`
+                      : `${tr("data row", "数据行")} ${item.row + 1}`}
                   </p>
                 ))}
               </>

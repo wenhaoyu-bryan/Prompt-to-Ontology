@@ -30,4 +30,6 @@ test("selects an XLSX worksheet and header, previews rows and keeps text IDs", a
   expect(run.preview.summary.errors).toBe(0);
   expect(run.preview.objects[0].id).toBe("000981");
   expect(run.preview.objects[0].source_row).toBe(4);
+  await page.getByRole("row").filter({ hasText: "000981" }).getByRole("button", { name: "View", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Candidate details" })).toContainText("Products · Excel row 4");
 });
