@@ -584,7 +584,7 @@ export default function DesignDefinitionDrawer({
       onClose={() => {
         if (!saving) onClose();
       }}
-      closable={{ disabled: saving }}
+      closable={!saving}
       mask={{ closable: !saving }}
       keyboard={!saving}
       className="ontology-design-drawer"

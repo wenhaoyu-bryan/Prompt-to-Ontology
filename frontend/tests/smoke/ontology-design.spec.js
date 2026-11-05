@@ -220,7 +220,8 @@ test("creates a relationship with cardinality and typed relationship properties"
     await page
       .locator(".ant-select-dropdown")
       .filter({ visible: true })
-      .getByText(value, { exact: true })
+      .locator(".ant-select-item-option-content")
+      .filter({ hasText: new RegExp(`^${value}$`) })
       .click();
   };
   await choose("Source object", "Lot");
@@ -293,7 +294,7 @@ test("keeps the definition drawer open until a delayed save completes", async ({
   try {
     await expect(
       drawer.getByRole("button", { name: "Close", exact: true }),
-    ).toBeDisabled();
+    ).toHaveCount(0);
     await expect(
       drawer.getByRole("button", { name: "Cancel", exact: true }),
     ).toBeDisabled();
