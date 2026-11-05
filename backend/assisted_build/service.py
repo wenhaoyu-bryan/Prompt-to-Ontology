@@ -113,7 +113,7 @@ class AssistedBuildService:
                 raise ValueError("Goal must be at most 4000 characters")
             if not isinstance(files, list) or not 1 <= len(files) <= self.MAX_FILES:
                 raise ValueError("Upload 1 to 12 files")
-            sources, allrows = parse_sources(files)
+            sources, allrows = parse_sources(files, allow_xlsx=True)
             r = {
                 "id": "ab-" + uuid.uuid4().hex[:24],
                 "goal": goal,
@@ -438,6 +438,9 @@ class AssistedBuildService:
         for s in r["sources"]:
             if s["excluded"]:
                 continue
+            source_rows = rows[s["id"]]
+            positions = s.get("row_numbers", range(len(source_rows)))
+            lineage_source = {"sheet": s["sheet"]} if "sheet" in s else {}
             if not s["object_mappings"] and not s["link_mappings"]:
                 issue(
                     "UNASSIGNED_SOURCE",
@@ -447,7 +450,7 @@ class AssistedBuildService:
             for m in s["object_mappings"]:
                 td = schema.object_types[m["object_type"]]
                 pdefs = {p.name: p for p in td.properties}
-                for idx, row in enumerate(rows[s["id"]]):
+                for idx, row in zip(positions, source_rows):
                     oid = str(row.get(m["id_column"], "")).strip()
                     props = {}
                     if not oid:
@@ -497,13 +500,14 @@ class AssistedBuildService:
                                 "source_id": s["id"],
                                 "row": idx,
                                 "content_hash": s["content_hash"],
+                                **lineage_source,
                             }
                         ],
                         "evidence": f"Assisted Build {r['id']} source {s['id']} row {idx}",
                     }
                     objects.append(o)
             for m in s["link_mappings"]:
-                for idx, row in enumerate(rows[s["id"]]):
+                for idx, row in zip(positions, source_rows):
                     a = str(row.get(m["source_id_column"], "")).strip()
                     b = str(row.get(m["target_id_column"], "")).strip()
                     if not a or not b:
@@ -560,6 +564,7 @@ class AssistedBuildService:
                                     "source_id": s["id"],
                                     "row": idx,
                                     "content_hash": s["content_hash"],
+                                    **lineage_source,
                                 }
                             ],
                             "evidence": f"Assisted Build {r['id']} source {s['id']} row {idx}",

@@ -43,11 +43,13 @@ Design tasks are retained under ignored `backend/.runtime/assisted-build/schema_
 
 ## Build workflow
 
-1. Describe a concrete goal and add CSV, flat JSON arrays, or NDJSON files. Choose the configured model or the deterministic baseline.
+1. Describe a concrete goal and add CSV, flat JSON arrays, NDJSON, or XLSX files. Choose the configured model or the deterministic baseline.
 2. Inspect the proposed object types, identity columns, field mappings, and relationship endpoints. Edit or exclude mappings and sources. Noncanonical nutrition fields require confirmation that values already use the target per-100-g unit; this version does not convert units.
 3. Select **Confirm mappings & preview**. Inspect candidate properties, source rows, existing-object differences, and blocking issues. Cross-file relationship endpoints can refer to other candidates in this build or actual existing runtime nodes.
 4. Review the exact preview and explicitly submit it to Review Queue. Approve and apply using the existing queue workflow, then return to verification.
 5. **Check runtime graph** compares expected objects, properties and relationships with Neo4j. Graph matching and the review batch's application status are independent: matching previously existing data does not establish that this batch was applied.
+
+For XLSX, select **Choose worksheet**, select the sheet and enter the Excel row number containing the column names. Preview the selected rows before applying the selection. Each workbook upload imports one worksheet. The plan keeps the workbook hash, worksheet name and original Excel row number for lineage. Store identifiers with leading zeros as text cells. Use values-only worksheets for import.
 
 Changing mappings invalidates the preview. Submission checks the revision, schema fingerprint and preview hash, and rechecks the live graph. If runtime facts have changed, generate a new preview. Interrupted analysis is marked on backend startup and can be retried from the workspace using its retained uploads. An interrupted submission retains the accepted preview and stable batch identity so retry does not create a second batch. Submitted mappings remain immutable.
 

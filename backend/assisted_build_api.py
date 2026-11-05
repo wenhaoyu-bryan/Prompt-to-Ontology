@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from assisted_build.service import AssistedBuildService
 from llm_config_manager import (
@@ -24,7 +24,16 @@ router = APIRouter(prefix="/api/assisted-build", tags=["Assisted build"])
 
 class SourceInput(BaseModel):
     name: str = Field(min_length=1, max_length=160)
-    content: str = Field(max_length=2_000_000)
+    content: str = Field(max_length=2_666_668)
+    sheet: str | None = Field(default=None, min_length=1, max_length=31)
+    header_row: int | None = Field(default=None, ge=1, le=100)
+
+    @field_validator("content")
+    @classmethod
+    def limit_text_content(cls, content: str, info: ValidationInfo) -> str:
+        if len(content) > 2_000_000 and not info.data.get("name", "").lower().endswith(".xlsx"):
+            raise ValueError("Text sources must be under 2 MB")
+        return content
 
 
 class BuildInput(BaseModel):
@@ -50,6 +59,12 @@ class SubmissionInput(RevisionInput):
     preview_hash: str = Field(min_length=1, max_length=128)
 
 
+class WorkbookPreviewInput(BaseModel):
+    content: str = Field(min_length=1, max_length=2_666_668)
+    sheet: str | None = Field(default=None, min_length=1, max_length=31)
+    header_row: int = Field(default=1, ge=1, le=100)
+
+
 def call(operation, *args):
     try:
         return operation(*args)
@@ -59,6 +74,13 @@ def call(operation, *args):
         raise HTTPException(400, str(exc))
     except RuntimeError as exc:
         raise HTTPException(409, str(exc))
+
+
+@router.post("/xlsx/preview")
+def xlsx_preview(request: WorkbookPreviewInput):
+    from assisted_build.xlsx import preview_workbook
+
+    return call(preview_workbook, request.content, request.sheet, request.header_row)
 
 
 @router.get("/schema")

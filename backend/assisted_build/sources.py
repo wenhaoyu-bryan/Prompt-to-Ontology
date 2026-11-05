@@ -1,6 +1,8 @@
 import csv
 import hashlib
 import io
+from pathlib import Path
+
 from data_pipeline.profiler import profile_rows, parse_structured_rows
 
 MAX_BYTES = 2 * 1024 * 1024
@@ -8,7 +10,7 @@ MAX_TOTAL_BYTES = 8 * 1024 * 1024
 MAX_ROWS = 10000
 
 
-def parse_sources(files):
+def parse_sources(files, *, allow_xlsx=False):
     sources = []
     allrows = {}
     total = 0
@@ -17,13 +19,32 @@ def parse_sources(files):
         name = f.get("name", "source")
         if not isinstance(content, str) or not isinstance(name, str) or len(name) > 255:
             raise ValueError("Invalid source")
-        size = len(content.encode())
+        is_xlsx = Path(name).suffix.lower() == ".xlsx"
+        if is_xlsx and not allow_xlsx:
+            raise ValueError("Use the Import data workspace for XLSX sources")
+        if is_xlsx:
+            from assisted_build.xlsx import decode_workbook, read_worksheet
+
+            data = decode_workbook(content)
+            size = len(data)
+        else:
+            size = len(content.encode())
         total += size
         if size > MAX_BYTES or total > MAX_TOTAL_BYTES:
             raise ValueError("Upload size limit exceeded")
         content = content.lstrip("\ufeff")
         stripped = content.lstrip()
-        if stripped.startswith("["):
+        source_details = {}
+        if is_xlsx:
+            if not f.get("sheet") or f.get("header_row") is None:
+                raise ValueError("Choose an XLSX worksheet and header row before importing")
+            selected = read_worksheet(data, f["sheet"], f["header_row"])
+            if selected["error"]:
+                raise ValueError(selected["error"])
+            fmt = "xlsx"
+            rows = [dict(zip(selected["columns"], row)) for row in selected["rows"]]
+            source_details = {key: selected[key] for key in ("sheet", "header_row", "row_numbers")}
+        elif stripped.startswith("["):
             fmt = "json"
             rows = parse_structured_rows(content, fmt)
         elif stripped.startswith("{"):
@@ -57,7 +78,7 @@ def parse_sources(files):
                 "id": sid,
                 "name": name,
                 "format": fmt,
-                "content_hash": hashlib.sha256(content.encode()).hexdigest(),
+                "content_hash": hashlib.sha256(data if is_xlsx else content.encode()).hexdigest(),
                 "row_count": len(rows),
                 "columns": [x.model_dump(mode="json") for x in profile.columns],
                 "sample_rows": rows[:5],
@@ -65,6 +86,7 @@ def parse_sources(files):
                 "link_mappings": [],
                 "excluded": False,
                 "unit_confirmations": {},
+                **source_details,
             }
         )
         allrows[sid] = rows
