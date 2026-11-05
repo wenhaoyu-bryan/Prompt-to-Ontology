@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, Field, ValidationError, ValidationInfo, field_validator
 
 from assisted_build.design_documents import MAX_DOCUMENT_BYTES, MAX_DOCUMENTS
 from assisted_build.service import AssistedBuildService
@@ -286,6 +286,29 @@ def schema_design_save(rid: str, request: SubmissionInput):
 @router.get("/schema-designs/{rid}/export")
 def schema_design_export(rid: str):
     return call(schema_design_service.export, rid)
+
+
+class DesignCatalogInput(BaseModel):
+    expected_revision: int = Field(ge=1)
+    design_revision: int = Field(ge=1)
+
+
+@router.post("/schema-designs/{rid}/catalog")
+def schema_design_to_catalog(rid: str, request: DesignCatalogInput):
+    from ontology_design.handoff import definitions_from_build
+    from ontology_design.service import service as design_catalog
+
+    catalog = call(design_catalog.get_catalog, "pet_food")
+    package = call(schema_design_service.export, rid)
+    objects, links = call(definitions_from_build, package, catalog, request.design_revision)
+    try:
+        return design_catalog.save_batch(
+            "pet_food", request.expected_revision, objects, links, trusted_sources=True,
+        )
+    except (ValueError, ValidationError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from exc
 
 
 @router.post("/schema-designs/{rid}/retry", status_code=202)

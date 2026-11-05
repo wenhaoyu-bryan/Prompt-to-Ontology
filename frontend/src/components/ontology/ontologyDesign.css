@@ -1,0 +1,130 @@
+.od-section-heading,
+.od-drawer-footer,
+.od-manager-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.od-section-heading h4 {
+  margin: 0;
+}
+.od-properties-title {
+  margin-top: 24px;
+}
+.od-error {
+  margin-bottom: 16px;
+}
+.od-two-columns,
+.od-property-extra {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+}
+.od-property-editor {
+  border-top: 1px solid var(--ant-color-border-secondary, #e9e9e7);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+.od-property-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(110px, 0.65fr) auto 32px;
+  align-items: start;
+  gap: 12px;
+}
+.od-property-main > button {
+  margin-top: 28px;
+}
+.od-property-main .od-required {
+  margin-top: 30px;
+}
+.od-property-editor .ant-form-item {
+  margin-bottom: 14px;
+}
+.od-muted {
+  color: var(--ant-color-text-secondary, #73726d);
+}
+.od-source-entry {
+  border-top: 1px solid var(--ant-color-border-secondary, #e9e9e7);
+  padding: 16px 0;
+  overflow-wrap: anywhere;
+}
+.od-source-entry p {
+  margin: 8px 0;
+}
+.od-source-entry blockquote {
+  margin: 12px 0;
+  padding: 8px 12px;
+  border-inline-start: 3px solid var(--ant-color-primary, #3267b1);
+  white-space: pre-wrap;
+}
+.od-source-entry details {
+  margin-bottom: 8px;
+}
+.od-source-entry details code {
+  display: block;
+  margin-top: 8px;
+}
+.od-type-map {
+  height: 480px;
+  min-height: 320px;
+  border: 1px solid var(--ant-color-border-secondary, #e9e9e7);
+  border-radius: 6px;
+}
+.od-type-map .react-flow__node {
+  color: var(--ant-color-text, #37352f);
+  background: var(--ant-color-bg-container, white);
+  border-color: var(--ant-color-border, #dededb);
+  text-align: left;
+  box-shadow: none;
+}
+.od-map-node {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.od-map-node small,
+.od-map-node span {
+  color: var(--ant-color-text-secondary, #73726d);
+  font-size: 11px;
+}
+.od-map-node strong {
+  font-size: 14px;
+}
+.od-type-map .react-flow__edge-text {
+  fill: var(--ant-color-text, #37352f);
+}
+.od-type-map .react-flow__edge-textbg {
+  fill: var(--ant-color-bg-container, white);
+}
+.od-manager-tools {
+  margin-bottom: 16px;
+}
+.od-design-scope {
+  margin: 12px 0;
+  color: var(--ant-color-text-secondary, #73726d);
+}
+@media (max-width: 640px) {
+  .od-two-columns,
+  .od-property-extra {
+    grid-template-columns: 1fr;
+  }
+  .od-property-main {
+    grid-template-columns: minmax(0, 1fr) minmax(90px, 0.7fr) 32px;
+  }
+  .od-property-main .od-required {
+    grid-column: 1 / 3;
+    margin: 0 0 12px;
+  }
+  .od-property-main > button {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .od-manager-actions {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .od-type-map {
+    height: 420px;
+  }
+}
