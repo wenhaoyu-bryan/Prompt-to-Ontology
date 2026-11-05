@@ -2395,3 +2395,7 @@ if __name__ == "__main__":
 from assisted_build_api import router as assisted_build_router
 
 app.include_router(assisted_build_router)
+
+from ontology_design.api import router as ontology_design_router
+
+app.include_router(ontology_design_router)

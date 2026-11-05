@@ -372,6 +372,16 @@ export default function SchemaDesignWorkspace() {
       });
       setEpoch((n) => n + 1);
     });
+  const saveToManager = () =>
+    act(async () => {
+      const { data: catalog } = await scopedApi.get("/ontology/pet_food/design");
+      await scopedApi.post(`${base}/${run.id}/catalog`, {
+        expected_revision: catalog.revision,
+        design_revision: run.revision,
+      });
+      const first = run.objects.find((object) => object.decision === "accepted");
+      navigate(`/schema?tab=objectTypes&asset=${encodeURIComponent(first.name)}`);
+    });
   const remove = (rid) =>
     act(async () => {
       await scopedApi.delete(`${base}/${rid}`);
@@ -1118,10 +1128,13 @@ export default function SchemaDesignWorkspace() {
               <h3>{tr("What happens next?", "接下来如何使用？")}</h3>
               <p className="ab-muted">
                 {tr(
-                  "Review the exported YAML in a feature branch, integrate schema consumers and source bindings, and run import/query regression before activation. This draft does not add rules, actions or metrics.",
-                  "在功能分支检查导出的 YAML，接入定义读取与来源映射，并通过导入、查询回归后再启用。这份草稿不生成规则、动作或指标。",
+                  "Save the reviewed objects, relationships and source references to Ontology Manager to continue editing. Data imports and queries use their configured runtime schema.",
+                  "将已确认的对象、关系和来源映射保存到本体管理，继续维护定义。数据导入与查询使用各自配置的运行定义。",
                 )}
               </p>
+              <Button type="primary" disabled={pending || dirty} loading={pending} onClick={saveToManager}>
+                {tr("Save definitions to Manager", "保存定义到本体管理")}
+              </Button>
               <Button onClick={() => navigate("/pipeline?mode=assisted")}>
                 {tr("Open existing-schema importer", "打开已有本体导入")}
               </Button>

@@ -39,6 +39,14 @@ DDL is parsed locally. **Deterministic baseline** is the default and makes no mo
 
 To model with a product specification or SOP, attach up to three UTF-8 `.md` reference documents to a DDL design and select the Build Agent. The provider also receives the uploaded document text. Document-backed suggestions include a source file and a verified excerpt. Open the citation to read the original text at those lines. Review any proposed business terms or rules alongside the schema. The draft keeps the original suggestions for reference after an edit, and rule candidates require their own implementation and review.
 
+### Continue in Ontology Manager
+
+After saving a reviewed build draft, select **Save definitions to Manager**. The objects, relationships and field sources are saved together in the design catalog. An existing conflicting definition requires review in the Manager before proceeding. The source task remains available through its references.
+
+In **Ontology Manager**, create an object or relationship, or open an existing definition. The same right-hand drawer handles viewing and editing. Object properties support types, required values, enums, units and descriptions. Relationship definitions include both endpoints, direction, cardinality and typed relationship properties. **View source** opens the selected field's recorded mappings and document excerpts. DDL references describe parsed declarations. **Type map** shows these definitions and opens the same drawer.
+
+Saving records the catalog revision and definition differences. A stale edit requires reloading before saving. Existing Manager drafts remain available through **Review draft** for explicit review and saving. The catalog supports definition design. Import, query and fixed evaluation consumers continue to use their configured runtime schema.
+
 A successful parse describes the uploaded structure. A database connection, instance rows, and a queryable runtime each require their own verification. To continue with data today, export approved query results to CSV or JSON and use **Import data** with the active ontology.
 
 Design tasks are retained under ignored `backend/.runtime/assisted-build/schema_designs/` until deleted from **Design history**. The draft preview is tied to both a revision and the active schema fingerprint; stale previews cannot be saved or exported. Restarted analyses can be retried. This is the same local, single-process storage boundary as assisted imports.
