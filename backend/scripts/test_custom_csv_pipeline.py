@@ -36,7 +36,7 @@ custom_pf_003,Custom Kitten Formula,ExampleBrand,Cat,Kitten,38,20,0.6,1400
 # 1. Profile custom CSV content
 print("\n[1] Profile Custom CSV Content")
 profile = svc.profile_csv_content("test_products.csv", CSV_CONTENT)
-check("Profile has source_id", profile.source_id == "test_products.csv")
+check("Profile has source_id", profile.source_id == profile.source_revision_id and profile.source_id.startswith("rev_"))
 check("Profile has source_name", profile.source_name == "test_products.csv")
 check("Profile has source_type=custom_csv", profile.source_type == "custom_csv")
 check("Profile has row_count=3", profile.row_count == 3, f"got {profile.row_count}")
@@ -57,7 +57,7 @@ check("fat_100g inferred as number", fat_col.inferred_type.value in ("number", "
 
 # 3. Suggest mappings
 print("\n[3] Suggest Mappings")
-mappings = svc.suggest_mappings("test_products.csv", "pet_food")
+mappings = svc.suggest_mappings(profile.source_id, "pet_food")
 check("Has field_suggestions", len(mappings["field_suggestions"]) > 0)
 check("Has object_mappings", len(mappings["object_mappings"]) > 0)
 
@@ -84,7 +84,7 @@ obj_mappings = [{
     ],
     "confidence": 1.0,
 }]
-plan = svc.create_import_plan("test_products.csv", "pet_food", object_mappings=obj_mappings)
+plan = svc.create_import_plan(profile.source_id, "pet_food", object_mappings=obj_mappings)
 check("Plan has plan_id", bool(plan.plan_id))
 check("Plan has candidate_objects", len(plan.candidate_objects) > 0, f"got {len(plan.candidate_objects)}")
 check("Plan has 3 candidate objects", len(plan.candidate_objects) == 3, f"got {len(plan.candidate_objects)}")
@@ -146,7 +146,7 @@ dup_001,Product A
 dup_001,Product B
 """
 dup_profile = svc.profile_csv_content("dup_test.csv", DUP_CSV)
-dup_plan = svc.create_import_plan("dup_test.csv", "pet_food")
+dup_plan = svc.create_import_plan(dup_profile.source_id, "pet_food")
 dup_ids = [o.id for o in dup_plan.candidate_objects]
 # Note: pipeline may or may not flag duplicates depending on implementation
 check("Duplicate CSV processed", len(dup_plan.candidate_objects) > 0)

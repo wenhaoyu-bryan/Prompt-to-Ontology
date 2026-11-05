@@ -19,10 +19,8 @@ The Data Pipeline originally only supported built-in Pet Food sample datasets. C
 
 ## What It Does Not Support Yet
 
-- Relationship CSV upload (CONTAINS, MADE_BY, etc.) — planned for a future phase
 - Automatic ID generation from non-ID columns (user must provide an ID column)
 - Schema creation from arbitrary data — custom CSV maps to the existing Pet Food ontology only
-- Persistent file storage — CSV content is held in backend memory during the session
 
 ## Workflow
 
@@ -42,6 +40,8 @@ The Data Pipeline originally only supported built-in Pet Food sample datasets. C
 ## Mapping to Existing Ontology Schema
 
 The system maps CSV columns to properties of existing ontology object types:
+
+The returned source ID identifies an immutable uploaded revision. The local backend runtime keeps the uploaded content so the same revision can be profiled after restart. Uploading different content with the same filename produces a separate revision. The pipeline validates values against the mapped property types before review. For an ambiguous nutrition column, confirm its per-100 g basis or correct the source values first.
 
 | CSV Column | → Object Type | → Property |
 |---|---|---|
@@ -86,8 +86,7 @@ Custom CSV is the recommended path for Clean Graph Build Mode:
 
 ## Known Limitations
 
-- CSV content is held in backend memory; restarting the server clears upload state
-- Only object imports are supported; relationship CSV upload is planned for a future phase
+- A historical upload whose catalog entry has only metadata can be recovered by uploading the original file again.
 - Large CSV files (>10MB) may cause memory pressure — no streaming support yet
 - No data deduplication across uploads; duplicate IDs will be merged by Neo4j MERGE semantics
 

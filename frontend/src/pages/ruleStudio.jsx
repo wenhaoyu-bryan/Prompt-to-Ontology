@@ -4,6 +4,7 @@ import {
   Table,
   Tag,
   Button,
+  Checkbox,
   Drawer,
   Collapse,
   Row,
@@ -79,7 +80,7 @@ export default function RuleStudioPage() {
   // Simulation state
   const [simRuleId, setSimRuleId] = useState(null);
   const [simFields, setSimFields] = useState({
-    species: undefined,
+    target_species: undefined,
     life_stage: undefined,
     protein_100g: undefined,
     fat_100g: undefined,
@@ -88,6 +89,11 @@ export default function RuleStudioPage() {
   });
   const [simResult, setSimResult] = useState(null);
   const [simLoading, setSimLoading] = useState(false);
+  const [simIngredients, setSimIngredients] = useState([]);
+  const [simIngredientsComplete, setSimIngredientsComplete] = useState(false);
+  const simCondition = rules.find((rule) => rule.id === simRuleId)?.condition_type;
+  const simUsesIngredients = simCondition === 'ingredient_match' || simCondition === 'ingredient_absence';
+  const simMissingInputs = [...(simResult?.missing_fields ?? []), ...(simResult?.missing_relations ?? [])];
 
   const loadAll = async () => {
     setLoading(true);
@@ -347,13 +353,17 @@ export default function RuleStudioPage() {
     setSimLoading(true);
     setSimResult(null);
     try {
-      const payload = { rule_id: simRuleId };
+      const payload = { rule_id: simRuleId, properties: {} };
       // Only include fields with values
       Object.entries(simFields).forEach(([key, val]) => {
         if (val !== undefined && val !== null && val !== '') {
-          payload[key] = val;
+          payload.properties[key] = val;
         }
       });
+      if (simUsesIngredients) {
+        payload.ingredient_names = simIngredients;
+        payload.ingredients_complete = simIngredientsComplete;
+      }
       const res = await api.post('/rule-studio/simulate', payload);
       setSimResult(res.data);
     } catch (err) {
@@ -720,8 +730,8 @@ export default function RuleStudioPage() {
                   <Select
                     style={{ width: '100%' }}
                     placeholder={t('ruleStudio.simulation.selectPlaceholder')}
-                    value={simFields.species}
-                    onChange={(val) => updateSimField('species', val)}
+                    value={simFields.target_species}
+                    onChange={(val) => updateSimField('target_species', val)}
                     allowClear
                     options={[
                       { value: 'cat', label: t('ruleStudio.simulation.speciesCat', 'Cat') },
@@ -819,6 +829,33 @@ export default function RuleStudioPage() {
                 </Col>
               </Row>
 
+              {simUsesIngredients && (
+                <Space orientation="vertical" style={{ width: '100%' }}>
+                  <Select
+                    aria-label={t('ruleStudio.simulation.ingredients')}
+                    mode="tags"
+                    tokenSeparators={[',', '，']}
+                    style={{ width: '100%' }}
+                    placeholder={t('ruleStudio.simulation.ingredients')}
+                    value={simIngredients}
+                    onChange={(names) => {
+                      setSimIngredients(names);
+                      setSimIngredientsComplete(false);
+                      setSimResult(null);
+                    }}
+                  />
+                  <Checkbox
+                    checked={simIngredientsComplete}
+                    onChange={(event) => {
+                      setSimIngredientsComplete(event.target.checked);
+                      setSimResult(null);
+                    }}
+                  >
+                    {t('ruleStudio.simulation.ingredientsComplete')}
+                  </Checkbox>
+                </Space>
+              )}
+
               <Button
                 type="primary"
                 icon={<PlayCircleOutlined />}
@@ -900,7 +937,7 @@ export default function RuleStudioPage() {
 
                   <Row gutter={16}>
                     {simResult.input_fields && Object.keys(simResult.input_fields).length > 0 && (
-                      <Col span={simResult.missing_fields?.length > 0 ? 12 : 24}>
+                      <Col span={simMissingInputs.length > 0 ? 12 : 24}>
                         <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
                           {t('ruleStudio.simulation.inputFieldsUsed')}
                         </Text>
@@ -913,13 +950,13 @@ export default function RuleStudioPage() {
                         </Space>
                       </Col>
                     )}
-                    {simResult.missing_fields && simResult.missing_fields.length > 0 && (
+                    {simMissingInputs.length > 0 && (
                       <Col span={simResult.input_fields && Object.keys(simResult.input_fields).length > 0 ? 12 : 24}>
                         <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
                           {t('ruleStudio.simulation.missingFields')}
                         </Text>
                         <Space size={4} wrap>
-                          {simResult.missing_fields.map((f) => (
+                          {simMissingInputs.map((f) => (
                             <Tag key={f} color="orange" style={{ fontSize: 12 }}>
                               {f}
                             </Tag>

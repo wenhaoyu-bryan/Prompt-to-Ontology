@@ -35,6 +35,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../providers/dataProvider";
 import MappingEditor from "./MappingEditor";
 import BuildNavigation from "./BuildNavigation";
+import WorkbookPicker, { isWorkbook, readWorkbook } from "./WorkbookPicker";
 import "./assistedBuild.css";
 
 const { TextArea } = Input;
@@ -53,6 +54,8 @@ export default function AssistedBuildWorkspace() {
   const runId = params.get("run");
   const [run, setRun] = useState(null);
   const [files, setFiles] = useState([]);
+  const [workbook, setWorkbook] = useState(null);
+  const needsWorksheet = files.some((file) => isWorkbook(file) && !file.sheet);
   const [goal, setGoal] = useState("");
   const [mode, setMode] = useState("auto");
   const [catalog, setCatalog] = useState(null);
@@ -207,14 +210,16 @@ export default function AssistedBuildWorkspace() {
         throw Error(
           tr("Each file must be under 2 MB.", "单个文件不能超过 2 MB。"),
         );
-      if (!/\.(csv|json|ndjson|jsonl)$/i.test(file.name))
+      if (!/\.(csv|json|ndjson|jsonl|xlsx)$/i.test(file.name))
         throw Error(
           tr(
-            "Choose CSV, JSON or NDJSON files.",
-            "请选择 CSV、JSON 或 NDJSON 文件。",
+            "Choose CSV, JSON, NDJSON, or XLSX files.",
+            "请选择 CSV、JSON、NDJSON 或 XLSX 文件。",
           ),
         );
-      const content = await file.text();
+      const content = isWorkbook(file)
+        ? await readWorkbook(file)
+        : await file.text();
       setFiles((prev) => {
         if (prev.length >= 8) {
           message.error(
@@ -222,7 +227,7 @@ export default function AssistedBuildWorkspace() {
           );
           return prev;
         }
-        return [...prev, { name: file.name, content }];
+        return [...prev, { name: file.name, content, size: file.size }];
       });
     } catch (e) {
       message.error(e.message);
@@ -233,7 +238,7 @@ export default function AssistedBuildWorkspace() {
     act(async () => {
       const { data } = await api.post("/assisted-build/runs", {
         goal,
-        files,
+        files: files.map(({ size, ...source }) => source),
         execution_mode: mode,
       });
       chooseRun(data);
@@ -514,8 +519,8 @@ export default function AssistedBuildWorkspace() {
                   <h3>{tr("Source files", "来源文件")}</h3>
                   <p>
                     {tr(
-                      "Upload related files together. CSV, flat JSON, NDJSON · up to 8 files, 2 MB each.",
-                      "相关文件一起上传。CSV、扁平 JSON、NDJSON；最多 8 个，每个 2 MB。",
+                      "CSV, flat JSON, NDJSON, or XLSX · up to 8 files, 2 MB each.",
+                      "CSV、扁平 JSON、NDJSON 或 XLSX，最多 8 个，每个 2 MB。",
                     )}
                   </p>
                 </div>
@@ -527,7 +532,7 @@ export default function AssistedBuildWorkspace() {
                 multiple
                 showUploadList={false}
                 beforeUpload={addFile}
-                accept=".csv,.json,.ndjson,.jsonl"
+                accept=".csv,.json,.ndjson,.jsonl,.xlsx"
                 disabled={locked || !!run}
               >
                 <p className="ant-upload-drag-icon">
@@ -549,9 +554,17 @@ export default function AssistedBuildWorkspace() {
                       <small>
                         {run
                           ? `${f.row_count} ${tr("rows", "行")}`
-                          : `${new Blob([f.content]).size.toLocaleString()} B`}
+                          : `${(f.size ?? new Blob([f.content]).size).toLocaleString()} B`}
+                        {f.sheet && ` · ${f.sheet} · ${tr("Header row", "表头行")} ${f.header_row}`}
                       </small>
                     </div>
+                    {!run && isWorkbook(f) && (
+                      <Button size="small" disabled={locked} onClick={() => setWorkbook(f)}>
+                        {f.sheet
+                          ? tr("Change worksheet", "更改工作表")
+                          : tr("Choose worksheet", "选择工作表")}
+                      </Button>
+                    )}
                     <Button
                       disabled={!!run}
                       type="text"
@@ -564,6 +577,19 @@ export default function AssistedBuildWorkspace() {
                   </div>
                 ))}
               </div>
+              {workbook && (
+                <WorkbookPicker
+                  file={workbook}
+                  tr={tr}
+                  onClose={() => setWorkbook(null)}
+                  onSelect={(selection) => {
+                    setFiles((items) => items.map((item) =>
+                      item === workbook ? { ...item, ...selection } : item,
+                    ));
+                    setWorkbook(null);
+                  }}
+                />
+              )}
               {!files.length && (
                 <p className="ab-muted">
                   {tr(
@@ -589,6 +615,7 @@ export default function AssistedBuildWorkspace() {
                     {s.name}
                     <small>
                       {s.row_count} {tr("rows", "行")}
+                      {s.sheet ? ` · ${s.sheet}` : ""}
                       {s.excluded ? ` · ${tr("Excluded", "已排除")}` : ""}
                     </small>
                   </span>
@@ -894,7 +921,7 @@ export default function AssistedBuildWorkspace() {
             <Button
               type="primary"
               icon={<RocketOutlined />}
-              disabled={!files.length || !goal.trim() || locked}
+              disabled={!files.length || !goal.trim() || locked || needsWorksheet}
               loading={pending}
               onClick={start}
             >
@@ -1001,7 +1028,9 @@ export default function AssistedBuildWorkspace() {
                       {run.sources.find((s) => s.id === item.source_id)?.name ||
                         item.source_id}
                     </Button>{" "}
-                    · {tr("data row", "数据行")} {item.row + 1}
+                    · {item.sheet
+                      ? `${item.sheet} · ${tr("Excel row", "Excel 行")} ${item.row}`
+                      : `${tr("data row", "数据行")} ${item.row + 1}`}
                   </p>
                 ))}
               </>

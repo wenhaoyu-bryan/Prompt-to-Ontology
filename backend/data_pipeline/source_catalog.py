@@ -1,18 +1,19 @@
-"""Persistent source revisions and explicitly reviewed field mappings.
-
-Only source metadata and mapping decisions are stored. CSV row contents remain
-in the pipeline's existing transient cache.
-"""
+"""Persistent source revisions, upload contents and reviewed field mappings."""
 
 from __future__ import annotations
 
 import hashlib
 import json
-import os
+import shutil
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import RLock
+
+from .persistence import atomic_json, atomic_write
+
+
+_LOCK = RLock()
 
 
 def _id(prefix: str, value: str) -> str:
@@ -22,22 +23,18 @@ def _id(prefix: str, value: str) -> str:
 class SourceCatalog:
     def __init__(self, path: Path):
         self.path = Path(path)
-        self._lock = RLock()
-        if self.path.exists():
-            self._data = json.loads(self.path.read_text(encoding="utf-8"))
-        else:
-            self._data = {"assets": {}, "revisions": {}, "mappings": {}}
+        self._content_dir = self.path.with_suffix(".revisions")
 
-    def _save(self) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = self.path.with_suffix(".tmp")
-        temporary.write_text(json.dumps(self._data, ensure_ascii=False, indent=2), encoding="utf-8")
-        os.replace(temporary, self.path)
+    def _load(self) -> dict:
+        if self.path.exists():
+            return json.loads(self.path.read_text(encoding="utf-8"))
+        return {"assets": {}, "revisions": {}, "mappings": {}}
 
     def reset(self) -> None:
-        with self._lock:
-            self._data = {"assets": {}, "revisions": {}, "mappings": {}}
-            self._save()
+        with _LOCK:
+            atomic_json(self.path, {"assets": {}, "revisions": {}, "mappings": {}})
+            if self._content_dir.exists():
+                shutil.rmtree(self._content_dir)
 
     def register(self, source_name: str, source_type: str, content: bytes, columns: list[str]) -> dict:
         if not source_name or not columns or len(columns) != len(set(columns)):
@@ -45,13 +42,13 @@ class SourceCatalog:
         asset_id = _id("src", f"{source_type}:{source_name}")
         digest = hashlib.sha256(content).hexdigest()
         revision_id = _id("rev", f"{asset_id}:{digest}")
-        with self._lock:
-            self._data["assets"][asset_id] = {
-                "asset_id": asset_id, "source_name": source_name,
-                "source_type": source_type, "latest_revision_id": revision_id,
-            }
-            if revision_id not in self._data["revisions"]:
-                self._data["revisions"][revision_id] = {
+        with _LOCK:
+            data = self._load()
+            revision = data["revisions"].get(revision_id)
+            if revision is not None and revision["content_sha256"] != digest:
+                raise ValueError("Conflicting source revision")
+            if revision is None:
+                revision = data["revisions"][revision_id] = {
                     "asset_id": asset_id, "revision_id": revision_id,
                     "content_sha256": digest,
                     "fields": [
@@ -59,11 +56,35 @@ class SourceCatalog:
                         for name in columns
                     ],
                 }
-            self._save()
-            return deepcopy(self._data["revisions"][revision_id])
+            revision.setdefault("created_at", datetime.now(timezone.utc).isoformat())
+            if source_type.startswith("custom_"):
+                # Publish metadata only after the immutable content is durable.
+                atomic_write(self._content_dir / revision_id, content)
+            data["assets"][asset_id] = {
+                "asset_id": asset_id, "source_name": source_name,
+                "source_type": source_type, "latest_revision_id": revision_id,
+            }
+            atomic_json(self.path, data)
+            return deepcopy(revision)
 
-    def _field(self, revision_id: str, field_id: str) -> dict:
-        revision = self._data["revisions"].get(revision_id)
+    def load_content(self, revision_id: str) -> tuple[dict, bytes] | None:
+        """Return registered upload content. Older metadata-only revisions are unavailable."""
+        with _LOCK:
+            data = self._load()
+            revision = data["revisions"].get(revision_id)
+            if revision is None:
+                return None
+            asset = data["assets"][revision["asset_id"]]
+            path = self._content_dir / revision["revision_id"]
+            if not asset["source_type"].startswith("custom_") or not path.is_file():
+                return None
+            content = path.read_bytes()
+            if hashlib.sha256(content).hexdigest() != revision["content_sha256"]:
+                raise ValueError("Stored source revision does not match its content hash")
+            return {**revision, "source_name": asset["source_name"], "source_type": asset["source_type"]}, content
+
+    def _field(self, data: dict, revision_id: str, field_id: str) -> dict:
+        revision = data["revisions"].get(revision_id)
         if revision is None:
             raise ValueError("Unknown source revision")
         field = next((f for f in revision["fields"] if f["field_id"] == field_id), None)
@@ -72,10 +93,11 @@ class SourceCatalog:
         return field
 
     def propose(self, revision_id: str, field_id: str, object_type: str, property_name: str, confidence: float) -> dict:
-        with self._lock:
-            self._field(revision_id, field_id)
+        with _LOCK:
+            data = self._load()
+            self._field(data, revision_id, field_id)
             key = f"{revision_id}:{field_id}"
-            existing = self._data["mappings"].get(key)
+            existing = data["mappings"].get(key)
             if existing and existing["status"] != "suggested":
                 return deepcopy(existing)
             mapping = {
@@ -84,8 +106,8 @@ class SourceCatalog:
                 "target_property": property_name, "confidence": confidence,
                 "status": "suggested", "resolution": None,
             }
-            self._data["mappings"][key] = mapping
-            self._save()
+            data["mappings"][key] = mapping
+            atomic_json(self.path, data)
             return deepcopy(mapping)
 
     def decide(self, revision_id: str, field_id: str, object_type: str, property_name: str, resolution: str) -> dict:
@@ -93,17 +115,18 @@ class SourceCatalog:
             raise ValueError("resolution must be same, alias, or separate")
         if resolution != "separate" and (not object_type or not property_name):
             raise ValueError("A mapped field needs an object type and property")
-        with self._lock:
-            self._field(revision_id, field_id)
+        with _LOCK:
+            data = self._load()
+            self._field(data, revision_id, field_id)
             if resolution == "same":
-                for mapping in self._data["mappings"].values():
+                for mapping in data["mappings"].values():
                     if (mapping["revision_id"] == revision_id and mapping["field_id"] != field_id
                             and mapping["status"] == "confirmed"
                             and mapping["target_object_type"] == object_type
                             and mapping["target_property"] == property_name):
                         raise ValueError("Another field is already mapped to this property; use alias only after checking the semantics")
             key = f"{revision_id}:{field_id}"
-            old = self._data["mappings"].get(key, {})
+            old = data["mappings"].get(key, {})
             mapping = {
                 "mapping_id": _id("map", key), "revision_id": revision_id,
                 "field_id": field_id,
@@ -114,32 +137,34 @@ class SourceCatalog:
                 "resolution": resolution,
                 "decided_at": datetime.now(timezone.utc).isoformat(),
             }
-            self._data["mappings"][key] = mapping
-            self._save()
+            data["mappings"][key] = mapping
+            atomic_json(self.path, data)
             return deepcopy(mapping)
 
     def source(self, revision_id: str) -> dict:
-        with self._lock:
-            revision = self._data["revisions"].get(revision_id)
+        with _LOCK:
+            data = self._load()
+            revision = data["revisions"].get(revision_id)
             if revision is None:
                 raise ValueError("Unknown source revision")
-            asset = self._data["assets"][revision["asset_id"]]
+            asset = data["assets"][revision["asset_id"]]
             result = {**deepcopy(revision), "source_name": asset["source_name"], "source_type": asset["source_type"],
                       "is_latest": asset["latest_revision_id"] == revision_id}
             for field in result["fields"]:
-                field["mapping"] = deepcopy(self._data["mappings"].get(f"{revision_id}:{field['field_id']}"))
+                field["mapping"] = deepcopy(data["mappings"].get(f"{revision_id}:{field['field_id']}"))
             return result
 
     def target(self, object_type: str, property_name: str) -> list[dict]:
-        with self._lock:
+        with _LOCK:
+            data = self._load()
             result = []
-            for mapping in self._data["mappings"].values():
+            for mapping in data["mappings"].values():
                 if (mapping["status"] != "confirmed" or mapping["target_object_type"] != object_type
                         or mapping["target_property"] != property_name):
                     continue
-                revision = self._data["revisions"][mapping["revision_id"]]
-                asset = self._data["assets"][revision["asset_id"]]
-                field = self._field(mapping["revision_id"], mapping["field_id"])
+                revision = data["revisions"][mapping["revision_id"]]
+                asset = data["assets"][revision["asset_id"]]
+                field = self._field(data, mapping["revision_id"], mapping["field_id"])
                 result.append({**deepcopy(mapping), "asset_id": revision["asset_id"],
                                "source_name": asset["source_name"], "source_column": field["source_column"],
                                "is_latest": asset["latest_revision_id"] == mapping["revision_id"]})

@@ -4,8 +4,9 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
+from assisted_build.design_documents import MAX_DOCUMENT_BYTES, MAX_DOCUMENTS
 from assisted_build.service import AssistedBuildService
 from llm_config_manager import (
     get_active_llm_config,
@@ -24,13 +25,32 @@ router = APIRouter(prefix="/api/assisted-build", tags=["Assisted build"])
 
 class SourceInput(BaseModel):
     name: str = Field(min_length=1, max_length=160)
-    content: str = Field(max_length=2_000_000)
+    content: str = Field(max_length=2_666_668)
+    sheet: str | None = Field(default=None, min_length=1, max_length=31)
+    header_row: int | None = Field(default=None, ge=1, le=100)
+
+    @field_validator("content")
+    @classmethod
+    def limit_text_content(cls, content: str, info: ValidationInfo) -> str:
+        if len(content) > 2_000_000 and not info.data.get("name", "").lower().endswith(".xlsx"):
+            raise ValueError("Text sources must be under 2 MB")
+        return content
 
 
 class BuildInput(BaseModel):
     goal: str = Field(min_length=1, max_length=2000)
     files: list[SourceInput] = Field(min_length=1, max_length=8)
     execution_mode: Literal["auto", "deterministic"] = "auto"
+
+
+class ReferenceDocumentInput(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    content: str = Field(min_length=1, max_length=MAX_DOCUMENT_BYTES)
+
+
+class SchemaDesignInput(BuildInput):
+    ddl_dialect: Literal["postgres", "mysql"] = "postgres"
+    reference_documents: list[ReferenceDocumentInput] = Field(default_factory=list, max_length=MAX_DOCUMENTS)
 
 
 class MappingInput(BaseModel):
@@ -46,6 +66,12 @@ class SubmissionInput(RevisionInput):
     preview_hash: str = Field(min_length=1, max_length=128)
 
 
+class WorkbookPreviewInput(BaseModel):
+    content: str = Field(min_length=1, max_length=2_666_668)
+    sheet: str | None = Field(default=None, min_length=1, max_length=31)
+    header_row: int = Field(default=1, ge=1, le=100)
+
+
 def call(operation, *args):
     try:
         return operation(*args)
@@ -55,6 +81,13 @@ def call(operation, *args):
         raise HTTPException(400, str(exc))
     except RuntimeError as exc:
         raise HTTPException(409, str(exc))
+
+
+@router.post("/xlsx/preview")
+def xlsx_preview(request: WorkbookPreviewInput):
+    from assisted_build.xlsx import preview_workbook
+
+    return call(preview_workbook, request.content, request.sheet, request.header_row)
 
 
 @router.get("/schema")
@@ -156,6 +189,7 @@ def retry_run(run_id: str, request: RevisionInput, background: BackgroundTasks):
 
 # Schema design is a draft-only workspace, separate from import runs.
 from assisted_build.schema_design import SchemaDesignService
+from assisted_build.ddl_design import is_ddl_filename
 
 schema_design_service = SchemaDesignService(
     ROOT, Path(__file__).resolve().parent / ".runtime" / "assisted-build"
@@ -198,13 +232,19 @@ def analyze_schema_design(rid, config):
 
 
 @router.post("/schema-designs", status_code=202)
-def create_schema_design(request: BuildInput, background: BackgroundTasks):
-    config = call(get_agent_llm_config, "build")
+def create_schema_design(request: SchemaDesignInput, background: BackgroundTasks):
+    ddl_input = any(is_ddl_filename(f.name) for f in request.files)
+    mode = request.execution_mode
+    if ddl_input and "execution_mode" not in request.model_fields_set:
+        mode = "deterministic"
+    config = {} if ddl_input and mode == "deterministic" else call(get_agent_llm_config, "build")
     run = call(
         schema_design_service.create,
         request.goal.strip(),
         [f.model_dump() for f in request.files],
-        request.execution_mode,
+        mode,
+        request.ddl_dialect,
+        [document.model_dump() for document in request.reference_documents],
     )
     background.add_task(analyze_schema_design, run["id"], config)
     return run
@@ -213,6 +253,11 @@ def create_schema_design(request: BuildInput, background: BackgroundTasks):
 @router.get("/schema-designs/{rid}")
 def get_schema_design(rid: str):
     return call(schema_design_service.get_run, rid)
+
+
+@router.get("/schema-designs/{rid}/documents/{doc_id}")
+def get_schema_design_document(rid: str, doc_id: str):
+    return call(schema_design_service.get_document, rid, doc_id)
 
 
 @router.put("/schema-designs/{rid}/definitions")

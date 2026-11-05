@@ -326,21 +326,12 @@ export default function ReviewQueuePage() {
     }
 
     if (record.status === 'approved') {
+      const retryable = record.metadata?.apply_status === 'retryable';
       return (
-        <Button size="small" type="primary" icon={<RocketOutlined />}
+        <Button size="small" type="primary" icon={retryable ? <UndoOutlined /> : <RocketOutlined />}
           onClick={(e) => { e.stopPropagation(); handleApply(record.id); }}
         >
-          {t('review.apply')}
-        </Button>
-      );
-    }
-
-    if (record.status === 'failed') {
-      return (
-        <Button size="small" icon={<UndoOutlined />}
-          onClick={(e) => { e.stopPropagation(); handleApply(record.id); }}
-        >
-          {t('review.retryApply')}
+          {t(retryable ? 'review.retryApply' : 'review.apply')}
         </Button>
       );
     }
@@ -665,13 +656,12 @@ export default function ReviewQueuePage() {
                     </>
                   )}
                   {selectedItem.status === 'approved' && (
-                    <Button type="primary" icon={<RocketOutlined />} onClick={() => handleApply(selectedItem.id)}>
-                      {t('review.apply')}
-                    </Button>
-                  )}
-                  {selectedItem.status === 'failed' && (
-                    <Button icon={<UndoOutlined />} onClick={() => handleApply(selectedItem.id)}>
-                      {t('review.retryApply')}
+                    <Button
+                      type="primary"
+                      icon={selectedItem.metadata?.apply_status === 'retryable' ? <UndoOutlined /> : <RocketOutlined />}
+                      onClick={() => handleApply(selectedItem.id)}
+                    >
+                      {t(selectedItem.metadata?.apply_status === 'retryable' ? 'review.retryApply' : 'review.apply')}
                     </Button>
                   )}
                 </Space>

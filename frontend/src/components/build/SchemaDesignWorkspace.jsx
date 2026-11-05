@@ -36,6 +36,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../providers/dataProvider";
 import SchemaDefinitionDrawer from "./SchemaDefinitionDrawer";
 import SchemaDesignMap from "./SchemaDesignMap";
+import { MarkdownReferences, DocumentSuggestions } from "./SchemaDocumentEvidence";
 import BuildNavigation from "./BuildNavigation";
 import "./assistedBuild.css";
 import "./schemaDesign.css";
@@ -43,6 +44,8 @@ import "./schemaDesign.css";
 const base = "/assisted-build/schema-designs";
 const busy = (run) => ["queued", "analyzing"].includes(run?.status);
 const json = (value) => JSON.stringify(value, null, 2);
+const isDdl = (file) => /\.(sql|ddl)$/i.test(file.name);
+const DDL_MAX_BYTES = 256 * 1024;
 const download = (name, content) => {
   const url = URL.createObjectURL(
     new Blob([content], { type: "text/plain;charset=utf-8" }),
@@ -95,8 +98,17 @@ export default function SchemaDesignWorkspace() {
   );
   const [run, setRun] = useState(null);
   const [files, setFiles] = useState([]);
+  const [referenceDocuments, setReferenceDocuments] = useState([]);
+  const [readingDocuments, setReadingDocuments] = useState(false);
+  const [showDdl, setShowDdl] = useState(false);
+  const [ddlText, setDdlText] = useState("");
+  const [ddlDialect, setDdlDialect] = useState("postgres");
+  const ddlMode = run ? run.source_kind === "ddl" : files.some(isDdl);
   const [goal, setGoal] = useState("");
   const [mode, setMode] = useState("auto");
+  const [ddlExecutionMode, setDdlExecutionMode] = useState("deterministic");
+  const executionMode = ddlMode ? ddlExecutionMode : mode;
+  const documentsRequireAgent = ddlMode && referenceDocuments.length > 0 && executionMode !== "auto";
   const [activeSchema, setActiveSchema] = useState({});
   const [objects, setObjects] = useState([]);
   const [links, setLinks] = useState([]);
@@ -237,7 +249,12 @@ export default function SchemaDesignWorkspace() {
     setParams({ mode: "schema" });
     setRun(null);
     setFiles([]);
+    setReferenceDocuments([]);
+    setShowDdl(false);
+    setDdlText("");
+    setDdlDialect("postgres");
     setGoal("");
+    setDdlExecutionMode("deterministic");
     setObjects([]);
     setLinks([]);
     setDetail(null);
@@ -250,34 +267,50 @@ export default function SchemaDesignWorkspace() {
         "/assisted-build/schema-design-sample-files",
       );
       setFiles(data.files);
+      setReferenceDocuments([]);
+      setShowDdl(false);
+      setDdlText("");
+      setDdlDialect("postgres");
+      setDdlExecutionMode("deterministic");
       setGoal(
         zh
           ? "扩展宠物食品的供应商与生产批次定义，保留供应商和批次标识，明确批次与供应商的关系。"
           : data.goal,
       );
     });
+  const addSource = (file) => {
+    setFiles((all) => {
+      if (all.length && (isDdl(file) || all.some(isDdl))) {
+        message.error(tr("Use one DDL file as the structural source.", "每次使用一个 DDL 文件作为结构来源。"));
+        return all;
+      }
+      if (all.length >= 8) {
+        message.error(tr("Up to 8 files.", "最多 8 个文件。"));
+        return all;
+      }
+      return [...all, file];
+    });
+  };
   const upload = async (file) => {
+    if (isDdl(file) && file.size > DDL_MAX_BYTES) {
+      message.error(tr("DDL must be at most 256 KiB.", "DDL 不能超过 256 KiB。"));
+      return false;
+    }
     if (
       file.size > 2_000_000 ||
-      !/\.(csv|json|ndjson|jsonl)$/i.test(file.name)
+      !/\.(csv|json|ndjson|jsonl|sql|ddl)$/i.test(file.name)
     ) {
       message.error(
         tr(
-          "Choose CSV, JSON or NDJSON under 2 MB.",
-          "请选择小于 2 MB 的 CSV、JSON 或 NDJSON 文件。",
+          "Choose CSV, JSON or NDJSON under 2 MB, or PostgreSQL or MySQL DDL up to 256 KiB.",
+          "请选择 2 MB 以下的 CSV、JSON 或 NDJSON，或不超过 256 KiB 的 PostgreSQL 或 MySQL DDL。",
         ),
       );
       return false;
     }
     try {
       const content = await file.text();
-      setFiles((all) => {
-        if (all.length >= 8) {
-          message.error(tr("Up to 8 files.", "最多 8 个文件。"));
-          return all;
-        }
-        return [...all, { name: file.name, content }];
-      });
+      addSource({ name: file.name, content });
     } catch {
       message.error(tr("Could not read this file.", "无法读取文件。"));
     }
@@ -288,7 +321,8 @@ export default function SchemaDesignWorkspace() {
       const { data } = await scopedApi.post(base, {
         goal,
         files,
-        execution_mode: mode,
+        execution_mode: executionMode,
+        ...(ddlMode && { ddl_dialect: ddlDialect, reference_documents: referenceDocuments }),
       });
       choose(data);
     });
@@ -559,17 +593,20 @@ export default function SchemaDesignWorkspace() {
               <Select
                 id="schema-mode"
                 aria-label="Schema execution mode"
-                value={run?.execution_mode || mode}
+                aria-describedby="schema-mode-explanation"
+                value={run?.execution_mode || executionMode}
                 disabled={!!run || pending}
-                onChange={setMode}
+                onChange={ddlMode ? setDdlExecutionMode : setMode}
                 style={{ width: "100%" }}
                 options={[
                   {
                     value: "auto",
-                    label: tr(
-                      "Configured model · deterministic fallback",
-                      "已配置模型 · 不可用时确定性回退",
-                    ),
+                    label: ddlMode
+                      ? tr("Build Agent · semantic suggestions", "Build Agent · 语义建议")
+                      : tr(
+                          "Configured model · deterministic fallback",
+                          "已配置模型 · 不可用时确定性回退",
+                        ),
                   },
                   {
                     value: "deterministic",
@@ -580,11 +617,16 @@ export default function SchemaDesignWorkspace() {
                   },
                 ]}
               />
-              <p className="ab-muted sd-explanation">
-                {tr(
-                  "The baseline proposes structure from actual fields. It cannot determine your business meaning or units. Every definition needs your confirmation.",
-                  "基线仅从真实字段提出结构，不能确定业务语义和单位。每项定义都需要你确认。",
-                )}
+              <p id="schema-mode-explanation" className="ab-muted sd-explanation">
+                {ddlMode
+                  ? tr(
+                      "DDL determines types, keys, and relationships. If selected, the configured Build Agent receives your goal and selected schema metadata, including comments, and suggests only labels and descriptions. Review every definition before saving.",
+                      "DDL 决定类型、键和关系。选择 Build Agent 后，当前配置的模型将收到设计目标和部分结构元数据（含注释），仅建议显示名称和描述。保存前请逐项确认。",
+                    )
+                  : tr(
+                      "The baseline proposes structure from actual fields. Every definition needs your confirmation.",
+                      "基线从真实字段提出结构。每项定义都需要你确认。",
+                    )}
               </p>
               <div className="sd-boundary">
                 <ApartmentOutlined />
@@ -608,10 +650,10 @@ export default function SchemaDesignWorkspace() {
               <div className="ab-section-heading">
                 <div>
                   <h3>{tr("Source files", "来源文件")}</h3>
-                  <p>CSV · JSON · NDJSON</p>
+                  <p>CSV · JSON · NDJSON · PostgreSQL DDL · MySQL DDL</p>
                 </div>
                 {!run && (
-                  <Button size="small" disabled={pending} onClick={loadExample}>
+                  <Button size="small" disabled={pending || readingDocuments} onClick={loadExample}>
                     {tr("Try supplier example", "使用供应商示例")}
                   </Button>
                 )}
@@ -620,7 +662,7 @@ export default function SchemaDesignWorkspace() {
                 <Upload.Dragger
                   multiple
                   disabled={pending}
-                  accept=".csv,.json,.ndjson,.jsonl"
+                  accept=".csv,.json,.ndjson,.jsonl,.sql,.ddl"
                   beforeUpload={upload}
                   showUploadList={false}
                 >
@@ -634,6 +676,60 @@ export default function SchemaDesignWorkspace() {
                   </small>
                 </Upload.Dragger>
               )}
+              {(ddlMode || (!run && showDdl && !files.length)) && (
+                <>
+                  <label className="ab-label" htmlFor="ddl-dialect">
+                    {tr("DDL dialect", "DDL 方言")}
+                  </label>
+                  <Select
+                    id="ddl-dialect"
+                    aria-label={tr("DDL dialect", "DDL 方言")}
+                    value={run ? run.ddl_dialect || "postgres" : ddlDialect}
+                    disabled={!!run || pending}
+                    onChange={setDdlDialect}
+                    style={{ width: "100%" }}
+                    options={[
+                      { value: "postgres", label: "PostgreSQL" },
+                      { value: "mysql", label: "MySQL" },
+                    ]}
+                  />
+                </>
+              )}
+              {!run && !files.length && (
+                <div className="ab-files">
+                  <Button size="small" disabled={pending} onClick={() => setShowDdl(!showDdl)}>
+                    {tr("Paste DDL", "粘贴 DDL")}
+                  </Button>
+                  {showDdl && (
+                    <Space orientation="vertical" style={{ width: "100%" }}>
+                      <Input.TextArea
+                        aria-label={tr("DDL statements", "DDL 语句")}
+                        rows={6}
+                        maxLength={DDL_MAX_BYTES}
+                        value={ddlText}
+                        onChange={(event) => setDdlText(event.target.value)}
+                        placeholder={ddlDialect === "mysql"
+                          ? "CREATE TABLE `vendor` (`id` BIGINT PRIMARY KEY, `name` VARCHAR(120));"
+                          : "CREATE TABLE vendor (id BIGINT PRIMARY KEY, name TEXT NOT NULL);"}
+                      />
+                      <Button
+                        disabled={!ddlText.trim()}
+                        onClick={() => {
+                          if (new Blob([ddlText]).size > DDL_MAX_BYTES) {
+                            message.error(tr("DDL must be at most 256 KiB.", "DDL 不能超过 256 KiB。"));
+                            return;
+                          }
+                          addSource({ name: "schema.sql", content: ddlText });
+                          setShowDdl(false);
+                          setDdlText("");
+                        }}
+                      >
+                        {tr("Add DDL source", "添加 DDL 来源")}
+                      </Button>
+                    </Space>
+                  )}
+                </div>
+              )}
               <div className="ab-files">
                 {(run?.sources || files).map((f, i) => (
                   <div className="ab-file" key={f.id || i}>
@@ -641,7 +737,9 @@ export default function SchemaDesignWorkspace() {
                     <div>
                       <b>{f.name}</b>
                       <small>
-                        {f.row_count
+                        {f.format === "ddl"
+                          ? `${f.filename} · ${f.columns.length} ${tr("columns", "列")}`
+                          : f.row_count
                           ? `${f.row_count} ${tr("rows", "行")}`
                           : `${new Blob([f.content]).size.toLocaleString()} bytes`}
                       </small>
@@ -651,14 +749,32 @@ export default function SchemaDesignWorkspace() {
                         aria-label={`Remove ${f.name}`}
                         type="text"
                         icon={<DeleteOutlined />}
-                        onClick={() =>
-                          setFiles((items) => items.filter((_, n) => n !== i))
-                        }
+                        disabled={readingDocuments}
+                        onClick={() => {
+                          setFiles((items) => items.filter((_, n) => n !== i));
+                          if (isDdl(f)) {
+                            setDdlDialect("postgres");
+                            setDdlExecutionMode("deterministic");
+                            setReferenceDocuments([]);
+                          }
+                        }}
                       />
                     )}
                   </div>
                 ))}
               </div>
+              {ddlMode && (
+                <MarkdownReferences
+                  documents={run ? run.reference_documents || [] : referenceDocuments}
+                  setDocuments={setReferenceDocuments}
+                  readOnly={!!run}
+                  pending={pending}
+                  reading={readingDocuments}
+                  setReading={setReadingDocuments}
+                  requiresAgent={documentsRequireAgent}
+                  tr={tr}
+                />
+              )}
             </section>
           </div>
         ) : stage === 1 ? (
@@ -1012,6 +1128,11 @@ export default function SchemaDesignWorkspace() {
             </section>
           </>
         )}
+        {run?.reference_documents?.length > 0 && !busy(run) && stage > 0 && (
+          <DocumentSuggestions key={run.id} run={run} loadDocument={(documentId) =>
+            scopedApi.get(`${base}/${run.id}/documents/${encodeURIComponent(documentId)}`)
+          } tr={tr} />
+        )}
       </section>
       <footer className="ab-footer">
         <Button
@@ -1029,7 +1150,7 @@ export default function SchemaDesignWorkspace() {
               type="primary"
               icon={<ApartmentOutlined />}
               loading={pending}
-              disabled={!goal.trim() || !files.length || !!run}
+              disabled={!goal.trim() || !files.length || !!run || documentsRequireAgent || readingDocuments}
               onClick={start}
             >
               {tr("Propose schema", "生成定义草稿")}

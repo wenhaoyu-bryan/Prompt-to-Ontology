@@ -1,16 +1,12 @@
-"""Pipeline Service — with JSON persistence for import plans.
-
-Phase 28: in-memory storage.
-Phase 29.6: JSON persistence under backend/.runtime/import_plans.json.
-"""
+"""Manual pipeline service for persisted source revisions and import plans."""
 
 from __future__ import annotations
 
-import csv
 import json
 import uuid
 from datetime import datetime
 from pathlib import Path
+from threading import RLock
 from typing import Any
 
 from ontology_kernel import load_ontology_schema, load_pet_food_schema
@@ -18,9 +14,11 @@ from ontology_kernel.models import OntologySchema
 
 from .import_plan import create_import_plan
 from .mapper import suggest_field_mappings, suggest_object_mappings
-from .models import CandidateLink, DataSourceProfile, ImportPlan, ImportPlanSummary, MappingSuggestion, ObjectMapping, FieldMapping, LinkMapping, MappingType, PlanStatus
-from .profiler import profile_csv, profile_rows
+from .models import CandidateLink, DataSourceProfile, ImportPlan, ImportPlanSummary, ObjectMapping, FieldMapping, LinkMapping, MappingType, PlanStatus
+from .persistence import atomic_json
+from .profiler import parse_csv_rows, parse_structured_rows, profile_rows
 from .source_catalog import SourceCatalog
+from .transformer import mapped_link_property, row_id
 
 # Sample data paths
 _SAMPLE_DIR = Path(__file__).resolve().parent.parent.parent / "sample-data" / "pet-food"
@@ -49,49 +47,42 @@ _SAMPLE_LINK_MAPPINGS: dict[str, list[dict]] = {
 _RUNTIME_DIR = Path(__file__).resolve().parent.parent / ".runtime"
 _PLANS_FILE = _RUNTIME_DIR / "import_plans.json"
 _SOURCES_FILE = _RUNTIME_DIR / "source_catalog.json"
+_LOCK = RLock()
 
 
 class PipelineService:
-    """Pipeline service with JSON persistence for import plans."""
+    """Pipeline service with local persistence for a single app process."""
 
     def __init__(self):
         self._profiles: dict[str, DataSourceProfile] = {}
-        self._plans: dict[str, ImportPlan] = {}
         self._rows: dict[str, list[dict[str, Any]]] = {}
+        self._plans_file = _PLANS_FILE
         self.source_catalog = SourceCatalog(_SOURCES_FILE)
-        self._load_plans_from_disk()
 
     # ── Persistence ────────────────────────────────────────────────────
 
-    def _load_plans_from_disk(self):
-        """Load persisted import plans from JSON."""
-        if not _PLANS_FILE.exists():
-            return
-        try:
-            with open(_PLANS_FILE, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            for plan_data in raw:
-                plan = ImportPlan(**plan_data)
-                self._plans[plan.plan_id] = plan
-        except (json.JSONDecodeError, Exception):
-            pass
+    def _load_plans_from_disk(self) -> dict[str, ImportPlan]:
+        if not self._plans_file.exists():
+            return {}
+        plans = (ImportPlan.model_validate(value) for value in json.loads(self._plans_file.read_text(encoding="utf-8")))
+        return {plan.plan_id: plan for plan in plans}
 
-    def _save_plans_to_disk(self):
-        """Persist import plans to JSON."""
-        _RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
-        with open(_PLANS_FILE, "w", encoding="utf-8") as f:
-            json.dump(
-                [p.model_dump(mode="json") for p in self._plans.values()],
-                f, ensure_ascii=False, indent=2,
-            )
+    def _save_plans_to_disk(self, plans: dict[str, ImportPlan]) -> None:
+        atomic_json(self._plans_file, [p.model_dump(mode="json") for p in plans.values()])
+
+    def _persist_plan(self, plan: ImportPlan) -> None:
+        with _LOCK:
+            plans = self._load_plans_from_disk()
+            plans[plan.plan_id] = plan
+            self._save_plans_to_disk(plans)
 
     def reset_runtime(self) -> None:
-        """Clear all in-memory profiles, plans, rows, and persisted plans."""
-        self._profiles.clear()
-        self._plans.clear()
-        self._rows.clear()
-        self.source_catalog.reset()
-        self._save_plans_to_disk()
+        """Clear profiles, rows, plans, and their persisted data."""
+        with _LOCK:
+            self._profiles.clear()
+            self._rows.clear()
+            self.source_catalog.reset()
+            self._save_plans_to_disk({})
 
     # ── Sample sources ─────────────────────────────────────────────────
 
@@ -113,55 +104,61 @@ class PipelineService:
         if not Path(path).exists():
             raise FileNotFoundError(f"Sample file not found: {path}")
 
-        profile = profile_csv(path, sample_name)
-        profile.source_type = "sample"
-        revision = self.source_catalog.register(sample_name, "sample", Path(path).read_bytes(), [c.name for c in profile.columns])
-        profile.source_asset_id = revision["asset_id"]
-        profile.source_revision_id = revision["revision_id"]
-        self._profiles[profile.source_id] = profile
-
-        # Cache rows
-        with open(path, "r", encoding="utf-8-sig") as f:
-            self._rows[sample_name] = list(csv.DictReader(f))
-
-        return profile
+        return self._profile_source(sample_name, "sample", Path(path).read_bytes())
 
     def profile_csv_content(self, filename: str, content: str) -> DataSourceProfile:
         """Profile CSV content from a string."""
-        from .profiler import profile_csv_content as _profile_content
-        profile = _profile_content(content, filename)
-        profile.source_type = "custom_csv"
-        revision = self.source_catalog.register(filename, "custom_csv", content.encode("utf-8"), [c.name for c in profile.columns])
-        profile.source_asset_id = revision["asset_id"]
-        profile.source_revision_id = revision["revision_id"]
-        self._profiles[profile.source_id] = profile
-
-        import io
-        self._rows[filename] = list(csv.DictReader(io.StringIO(content)))
-
-        return profile
+        return self._profile_source(filename, "custom_csv", content.encode("utf-8"))
 
     def profile_structured_content(self, filename: str, content: str, fmt: str) -> DataSourceProfile:
-        """Register JSON/NDJSON revisions and reuse the CSV mapping/import path."""
-        from .profiler import parse_structured_rows
-        rows = parse_structured_rows(content, fmt)
-        profile = profile_rows(rows, filename)
-        profile.source_type = f"custom_{fmt}"
-        revision = self.source_catalog.register(filename, profile.source_type, content.encode("utf-8"), [c.name for c in profile.columns])
-        profile.source_asset_id = revision["asset_id"]
-        profile.source_revision_id = revision["revision_id"]
-        self._profiles[profile.source_id] = profile
-        self._rows[filename] = rows
+        """Register JSON/NDJSON revisions for the same mapping and import path."""
+        if fmt not in {"json", "ndjson"}:
+            raise ValueError("Unsupported structured format")
+        return self._profile_source(filename, f"custom_{fmt}", content.encode("utf-8"))
+
+    def _profile_source(
+        self, name: str, source_type: str, content: bytes, revision: dict | None = None,
+    ) -> DataSourceProfile:
+        text = content.decode("utf-8-sig")
+        rows = (parse_csv_rows(text) if source_type in {"sample", "custom_csv"}
+                else parse_structured_rows(text, source_type.removeprefix("custom_")))
+        profile = profile_rows(rows, name)
+        with _LOCK:
+            if revision is None:
+                revision = self.source_catalog.register(name, source_type, content, [c.name for c in profile.columns])
+            profile.source_type = source_type
+            profile.source_asset_id = revision["asset_id"]
+            profile.source_revision_id = revision["revision_id"]
+            profile.created_at = datetime.fromisoformat(revision["created_at"])
+            if source_type != "sample":
+                profile.source_id = profile.source_revision_id
+            self._profiles[profile.source_id] = profile
+            self._rows[profile.source_id] = rows
         return profile
 
     def get_profile(self, source_id: str) -> DataSourceProfile | None:
-        return self._profiles.get(source_id)
+        with _LOCK:
+            profile = self._profiles.get(source_id)
+            if profile is not None:
+                return profile
+            upload = self.source_catalog.load_content(source_id)
+            if upload is None:
+                return None
+            revision, content = upload
+            return self._profile_source(revision["source_name"], revision["source_type"], content, revision)
+
+    def _get_profile_and_rows(self, source_id: str) -> tuple[DataSourceProfile, list[dict[str, Any]]]:
+        with _LOCK:
+            profile = self.get_profile(source_id)
+            if profile is None:
+                raise ValueError(f"Profile not found: {source_id}")
+            return profile, self._rows[source_id]
 
     # ── Mapping suggestions ────────────────────────────────────────────
 
     def suggest_mappings(self, source_id: str, domain: str = "pet_food") -> dict[str, Any]:
         """Suggest field mappings for a profiled source."""
-        profile = self._profiles.get(source_id)
+        profile = self.get_profile(source_id)
         if not profile:
             raise ValueError(f"Profile not found: {source_id}")
 
@@ -204,9 +201,8 @@ class PipelineService:
                 raise ValueError(f"Unknown ontology property: {object_type}.{property_name}")
         return self.source_catalog.decide(revision_id, field_id, object_type, property_name, resolution)
 
-    def _apply_source_decisions(self, profile: DataSourceProfile, mappings: list[ObjectMapping], schema: OntologySchema) -> list[ObjectMapping]:
+    def _apply_source_decisions(self, fields: list[dict], mappings: list[ObjectMapping], schema: OntologySchema) -> list[ObjectMapping]:
         """Honor confirmed mappings and exclusions when producing a plan."""
-        fields = self.source_catalog.source(profile.source_revision_id)["fields"]
         decisions = {f["source_column"]: f["mapping"] for f in fields if f["mapping"] and f["mapping"]["status"] != "suggested"}
         if not decisions:
             return mappings
@@ -266,13 +262,10 @@ class PipelineService:
         domain: str = "pet_food",
         object_mappings: list[dict] | None = None,
         link_mappings: list[dict] | None = None,
+        unit_confirmations: dict[str, str] | None = None,
     ) -> ImportPlan:
         """Create an import plan from a profiled source."""
-        profile = self._profiles.get(source_id)
-        if not profile:
-            raise ValueError(f"Profile not found: {source_id}")
-
-        rows = self._rows.get(source_id, [])
+        profile, rows = self._get_profile_and_rows(source_id)
         schema = self._load_schema(domain)
 
         # Use provided mappings or auto-suggest
@@ -280,7 +273,15 @@ class PipelineService:
             obj_maps = [ObjectMapping(**m) for m in object_mappings]
         else:
             obj_maps, _ = suggest_object_mappings(profile, schema)
-        obj_maps = self._apply_source_decisions(profile, obj_maps, schema)
+        source_fields = self.source_catalog.source(profile.source_revision_id)["fields"]
+        obj_maps = self._apply_source_decisions(source_fields, obj_maps, schema)
+
+        columns = {column.name for column in profile.columns}
+        if unit_confirmations is not None and (
+            not isinstance(unit_confirmations, dict)
+            or any(column not in columns or unit != "per_100g" for column, unit in unit_confirmations.items())
+        ):
+            raise ValueError("Unit confirmations must name source columns and use per_100g")
 
         lnk_maps = []
         if link_mappings:
@@ -295,14 +296,16 @@ class PipelineService:
             object_mappings=obj_maps,
             link_mappings=lnk_maps,
             schema=schema,
+            unit_confirmations=unit_confirmations,
         )
 
         plan.metadata["source_asset_id"] = profile.source_asset_id
         plan.metadata["source_revision_id"] = profile.source_revision_id
         plan.metadata["mapping_decisions"] = [
-            f["mapping"] for f in self.source_catalog.source(profile.source_revision_id)["fields"]
-            if f["mapping"] is not None
+            field["mapping"] for field in source_fields if field["mapping"] is not None
         ]
+        if unit_confirmations:
+            plan.metadata["unit_confirmations"] = unit_confirmations
 
         # Preserve the uploaded format through the same reviewable plan path.
         if profile.source_type.startswith("custom_"):
@@ -310,12 +313,11 @@ class PipelineService:
             plan.metadata["filename"] = profile.source_name
             plan.metadata["uploaded_at"] = profile.created_at.isoformat() if profile.created_at else ""
 
-        self._plans[plan.plan_id] = plan
-        self._save_plans_to_disk()
+        self._persist_plan(plan)
         return plan
 
     def get_import_plan(self, plan_id: str) -> ImportPlan | None:
-        return self._plans.get(plan_id)
+        return self._load_plans_from_disk().get(plan_id)
 
     def create_relationship_import_plan(
         self,
@@ -333,11 +335,7 @@ class PipelineService:
         Generates candidate links from CSV rows, validates endpoints against Neo4j,
         and creates an Import Plan with only candidate_links (no candidate_objects).
         """
-        profile = self._profiles.get(source_id)
-        if not profile:
-            raise ValueError(f"Profile not found: {source_id}")
-
-        rows = self._rows.get(source_id, [])
+        profile, rows = self._get_profile_and_rows(source_id)
         schema = self._load_schema(domain)
         plan_id = f"plan-{uuid.uuid4().hex[:8]}"
 
@@ -356,8 +354,8 @@ class PipelineService:
         seen_links: set[tuple[str, str, str]] = set()
 
         for row_idx, row in enumerate(rows):
-            src_id = str(row.get(source_id_column, "")).strip()
-            tgt_id = str(row.get(target_id_column, "")).strip()
+            src_id = row_id(row, source_id_column)
+            tgt_id = row_id(row, target_id_column)
 
             if not src_id:
                 validation_issues.append({
@@ -378,7 +376,10 @@ class PipelineService:
             props: dict[str, Any] = {}
             for col in prop_cols:
                 val = row.get(col)
-                if val is not None and str(val).strip():
+                if val is None or not str(val).strip():
+                    continue
+                val = mapped_link_property(link_type, col, col, val, row_idx, src_id, tgt_id, validation_issues)
+                if val is not None:
                     props[col] = val
 
             # Duplicate check
@@ -477,6 +478,8 @@ class PipelineService:
             metadata={
                 "source_type": profile.source_type,
                 "import_type": "relationship",
+                "source_asset_id": profile.source_asset_id,
+                "source_revision_id": profile.source_revision_id,
                 "filename": profile.source_name,
                 "link_type": link_type,
                 "source_object_type": source_object_type,
@@ -485,23 +488,24 @@ class PipelineService:
             },
         )
 
-        self._plans[plan.plan_id] = plan
-        self._save_plans_to_disk()
+        self._persist_plan(plan)
         return plan
 
     def list_import_plans(self) -> list[ImportPlan]:
-        return sorted(self._plans.values(), key=lambda p: p.created_at, reverse=True)
+        return sorted(self._load_plans_from_disk().values(), key=lambda p: p.created_at, reverse=True)
 
     def mark_plan_submitted_to_review(self, plan_id: str, batch_id: str) -> ImportPlan | None:
         """Mark an import plan as submitted to review queue."""
-        plan = self._plans.get(plan_id)
-        if not plan:
-            return None
-        plan.submitted_to_review = True
-        plan.review_batch_id = batch_id
-        plan.submitted_at = datetime.utcnow()
-        self._save_plans_to_disk()
-        return plan
+        with _LOCK:
+            plans = self._load_plans_from_disk()
+            plan = plans.get(plan_id)
+            if not plan:
+                return None
+            plan.submitted_to_review = True
+            plan.review_batch_id = batch_id
+            plan.submitted_at = datetime.utcnow()
+            self._save_plans_to_disk(plans)
+            return plan
 
     # ── Internal ───────────────────────────────────────────────────────
 

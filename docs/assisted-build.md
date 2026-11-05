@@ -15,17 +15,47 @@ Select **Design new schema** in the assisted workspace to propose objects, prope
 
 The deterministic baseline proposes conservative string properties, unambiguous identity columns and generic reference relationships from matching keys. Those references do not establish business meaning or referential integrity. Numeric samples do not prove units; identity values must remain unique, nonblank strings, so leading zeroes are preserved. All proposals require human confirmation. Auto mode uses bounded source context and the existing provider configuration; invalid or unavailable model output explicitly falls back to the baseline.
 
+### Start from PostgreSQL or MySQL DDL
+
+In **Design schema draft**, upload one `.sql` or `.ddl` file, or paste the table definitions. Choose **PostgreSQL** (the default) or **MySQL** as the SQL dialect. This example uses syntax accepted by both:
+
+```sql
+CREATE TABLE vendor (id BIGINT PRIMARY KEY, name TEXT NOT NULL);
+CREATE TABLE lot (
+    lot_no VARCHAR(40) PRIMARY KEY,
+    vendor_id BIGINT NOT NULL,
+    received_at TIMESTAMP,
+    FOREIGN KEY (vendor_id) REFERENCES vendor(id)
+);
+```
+
+The parser proposes objects, typed properties and relationships from the declared keys. Both dialects accept a subset of `CREATE TABLE` and `ALTER TABLE ... ADD` for primary, foreign and unique keys. PostgreSQL accepts `COMMENT ON TABLE/COLUMN` on tables declared earlier in the upload. For MySQL, start with the `CREATE TABLE` statements returned by `SHOW CREATE TABLE` for the tables you want to model. The MySQL subset accepts backtick identifiers, `AUTO_INCREMENT`, common InnoDB table options, and table and column comments. Use a table-level `FOREIGN KEY` declaration for relationships. Comments become editable descriptions.
+
+The input limit is 256 KiB and 32 tables. Use only the supported schema statements from a dump. Defaults and check expressions are outside the exported metadata. The app reads the DDL as text and records the selected dialect in source metadata.
+
+Physical metadata and the source hash accompany the reviewed export. The draft uses string object identities and preserves SQL types in the source mapping. A table needs a declared single-column primary key to be accepted as an object definition. Composite keys and unresolved references are reported for review. Unqualified references use the source table's schema within the upload.
+
+DDL is parsed locally. **Deterministic baseline** is the default and makes no model call. To request semantic suggestions, select **Build Agent · semantic suggestions**. The configured Build Agent provider receives the design goal and a bounded subset of parsed metadata, including identifiers and excerpts from comments. It can suggest object and relationship labels and descriptions, plus property descriptions. Types, keys, source bindings, and relationships come from the parsed DDL. If the model is unavailable or its response is invalid, the draft keeps the parsed definitions. Review every definition before saving.
+
+To model with a product specification or SOP, attach up to three UTF-8 `.md` reference documents to a DDL design and select the Build Agent. The provider also receives the uploaded document text. Document-backed suggestions include a source file and a verified excerpt. Open the citation to read the original text at those lines. Review any proposed business terms or rules alongside the schema. The draft keeps the original suggestions for reference after an edit, and rule candidates require their own implementation and review.
+
+A successful parse describes the uploaded structure. A database connection, instance rows, and a queryable runtime each require their own verification. To continue with data today, export approved query results to CSV or JSON and use **Import data** with the active ontology.
+
 Design tasks are retained under ignored `backend/.runtime/assisted-build/schema_designs/` until deleted from **Design history**. The draft preview is tied to both a revision and the active schema fingerprint; stale previews cannot be saved or exported. Restarted analyses can be retried. This is the same local, single-process storage boundary as assisted imports.
 
 ## Build workflow
 
-1. Describe a concrete goal and add CSV, flat JSON arrays, or NDJSON files. Choose the configured model or the deterministic baseline.
+1. Describe a concrete goal and add CSV, flat JSON arrays, NDJSON, or XLSX files. Choose the configured model or the deterministic baseline.
 2. Inspect the proposed object types, identity columns, field mappings, and relationship endpoints. Edit or exclude mappings and sources. Noncanonical nutrition fields require confirmation that values already use the target per-100-g unit; this version does not convert units.
 3. Select **Confirm mappings & preview**. Inspect candidate properties, source rows, existing-object differences, and blocking issues. Cross-file relationship endpoints can refer to other candidates in this build or actual existing runtime nodes.
 4. Review the exact preview and explicitly submit it to Review Queue. Approve and apply using the existing queue workflow, then return to verification.
 5. **Check runtime graph** compares expected objects, properties and relationships with Neo4j. Graph matching and the review batch's application status are independent: matching previously existing data does not establish that this batch was applied.
 
+For XLSX, select **Choose worksheet**, select the sheet and enter the Excel row number containing the column names (1–100). Preview the selected rows before applying the selection. Each workbook upload imports one worksheet. The plan keeps the workbook hash, worksheet name and original Excel row number for lineage. Store identifiers with leading zeros as text cells. Use values-only worksheets for import. XLSX sources allow up to 250,000 cells per build.
+
 Changing mappings invalidates the preview. Submission checks the revision, schema fingerprint and preview hash, and rechecks the live graph. If runtime facts have changed, generate a new preview. Interrupted analysis is marked on backend startup and can be retried from the workspace using its retained uploads. An interrupted submission retains the accepted preview and stable batch identity so retry does not create a second batch. Submitted mappings remain immutable.
+
+For Assisted Build candidates, applying an approved item compares the graph against its reviewed before-values and endpoint identities inside the write transaction. A conflict calls for a fresh preview. Transient failures keep the approval available for retry. A batch reports individual outcomes because each item commits separately. Older Assisted Build review items created without these preconditions require a fresh preview and review.
 
 ## Model behavior
 

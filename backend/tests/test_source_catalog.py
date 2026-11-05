@@ -92,8 +92,10 @@ class SourceCatalogTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "Unknown ontology property"):
                     service.decide_mapping(profile.source_revision_id, suggestion["source_field_id"], "PetFoodProduct", "unknown", "alias")
                 service.decide_mapping(profile.source_revision_id, suggestion["source_field_id"], "PetFoodProduct", "protein_100g", "alias")
-                plan = service.create_import_plan(profile.source_id)
-                self.assertTrue(any(obj.properties.get("protein_100g") == "27" for obj in plan.candidate_objects))
+                plan = service.create_import_plan(
+                    profile.source_id, unit_confirmations={"protein_g_per_100g": "per_100g"},
+                )
+                self.assertTrue(any(obj.properties.get("protein_100g") == 27.0 for obj in plan.candidate_objects))
 
     def test_explicit_empty_mapping_does_not_restore_suggestions(self):
         with tempfile.TemporaryDirectory() as tmp:

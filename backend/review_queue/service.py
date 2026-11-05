@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
+from threading import RLock
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ from .models import (
     ReviewDecision,
     ReviewItem,
     ReviewItemStatus,
+    ReviewItemType,
     ReviewQueueSummary,
 )
 from .storage import (
@@ -31,6 +33,7 @@ from .storage import (
 
 # Reference to pipeline service — set by main.py at startup
 _pipeline_service = None
+_apply_lock = RLock()  # The review queue uses a single-process store.
 
 
 def set_pipeline_service(service):
@@ -121,6 +124,11 @@ def reject_review_item(item_id: str, decision: ReviewDecision) -> ReviewItem:
 
 def apply_review_item(item_id: str) -> ReviewApplyResult:
     """Apply an approved review item to the graph."""
+    with _apply_lock:
+        return _apply_review_item(item_id)
+
+
+def _apply_review_item(item_id: str) -> ReviewApplyResult:
     item = get_item(item_id)
     if item is None:
         raise ValueError(f"Review item '{item_id}' not found")
@@ -133,28 +141,60 @@ def apply_review_item(item_id: str) -> ReviewApplyResult:
     if item.status != ReviewItemStatus.APPROVED:
         raise ValueError(f"Cannot apply item with status '{item.status.value}'")
 
-    result = apply_review_item_to_graph(item)
+    result = _wait_for_assisted_link_endpoint(item) or apply_review_item_to_graph(item)
 
     now = datetime.utcnow()
     if result.applied:
         item.status = ReviewItemStatus.APPLIED
         item.applied_at = now
-        item.updated_at = now
-    else:
+    elif result.status != "retryable":
         item.status = ReviewItemStatus.FAILED
-        item.apply_error = result.error
-        item.updated_at = now
+    item.apply_error = result.error
+    item.metadata["apply_status"] = result.status
+    item.updated_at = now
 
     upsert_item(item)
     _refresh_batch_counters(item.batch_id)
     return result
 
 
+def _wait_for_assisted_link_endpoint(item: ReviewItem) -> ReviewApplyResult | None:
+    if item.type != ReviewItemType.IMPORT_LINK_CANDIDATE or not item.metadata.get("assisted_build_run_id"):
+        return None
+    link = item.candidate_link or {}
+    endpoint_ids = {link.get("source_id"), link.get("target_id")}
+    for endpoint in load_items():
+        node = endpoint.candidate_object or {}
+        if (
+            endpoint.batch_id != item.batch_id
+            or endpoint.type != ReviewItemType.IMPORT_OBJECT_CANDIDATE
+            or node.get("id") not in endpoint_ids
+            or (endpoint.metadata.get("apply_precondition") or {}).get("exists") is not False
+            or endpoint.status == ReviewItemStatus.APPLIED
+        ):
+            continue
+        can_apply = endpoint.status in (ReviewItemStatus.APPROVED, ReviewItemStatus.PENDING)
+        return ReviewApplyResult(
+            item_id=item.id,
+            status="retryable" if can_apply else "conflict",
+            error=(
+                f"Apply the reviewed new endpoint {node['id']} before retrying this link."
+                if can_apply else f"Reviewed endpoint {node['id']} could not be applied; generate a fresh preview."
+            ),
+        )
+    return None
+
+
 def apply_approved_batch(batch_id: str) -> dict:
     """Apply all approved items in a batch. Objects are applied before links.
 
-    Returns a dict with 'results' (list of ReviewApplyResult) and snapshot/diff IDs.
+    Returns individual results and snapshot/diff IDs. Each item commits separately.
     """
+    with _apply_lock:
+        return _apply_approved_batch(batch_id)
+
+
+def _apply_approved_batch(batch_id: str) -> dict:
     batch = get_batch(batch_id)
     if batch is None:
         raise ValueError(f"Review batch '{batch_id}' not found")
@@ -163,11 +203,11 @@ def apply_approved_batch(batch_id: str) -> dict:
 
     # Sort: objects first, then links, then others. Within each group, respect stage_order.
     _TYPE_ORDER = {
-        "import_object_candidate": 0,
-        "import_link_candidate": 1,
+        ReviewItemType.IMPORT_OBJECT_CANDIDATE: 0,
+        ReviewItemType.IMPORT_LINK_CANDIDATE: 1,
     }
     items.sort(key=lambda i: (
-        _TYPE_ORDER.get(i.type.value if hasattr(i.type, 'value') else i.type, 2),
+        _TYPE_ORDER.get(i.type, 2),
         (i.metadata or {}).get("_stage_order", 99),
     ))
 
@@ -188,7 +228,7 @@ def apply_approved_batch(batch_id: str) -> dict:
 
     results = []
     for item in items:
-        result = apply_review_item(item.id)
+        result = _apply_review_item(item.id)
         results.append(result)
 
     # Refresh in-memory graph after batch apply
@@ -289,15 +329,15 @@ def _refresh_batch_counters(batch_id: str) -> None:
     batch.updated_at = datetime.utcnow()
 
     # Derive batch status
-    if batch.applied_count == batch.item_count:
+    if batch.item_count and batch.applied_count == batch.item_count:
         batch.status = ReviewBatchStatus.APPLIED
-    elif batch.failed_count > 0 and batch.applied_count > 0:
+    elif batch.applied_count:
         batch.status = ReviewBatchStatus.PARTIALLY_APPLIED
-    elif batch.failed_count == batch.item_count:
+    elif batch.failed_count and not (batch.pending_count or batch.approved_count):
         batch.status = ReviewBatchStatus.FAILED
-    elif batch.rejected_count == batch.item_count:
+    elif batch.item_count and batch.rejected_count == batch.item_count:
         batch.status = ReviewBatchStatus.REJECTED
-    elif batch.approved_count == batch.item_count:
+    elif batch.item_count and batch.approved_count == batch.item_count:
         batch.status = ReviewBatchStatus.APPROVED
     elif batch.approved_count > 0 or batch.rejected_count > 0:
         batch.status = ReviewBatchStatus.PARTIALLY_REVIEWED

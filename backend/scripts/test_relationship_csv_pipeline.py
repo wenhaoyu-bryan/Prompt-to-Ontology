@@ -39,8 +39,8 @@ rel_ing_002,Taurine,supplement,false
 """
 
 # Profile and create objects
-svc.profile_csv_content("rel_products.csv", OBJ_CSV)
-svc.profile_csv_content("rel_ingredients.csv", ING_CSV)
+product_profile = svc.profile_csv_content("rel_products.csv", OBJ_CSV)
+ingredient_profile = svc.profile_csv_content("rel_ingredients.csv", ING_CSV)
 
 # Create object import plans (for graph seeding if needed)
 product_mappings = [{
@@ -62,8 +62,8 @@ ing_mappings = [{
         {"source_column": "allergen_flag", "target_object_type": "Ingredient", "target_property": "allergen_flag", "confidence": 1.0},
     ], "confidence": 1.0,
 }]
-product_plan = svc.create_import_plan("rel_products.csv", "pet_food", object_mappings=product_mappings)
-ing_plan = svc.create_import_plan("rel_ingredients.csv", "pet_food", object_mappings=ing_mappings)
+product_plan = svc.create_import_plan(product_profile.source_id, "pet_food", object_mappings=product_mappings)
+ing_plan = svc.create_import_plan(ingredient_profile.source_id, "pet_food", object_mappings=ing_mappings)
 check("Product objects created", len(product_plan.candidate_objects) == 2, f"got {len(product_plan.candidate_objects)}")
 check("Ingredient objects created", len(ing_plan.candidate_objects) == 2, f"got {len(ing_plan.candidate_objects)}")
 
@@ -99,7 +99,7 @@ check("Profile has 4 columns", rel_profile.column_count == 4, f"got {rel_profile
 # ── 2. Create relationship import plan for CONTAINS ────────────────
 print("\n[2] Create Relationship Import Plan")
 rel_plan = svc.create_relationship_import_plan(
-    source_id="rel_contains.csv",
+    source_id=rel_profile.source_id,
     domain="pet_food",
     link_type="CONTAINS",
     source_id_column="product_id",
@@ -144,9 +144,9 @@ MISS_CSV = """product_id,ingredient_id
 nonexistent_001,rel_ing_001
 rel_pf_001,nonexistent_999
 """
-svc.profile_csv_content("rel_missing.csv", MISS_CSV)
+missing_profile = svc.profile_csv_content("rel_missing.csv", MISS_CSV)
 miss_plan = svc.create_relationship_import_plan(
-    source_id="rel_missing.csv", domain="pet_food", link_type="CONTAINS",
+    source_id=missing_profile.source_id, domain="pet_food", link_type="CONTAINS",
     source_id_column="product_id", target_id_column="ingredient_id",
 )
 miss_errors = [i for i in miss_plan.validation_issues if i.get("level") == "error"]
@@ -166,9 +166,9 @@ DUP_REL_CSV = """product_id,ingredient_id
 rel_pf_001,rel_ing_001
 rel_pf_001,rel_ing_001
 """
-svc.profile_csv_content("rel_dup.csv", DUP_REL_CSV)
+duplicate_profile = svc.profile_csv_content("rel_dup.csv", DUP_REL_CSV)
 dup_plan = svc.create_relationship_import_plan(
-    source_id="rel_dup.csv", domain="pet_food", link_type="CONTAINS",
+    source_id=duplicate_profile.source_id, domain="pet_food", link_type="CONTAINS",
     source_id_column="product_id", target_id_column="ingredient_id",
 )
 dup_warnings = [i for i in dup_plan.validation_issues if i.get("code") == "DUPLICATE_RELATIONSHIP"]

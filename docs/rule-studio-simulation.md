@@ -5,10 +5,12 @@ Rules are the core of ontology-driven reasoning. Rule Studio makes them visible,
 
 ## Four-State Rule Evaluation
 Each rule evaluates to one of four states:
-- **Triggered**: condition met, TRIGGERS_RISK edge generated
-- **Passed**: condition not met, product is safe for this rule
-- **Not Evaluable**: required data fields are missing
-- **Not Applicable**: rule doesn't apply to this product (e.g., wrong species)
+- **Triggered** — sufficient evidence shows the rule condition was met.
+- **Passed** — sufficient evidence shows the rule condition was not met.
+- **Not Evaluable** — a required field or relationship is missing, invalid, or incomplete.
+- **Not Applicable** — a known value places the product outside the rule's scope, such as a different target species.
+
+The rule engine rejects unsupported condition types and operators when it loads the rules. An observed ingredient is evidence of its presence. A conclusion based on absence requires a confirmed complete list.
 
 ## Rule Coverage
 Shows how many products triggered/passed/were-not-evaluable for each rule.
@@ -18,6 +20,8 @@ Plain-language explanation of rule logic, required fields, and deterministic exa
 
 ## Simulation
 Test a rule against custom input values without modifying the graph. Useful for "what-if" analysis.
+
+The simulation API accepts `ingredient_names` and an optional boolean `ingredients_complete` (default `false`). Set it to `true` when the input represents the complete list. A runtime list read from the graph currently carries no completeness assertion.
 
 ## Evidence Edges
 Triggered rules generate TRIGGERS_RISK edges in the graph. These are the output of automated reasoning.

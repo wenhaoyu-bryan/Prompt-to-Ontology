@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -62,9 +63,10 @@ def _profile_column(name: str, values: list[Any]) -> ColumnProfile:
     if inferred_type in (InferredType.NUMBER, InferredType.INTEGER):
         try:
             nums = [float(v) for v in non_null]
-            min_val = min(nums)
-            max_val = max(nums)
-        except (ValueError, TypeError):
+            finite = [value for value in nums if math.isfinite(value)]
+            min_val = min(finite, default=None)
+            max_val = max(finite, default=None)
+        except (ValueError, TypeError, OverflowError):
             pass
 
     return ColumnProfile(
@@ -116,11 +118,20 @@ def profile_csv(file_path: str, source_name: str | None = None) -> DataSourcePro
     return profile_rows(rows, name)
 
 
+def parse_csv_rows(content: str) -> list[dict[str, Any]]:
+    reader = csv.DictReader(io.StringIO(content.removeprefix("\ufeff")))
+    columns = reader.fieldnames or []
+    if not columns or not all(columns) or len(set(columns)) != len(columns):
+        raise ValueError("CSV needs distinct, non-empty columns")
+    rows = list(reader)
+    if any(None in row for row in rows):
+        raise ValueError("CSV row contains more values than columns")
+    return rows
+
+
 def profile_csv_content(content: str, filename: str) -> DataSourceProfile:
     """Profile CSV content from a string."""
-    reader = csv.DictReader(io.StringIO(content))
-    rows = list(reader)
-    return profile_rows(rows, filename)
+    return profile_rows(parse_csv_rows(content), filename)
 
 
 def parse_structured_rows(content: str, fmt: str) -> list[dict[str, str]]:

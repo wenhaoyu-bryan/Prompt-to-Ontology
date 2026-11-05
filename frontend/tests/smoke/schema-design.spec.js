@@ -278,3 +278,153 @@ test("a delayed preview cannot overwrite another design after browser Back", asy
     page.getByRole("button", { name: "Save schema draft", exact: true }),
   ).toHaveCount(0);
 });
+
+test("turns pasted PostgreSQL DDL into a reviewed draft with source metadata", async ({ page, request }) => {
+  await page.goto("/pipeline?mode=schema");
+  await page.getByLabel("Design goal", { exact: true }).fill("Describe suppliers and lots");
+  await page.getByRole("button", { name: "Paste DDL" }).click();
+  await page.getByRole("textbox", { name: "DDL statements" }).fill(
+    "CREATE TABLE vendor (id BIGINT PRIMARY KEY, name TEXT NOT NULL);" +
+    "CREATE TABLE lot (lot_no TEXT PRIMARY KEY, vendor_id BIGINT REFERENCES vendor(id));" +
+    "COMMENT ON TABLE vendor IS 'A registered supplier';",
+  );
+  await page.getByRole("button", { name: "Add DDL source" }).click();
+  const mode = page.getByRole("combobox", { name: "Schema execution mode" });
+  const baseline = "Deterministic baseline · no model call";
+  const assistant = "Build Agent · semantic suggestions";
+  const design = page.getByRole("region", { name: "Schema design content" });
+  const visibleText = (scope, name) =>
+    scope.getByText(name, { exact: true }).filter({ visible: true });
+  await expect(mode).toBeEnabled();
+  await expect(visibleText(design, baseline)).toBeVisible();
+  await mode.click();
+  await visibleText(page, assistant).click();
+  await expect(visibleText(design, assistant)).toBeVisible();
+  await mode.click();
+  await visibleText(page, baseline).click();
+  const create = page.waitForRequest(
+    (request) => request.url().endsWith("/schema-designs") && request.method() === "POST",
+  );
+  await page.getByRole("button", { name: /Propose schema/ }).click();
+  expect((await create).postDataJSON()).toMatchObject({
+    ddl_dialect: "postgres",
+    execution_mode: "deterministic",
+  });
+  await expect(page.getByRole("button", { name: "View & edit", exact: true })).toHaveCount(2);
+  await confirmVisible(page);
+  await page.getByText("Relationships (1)", { exact: true }).click();
+  await confirmVisible(page);
+  const result = await preview(page);
+  expect(result.preview.summary).toMatchObject({ objects: 2, links: 1, errors: 0, pending: 0 });
+  await page.getByRole("checkbox", { name: /I reviewed the definitions/ }).check();
+  await page.getByRole("button", { name: "Save schema draft", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Your schema design is saved" })).toBeVisible();
+  const id = new URL(page.url()).searchParams.get("design");
+  const response = await request.get(`/api/assisted-build/schema-designs/${id}/export`);
+  expect(response.ok()).toBeTruthy();
+  const exported = await response.json();
+  const mappings = JSON.parse(exported.files.find((file) => file.name === "source_mappings.json").content);
+  expect(exported.manifest.status).toBe("draft");
+  expect(mappings.ddl_sources[0].table.comment).toBe("A registered supplier");
+  expect(mappings.ddl_sources[1].table.foreign_keys[0].target_table).toBe("vendor");
+});
+
+test("uses the chosen MySQL dialect for uploaded DDL and restores it from history", async ({ page }) => {
+  await page.goto("/pipeline?mode=schema");
+  await page.getByLabel("Design goal", { exact: true }).fill("Describe suppliers from MySQL");
+  await page.locator("input[type=file]").setInputFiles({
+    name: "supplier.sql",
+    mimeType: "text/plain",
+    buffer: Buffer.from("CREATE TABLE `supplier` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY) ENGINE=InnoDB;"),
+  });
+  const dialect = page.getByRole("combobox", { name: "DDL dialect" });
+  const design = page.getByRole("region", { name: "Schema design content" });
+  await expect(dialect).toBeEnabled();
+  await expect(design.getByText("PostgreSQL", { exact: true }).filter({ visible: true })).toBeVisible();
+  await dialect.click();
+  await page.getByText("MySQL", { exact: true }).filter({ visible: true }).click();
+  const create = page.waitForRequest(
+    (request) => request.url().endsWith("/schema-designs") && request.method() === "POST",
+  );
+  await page.getByRole("button", { name: /Propose schema/ }).click();
+  expect((await create).postDataJSON()).toMatchObject({
+    ddl_dialect: "mysql",
+    execution_mode: "deterministic",
+  });
+  await expect(page.getByRole("button", { name: "View & edit", exact: true })).toHaveCount(1);
+  const id = new URL(page.url()).searchParams.get("design");
+  await page.getByRole("button", { name: /New design/ }).click();
+  await page.getByRole("button", { name: /Design history/ }).click();
+  await page.locator(".sd-history").filter({ hasText: id }).getByRole("button", { name: "Open", exact: true }).click();
+  await expect(page.getByRole("button", { name: "View & edit", exact: true })).toHaveCount(1);
+  await page.getByText("Sources & goal", { exact: true }).click();
+  await expect(dialect).toBeDisabled();
+  await expect(design.getByText("MySQL", { exact: true }).filter({ visible: true })).toBeVisible();
+});
+
+test("attaches a Markdown SOP to DDL and opens the source at a suggested rule", async ({ page }) => {
+  const original = "# Dispatch SOP\n\nDo not ship lots on quality hold.\nCall the quality team for release.";
+  const id = "sd-0123456789abcdef01234567";
+  const run = {
+    id,
+    goal: "Track lot release",
+    revision: 1,
+    source_kind: "ddl",
+    ddl_dialect: "postgres",
+    execution_mode: "auto",
+    status: "needs_confirmation",
+    sources: [],
+    objects: [],
+    links: [],
+    reference_documents: [{ id: "doc-1", name: "dispatch.md", line_count: 4 }],
+    document_suggestions: [{
+      id: "suggestion-1",
+      kind: "rule",
+      title: "Block dispatch while on hold",
+      description: "A quality hold prevents dispatch.",
+      citation: {
+        document_id: "doc-1",
+        name: "dispatch.md",
+        heading: "Dispatch SOP",
+        start_line: 3,
+        end_line: 3,
+        quote: "Do not ship lots on quality hold.",
+      },
+    }],
+  };
+  await page.route("**/api/assisted-build/schema", (route) => route.fulfill({ json: { schema: {} } }));
+  await page.route("**/api/assisted-build/schema-designs", async (route) => {
+    expect(route.request().postDataJSON()).toMatchObject({
+      execution_mode: "auto",
+      reference_documents: [{ name: "dispatch.md", content: original }],
+    });
+    await route.fulfill({ status: 202, json: run });
+  });
+  await page.route(`**/api/assisted-build/schema-designs/${id}`, (route) => route.fulfill({ json: run }));
+  await page.route(`**/api/assisted-build/schema-designs/${id}/documents/doc-1`, (route) =>
+    route.fulfill({ json: { ...run.reference_documents[0], content: original } }),
+  );
+
+  await page.goto("/pipeline?mode=schema");
+  await page.getByLabel("Design goal", { exact: true }).fill(run.goal);
+  await page.getByRole("button", { name: "Paste DDL" }).click();
+  await page.getByRole("textbox", { name: "DDL statements" }).fill("CREATE TABLE lot (id BIGINT PRIMARY KEY);");
+  await page.getByRole("button", { name: "Add DDL source" }).click();
+  await page.getByLabel("Upload Markdown reference documents").setInputFiles({
+    name: "dispatch.md",
+    mimeType: "text/markdown",
+    buffer: Buffer.from(original),
+  });
+  const propose = page.getByRole("button", { name: "Propose schema" });
+  await expect(propose).toBeDisabled();
+  await page.getByRole("combobox", { name: "Schema execution mode" }).click();
+  await page.getByText("Build Agent · semantic suggestions", { exact: true }).filter({ visible: true }).click();
+  await propose.click();
+  await expect(page.getByText("Block dispatch while on hold")).toBeVisible();
+  await page.getByRole("button", { name: /dispatch\.md.*line 3/i }).click();
+  const source = page.getByRole("dialog", { name: "dispatch.md" });
+  await expect(source).toBeVisible();
+  await expect(source.getByText("Do not ship lots on quality hold.", { exact: true })).toBeVisible();
+  await expect(source.getByText("Call the quality team for release.", { exact: true })).toBeVisible();
+  await expect(source.getByText("Cited line 3", { exact: true })).toBeVisible();
+});

@@ -134,11 +134,11 @@ check(
     f"missing_fields={sim_missing.missing_fields}",
 )
 
-# ── 8. Simulate not_applicable case (species=Dog for RR002 Cat rule) ─
+# ── 8. Simulate not_applicable case (target_species=dog for RR002) ─
 print("\n[8] Simulation — not_applicable")
 req_na = SimulationRequest(
     rule_id="RR002",
-    properties={"species": "Dog"},
+    properties={"target_species": "dog"},
 )
 sim_na = simulate_rule(req_na)
 check(

@@ -171,7 +171,7 @@ def _build_logic_explanation(rule: RuleDef) -> dict:
             "applicability": "Applied to all products regardless of species or life stage.",
             "trigger_condition": f"{field} {op} {value}",
             "pass_condition": f"{field} does not {op_en} {value} (i.e. {field} <= {value})",
-            "not_evaluable_reason": f"{field} is missing or null on the product node.",
+            "not_evaluable_reason": f"{field} is missing or is not a finite number.",
         }
 
     if ctype == "ingredient_absence":
@@ -179,18 +179,18 @@ def _build_logic_explanation(rule: RuleDef) -> dict:
         ingredient = params.get("missing_ingredient", "")
         return {
             "plain_english": (
-                f"Triggered when target_species is '{species}' AND the ingredient list "
+                f"Triggered when target_species is '{species}' AND the confirmed complete ingredient list "
                 f"does NOT contain '{ingredient}'. Ensures {species} food includes {ingredient}."
             ),
             "plain_chinese": (
-                f"当 target_species 为 '{species}' 且成分列表中不含 '{ingredient}' 时触发。"
+                f"当 target_species 为 '{species}' 且已确认完整的成分列表中不含 '{ingredient}' 时触发。"
                 f"确保{species}粮含有{ingredient}。"
             ),
             "required_fields": ["target_species", "CONTAINS (ingredient list)"],
             "applicability": f"Only applies to products with target_species = '{species}'. Other species return not_applicable.",
-            "trigger_condition": f"target_species = '{species}' AND '{ingredient}' not in ingredient list",
+            "trigger_condition": f"target_species = '{species}' AND '{ingredient}' absent from the confirmed complete ingredient list",
             "pass_condition": f"'{ingredient}' is present in the ingredient list",
-            "not_evaluable_reason": "Ingredient list is empty or the CONTAINS relationship is missing.",
+            "not_evaluable_reason": "Target species is unknown, or the ingredient list is incomplete and lacks the required ingredient.",
         }
 
     if ctype == "ingredient_match":
@@ -208,8 +208,8 @@ def _build_logic_explanation(rule: RuleDef) -> dict:
             "required_fields": ["CONTAINS (ingredient list)"],
             "applicability": "Applied to all products regardless of species or life stage.",
             "trigger_condition": f"Any of [{ingredient_str}] found in ingredient list",
-            "pass_condition": f"None of [{ingredient_str}] found in ingredient list",
-            "not_evaluable_reason": "Ingredient list is empty or the CONTAINS relationship is missing.",
+            "pass_condition": f"None of [{ingredient_str}] found in the confirmed complete ingredient list",
+            "not_evaluable_reason": "The observed ingredients do not match and list completeness has not been confirmed.",
         }
 
     if ctype == "compound":
@@ -235,7 +235,7 @@ def _build_logic_explanation(rule: RuleDef) -> dict:
             "required_fields": ["target_species", "life_stage", sub_field],
             "applicability": (
                 f"Only applies to products with target_species = '{species}' "
-                f"AND life_stage = '{life_stage}'. Others return not_applicable."
+                f"AND life_stage = '{life_stage}'. A known mismatch returns not_applicable."
             ),
             "trigger_condition": (
                 f"target_species = '{species}' AND life_stage = '{life_stage}' "
@@ -243,7 +243,7 @@ def _build_logic_explanation(rule: RuleDef) -> dict:
             ),
             "pass_condition": f"{sub_field} does not {op_en} {sub_value} (i.e. {sub_field} {'>=' if sub_op == '<' else '<='} {sub_value})",
             "not_evaluable_reason": (
-                f"Species and life_stage match but {sub_field} is missing or null."
+                f"A required scope field is unknown, or {sub_field} is missing or is not a finite number."
             ),
         }
 
@@ -299,9 +299,10 @@ def _build_examples(rule: RuleDef) -> dict:
         ingredient = params.get("missing_ingredient", "")
         return {
             "triggered": {
-                "description": f"{species} food without {ingredient}",
+                "description": f"{species} food with a complete ingredient list that excludes {ingredient}",
                 "mock_product": {"target_species": species},
                 "mock_ingredients": ["chicken", "rice", "fish oil"],
+                "ingredients_complete": True,
             },
             "passed": {
                 "description": f"{species} food with {ingredient} present",
@@ -329,9 +330,10 @@ def _build_examples(rule: RuleDef) -> dict:
                 "mock_ingredients": ["chicken", "rice", "fish oil"],
             },
             "passed": {
-                "description": "Product without any matched ingredients",
+                "description": "Product with a complete ingredient list and no matches",
                 "mock_product": {},
                 "mock_ingredients": ["salmon", "rice", "fish oil"],
+                "ingredients_complete": True,
             },
             "not_evaluable": {
                 "description": "Product with empty ingredient list",
@@ -635,6 +637,7 @@ def simulate_rule(request: SimulationRequest) -> SimulationResult:
     results = engine.evaluate_product_full(
         request.properties,
         request.ingredient_names,
+        ingredients_complete=request.ingredients_complete,
     )
 
     # Find the result for our target rule
@@ -654,6 +657,7 @@ def simulate_rule(request: SimulationRequest) -> SimulationResult:
             input_fields[field] = request.properties[field]
     if "CONTAINS" in " ".join(_extract_required_fields(target_rule)):
         input_fields["ingredient_names"] = request.ingredient_names
+        input_fields["ingredients_complete"] = request.ingredients_complete
 
     would_generate_evidence = target_result["status"] == "triggered"
 
@@ -664,6 +668,7 @@ def simulate_rule(request: SimulationRequest) -> SimulationResult:
         reason=target_result["reason"],
         input_fields=input_fields,
         missing_fields=target_result.get("missing_fields", []),
+        missing_relations=target_result.get("missing_relations", []),
         would_generate_evidence=would_generate_evidence,
         generated_link_type=target_rule.output_link_type,
     )
