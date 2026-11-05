@@ -361,3 +361,70 @@ test("uses the chosen MySQL dialect for uploaded DDL and restores it from histor
   await expect(dialect).toBeDisabled();
   await expect(design.getByText("MySQL", { exact: true }).filter({ visible: true })).toBeVisible();
 });
+
+test("attaches a Markdown SOP to DDL and opens the source at a suggested rule", async ({ page }) => {
+  const original = "# Dispatch SOP\n\nDo not ship lots on quality hold.\nCall the quality team for release.";
+  const id = "sd-0123456789abcdef01234567";
+  const run = {
+    id,
+    goal: "Track lot release",
+    revision: 1,
+    source_kind: "ddl",
+    ddl_dialect: "postgres",
+    execution_mode: "auto",
+    status: "needs_confirmation",
+    sources: [],
+    objects: [],
+    links: [],
+    reference_documents: [{ id: "doc-1", name: "dispatch.md", line_count: 4 }],
+    document_suggestions: [{
+      id: "suggestion-1",
+      kind: "rule",
+      title: "Block dispatch while on hold",
+      description: "A quality hold prevents dispatch.",
+      citation: {
+        document_id: "doc-1",
+        name: "dispatch.md",
+        heading: "Dispatch SOP",
+        start_line: 3,
+        end_line: 3,
+        quote: "Do not ship lots on quality hold.",
+      },
+    }],
+  };
+  await page.route("**/api/assisted-build/schema", (route) => route.fulfill({ json: { schema: {} } }));
+  await page.route("**/api/assisted-build/schema-designs", async (route) => {
+    expect(route.request().postDataJSON()).toMatchObject({
+      execution_mode: "auto",
+      reference_documents: [{ name: "dispatch.md", content: original }],
+    });
+    await route.fulfill({ status: 202, json: run });
+  });
+  await page.route(`**/api/assisted-build/schema-designs/${id}`, (route) => route.fulfill({ json: run }));
+  await page.route(`**/api/assisted-build/schema-designs/${id}/documents/doc-1`, (route) =>
+    route.fulfill({ json: { ...run.reference_documents[0], content: original } }),
+  );
+
+  await page.goto("/pipeline?mode=schema");
+  await page.getByLabel("Design goal", { exact: true }).fill(run.goal);
+  await page.getByRole("button", { name: "Paste DDL" }).click();
+  await page.getByRole("textbox", { name: "DDL statements" }).fill("CREATE TABLE lot (id BIGINT PRIMARY KEY);");
+  await page.getByRole("button", { name: "Add DDL source" }).click();
+  await page.getByLabel("Upload Markdown reference documents").setInputFiles({
+    name: "dispatch.md",
+    mimeType: "text/markdown",
+    buffer: Buffer.from(original),
+  });
+  const propose = page.getByRole("button", { name: "Propose schema" });
+  await expect(propose).toBeDisabled();
+  await page.getByRole("combobox", { name: "Schema execution mode" }).click();
+  await page.getByText("Build Agent · semantic suggestions", { exact: true }).filter({ visible: true }).click();
+  await propose.click();
+  await expect(page.getByText("Block dispatch while on hold")).toBeVisible();
+  await page.getByRole("button", { name: /dispatch\.md.*line 3/i }).click();
+  const source = page.getByRole("dialog", { name: "dispatch.md" });
+  await expect(source).toBeVisible();
+  await expect(source.getByText("Do not ship lots on quality hold.", { exact: true })).toBeVisible();
+  await expect(source.getByText("Call the quality team for release.", { exact: true })).toBeVisible();
+  await expect(source.getByText("Cited line 3", { exact: true })).toBeVisible();
+});

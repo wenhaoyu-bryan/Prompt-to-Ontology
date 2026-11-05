@@ -36,6 +36,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../providers/dataProvider";
 import SchemaDefinitionDrawer from "./SchemaDefinitionDrawer";
 import SchemaDesignMap from "./SchemaDesignMap";
+import { MarkdownReferences, DocumentSuggestions } from "./SchemaDocumentEvidence";
 import BuildNavigation from "./BuildNavigation";
 import "./assistedBuild.css";
 import "./schemaDesign.css";
@@ -97,6 +98,8 @@ export default function SchemaDesignWorkspace() {
   );
   const [run, setRun] = useState(null);
   const [files, setFiles] = useState([]);
+  const [referenceDocuments, setReferenceDocuments] = useState([]);
+  const [readingDocuments, setReadingDocuments] = useState(false);
   const [showDdl, setShowDdl] = useState(false);
   const [ddlText, setDdlText] = useState("");
   const [ddlDialect, setDdlDialect] = useState("postgres");
@@ -105,6 +108,7 @@ export default function SchemaDesignWorkspace() {
   const [mode, setMode] = useState("auto");
   const [ddlExecutionMode, setDdlExecutionMode] = useState("deterministic");
   const executionMode = ddlMode ? ddlExecutionMode : mode;
+  const documentsRequireAgent = ddlMode && referenceDocuments.length > 0 && executionMode !== "auto";
   const [activeSchema, setActiveSchema] = useState({});
   const [objects, setObjects] = useState([]);
   const [links, setLinks] = useState([]);
@@ -245,6 +249,7 @@ export default function SchemaDesignWorkspace() {
     setParams({ mode: "schema" });
     setRun(null);
     setFiles([]);
+    setReferenceDocuments([]);
     setShowDdl(false);
     setDdlText("");
     setDdlDialect("postgres");
@@ -262,6 +267,7 @@ export default function SchemaDesignWorkspace() {
         "/assisted-build/schema-design-sample-files",
       );
       setFiles(data.files);
+      setReferenceDocuments([]);
       setShowDdl(false);
       setDdlText("");
       setDdlDialect("postgres");
@@ -275,7 +281,7 @@ export default function SchemaDesignWorkspace() {
   const addSource = (file) => {
     setFiles((all) => {
       if (all.length && (isDdl(file) || all.some(isDdl))) {
-        message.error(tr("Use one DDL file in a separate design task.", "DDL 请单独创建任务，每次使用一个文件。"));
+        message.error(tr("Use one DDL file as the structural source.", "每次使用一个 DDL 文件作为结构来源。"));
         return all;
       }
       if (all.length >= 8) {
@@ -316,7 +322,7 @@ export default function SchemaDesignWorkspace() {
         goal,
         files,
         execution_mode: executionMode,
-        ...(ddlMode && { ddl_dialect: ddlDialect }),
+        ...(ddlMode && { ddl_dialect: ddlDialect, reference_documents: referenceDocuments }),
       });
       choose(data);
     });
@@ -647,7 +653,7 @@ export default function SchemaDesignWorkspace() {
                   <p>CSV · JSON · NDJSON · PostgreSQL DDL · MySQL DDL</p>
                 </div>
                 {!run && (
-                  <Button size="small" disabled={pending} onClick={loadExample}>
+                  <Button size="small" disabled={pending || readingDocuments} onClick={loadExample}>
                     {tr("Try supplier example", "使用供应商示例")}
                   </Button>
                 )}
@@ -743,11 +749,13 @@ export default function SchemaDesignWorkspace() {
                         aria-label={`Remove ${f.name}`}
                         type="text"
                         icon={<DeleteOutlined />}
+                        disabled={readingDocuments}
                         onClick={() => {
                           setFiles((items) => items.filter((_, n) => n !== i));
                           if (isDdl(f)) {
                             setDdlDialect("postgres");
                             setDdlExecutionMode("deterministic");
+                            setReferenceDocuments([]);
                           }
                         }}
                       />
@@ -755,6 +763,18 @@ export default function SchemaDesignWorkspace() {
                   </div>
                 ))}
               </div>
+              {ddlMode && (
+                <MarkdownReferences
+                  documents={run ? run.reference_documents || [] : referenceDocuments}
+                  setDocuments={setReferenceDocuments}
+                  readOnly={!!run}
+                  pending={pending}
+                  reading={readingDocuments}
+                  setReading={setReadingDocuments}
+                  requiresAgent={documentsRequireAgent}
+                  tr={tr}
+                />
+              )}
             </section>
           </div>
         ) : stage === 1 ? (
@@ -1108,6 +1128,11 @@ export default function SchemaDesignWorkspace() {
             </section>
           </>
         )}
+        {run?.reference_documents?.length > 0 && !busy(run) && stage > 0 && (
+          <DocumentSuggestions key={run.id} run={run} loadDocument={(documentId) =>
+            scopedApi.get(`${base}/${run.id}/documents/${encodeURIComponent(documentId)}`)
+          } tr={tr} />
+        )}
       </section>
       <footer className="ab-footer">
         <Button
@@ -1125,7 +1150,7 @@ export default function SchemaDesignWorkspace() {
               type="primary"
               icon={<ApartmentOutlined />}
               loading={pending}
-              disabled={!goal.trim() || !files.length || !!run}
+              disabled={!goal.trim() || !files.length || !!run || documentsRequireAgent || readingDocuments}
               onClick={start}
             >
               {tr("Propose schema", "生成定义草稿")}

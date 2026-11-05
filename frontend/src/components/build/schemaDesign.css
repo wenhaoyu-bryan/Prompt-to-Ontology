@@ -4,6 +4,62 @@
 .sd-explanation {
   margin-top: 12px;
 }
+.sd-reference-documents {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ab-border);
+}
+.sd-reference-documents h4,
+.sd-document-suggestion h4 {
+  margin: 0 0 6px;
+}
+.sd-document-limit {
+  margin: 6px 0;
+}
+.sd-document-suggestion {
+  border-top: 1px solid var(--ab-border);
+  padding: 12px 0;
+  overflow-wrap: anywhere;
+}
+.sd-document-suggestion h4 {
+  margin-top: 6px;
+}
+.sd-document-suggestion p {
+  margin: 6px 0;
+}
+.sd-source-link.ant-btn {
+  padding-inline: 0;
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+  height: auto;
+}
+.sd-source-lines {
+  position: relative;
+  max-height: min(52vh, 440px);
+  overflow: auto;
+  border: 1px solid var(--ant-color-border-secondary, #9ba8bc44);
+  border-radius: 6px;
+}
+.sd-source-line {
+  display: grid;
+  grid-template-columns: 3em minmax(0, 1fr);
+  gap: 10px;
+  padding: 3px 10px;
+}
+.sd-source-line span {
+  color: var(--ant-color-text-tertiary, #788296);
+  text-align: right;
+  user-select: none;
+}
+.sd-source-line code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.sd-source-line-cited {
+  background: var(--ant-color-primary-bg, #3574ee22);
+  box-shadow: inset 3px 0 var(--ant-color-primary, #3574ee);
+}
 .sd-boundary {
   display: flex;
   gap: 14px;

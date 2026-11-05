@@ -20,6 +20,7 @@ from assisted_build.service import atomic, digest
 from assisted_build.sources import parse_sources
 from assisted_build.ddl_design import is_ddl_filename, prepare_ddl_sources, propose_ddl, resolve_reference
 from assisted_build.ddl_semantics import suggest_ddl_semantics
+from assisted_build.design_documents import prepare_documents
 
 _LOCK = threading.RLock()
 IDENT = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,63}$")
@@ -97,7 +98,7 @@ class SchemaDesignService:
             }
         )
 
-    def create(self, goal, files, execution_mode="auto", ddl_dialect="postgres"):
+    def create(self, goal, files, execution_mode="auto", ddl_dialect="postgres", reference_documents=None):
         if (
             not isinstance(goal, str)
             or not goal.strip()
@@ -111,6 +112,9 @@ class SchemaDesignService:
             f for f in files
             if isinstance(f, dict) and is_ddl_filename(f.get("name"))
         ]
+        documents = prepare_documents(reference_documents) if reference_documents is not None else []
+        if documents and (not ddl_files or execution_mode != "auto"):
+            raise ValueError("Markdown reference documents require DDL and the Build Agent mode")
         if ddl_files:
             if len(files) != 1:
                 raise ValueError("Use one DDL file per design task")
@@ -152,6 +156,13 @@ class SchemaDesignService:
             )
         with _LOCK:
             atomic(self._path(r["id"]) / "rows.json", rows)
+            if documents:
+                atomic(self._path(r["id"]) / "documents.json", documents)
+                r["reference_documents"] = [
+                    {key: value for key, value in document.items() if key != "content"}
+                    for document in documents
+                ]
+                r["document_suggestions"] = []
             message = "Parsed DDL table definitions" if ddl_files else "Uploaded bounded source profiles"
             self._step(r, "create", message)
             self._save(r)
@@ -160,6 +171,18 @@ class SchemaDesignService:
     def get_run(self, rid):
         with _LOCK:
             return self._load(rid)
+
+    def _documents(self, r):
+        if not r.get("reference_documents"):
+            return []
+        return json.loads((self._path(r["id"]) / "documents.json").read_text(encoding="utf-8"))
+
+    def get_document(self, rid, doc_id):
+        with _LOCK:
+            for document in self._documents(self._load(rid)):
+                if document["id"] == doc_id:
+                    return document
+            raise KeyError("Reference document not found")
 
     def list_runs(self):
         with _LOCK:
@@ -249,18 +272,24 @@ class SchemaDesignService:
             self._save(r)
             rev = r["revision"]
             rows = json.loads((self._path(rid) / "rows.json").read_text())
+            documents = self._documents(r)
         if r.get("source_kind") == "ddl":
             self._step(r, "ddl", "Proposed definitions from declared table, column and key metadata")
             objects = r["objects"]
             if r["execution_mode"] == "auto":
                 try:
-                    suggested_objects, suggested_links = suggest_ddl_semantics(r)
+                    suggested_objects, suggested_links, document_suggestions = suggest_ddl_semantics(r, documents)
                     self._shape(suggested_objects, suggested_links)
                 except Exception:
                     self._step(r, "model", "Model unavailable or invalid; retained the parsed DDL draft", "fallback")
                 else:
                     objects, r["links"] = suggested_objects, suggested_links
-                    self._step(r, "model", "Build Agent suggested editable business labels and descriptions")
+                    if documents:
+                        r["document_suggestions"] = document_suggestions
+                        message = "Build Agent reviewed Markdown for cited suggestions"
+                    else:
+                        message = "Build Agent suggested editable business labels and descriptions"
+                    self._step(r, "model", message)
             return self._finish_analysis(rid, rev, r, objects)
         objects = []
         for s in r["sources"]:
@@ -817,6 +846,9 @@ class SchemaDesignService:
                 "links": r["links"],
                 "preview": p,
                 **({"ddl_sources": r["sources"]} if ddl_tables else {}),
+                **({"reference_documents": r["reference_documents"],
+                    "document_suggestions": r["document_suggestions"]}
+                   if r.get("reference_documents") else {}),
             }
         )
         return p

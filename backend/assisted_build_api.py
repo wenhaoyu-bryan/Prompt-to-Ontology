@@ -6,6 +6,7 @@ from typing import Literal
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
+from assisted_build.design_documents import MAX_DOCUMENT_BYTES, MAX_DOCUMENTS
 from assisted_build.service import AssistedBuildService
 from llm_config_manager import (
     get_active_llm_config,
@@ -42,8 +43,14 @@ class BuildInput(BaseModel):
     execution_mode: Literal["auto", "deterministic"] = "auto"
 
 
+class ReferenceDocumentInput(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    content: str = Field(min_length=1, max_length=MAX_DOCUMENT_BYTES)
+
+
 class SchemaDesignInput(BuildInput):
     ddl_dialect: Literal["postgres", "mysql"] = "postgres"
+    reference_documents: list[ReferenceDocumentInput] = Field(default_factory=list, max_length=MAX_DOCUMENTS)
 
 
 class MappingInput(BaseModel):
@@ -237,6 +244,7 @@ def create_schema_design(request: SchemaDesignInput, background: BackgroundTasks
         [f.model_dump() for f in request.files],
         mode,
         request.ddl_dialect,
+        [document.model_dump() for document in request.reference_documents],
     )
     background.add_task(analyze_schema_design, run["id"], config)
     return run
@@ -245,6 +253,11 @@ def create_schema_design(request: SchemaDesignInput, background: BackgroundTasks
 @router.get("/schema-designs/{rid}")
 def get_schema_design(rid: str):
     return call(schema_design_service.get_run, rid)
+
+
+@router.get("/schema-designs/{rid}/documents/{doc_id}")
+def get_schema_design_document(rid: str, doc_id: str):
+    return call(schema_design_service.get_document, rid, doc_id)
 
 
 @router.put("/schema-designs/{rid}/definitions")
