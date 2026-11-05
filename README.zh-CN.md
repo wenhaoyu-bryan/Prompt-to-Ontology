@@ -1,6 +1,6 @@
 # <img src="frontend/public/brand/ontology-reasoning.png" width="32" height="32" alt="" /> Prompt-to-Ontology
 
-映射来源数据，审核图谱变更，从样例答案追溯到来源记录。
+设计本体定义，映射来源数据，在变更进入图谱前完成审核。
 
 https://github.com/user-attachments/assets/cb35e078-3699-43fc-94d3-1f6bfcd70766
 
@@ -9,15 +9,13 @@ https://github.com/user-attachments/assets/cb35e078-3699-43fc-94d3-1f6bfcd70766
 [![CI](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-Prompt-to-Ontology 是一个开源本体工作台，连接来源数据、类型化对象、显式规则、人工审核和基于本体工具的 Agent。仓库以可运行的 Pet Food 参考实现展示完整流程。
+Prompt-to-Ontology 是一个开源本体工作台，连接来源数据、类型化对象、显式规则、人工审核和基于本体工具的 Agent。工作台将 Schema 设计与运行时数据导入、查询分开。内置 Pet Food 领域提供数据、规则和评测用例，用于运行完整参考流程；你也可以为自己的业务领域设计定义。
 
-- **辅助构建。** 上传 CSV、扁平 JSON 数组或 NDJSON，并描述构建目标。审核助手提出的映射，校准不明确的字段，预览候选对象与关系。
-- **设计 Schema 草稿。** 从来源字段提出对象与关系定义，在列表或结构图中编辑，确认后保存或导出草稿。
+- **设计本体定义。** 从 CSV/JSON/NDJSON 文件或 PostgreSQL/MySQL DDL 开始，审核对象、属性、关系及其来源，再导出设计或保存定义到 Ontology Manager。
+- **辅助构建。** 描述导入目标并上传数据文件，审核到当前运行时 Schema 的映射，处理待确认项，预览候选对象与关系。
 - **审核后应用变更。** 通过 Import Plan 和 Review Queue 检查候选，再批准并应用到图谱。
 - **检查答案依据。** 沿样例答案的关系路径打开来源记录，核对运行时图谱中是否存在匹配关系。
 - **评测 Agent 执行。** 编辑评测问题，检查实际回答与工具结果，比较历史执行，并将反馈转为回归用例。
-
-构建从一个业务问题开始，再逐步确定来源映射与 Schema。本仓库以单一 Pet Food 样例展示这一过程。
 
 ## 快速开始
 
@@ -42,32 +40,69 @@ docker compose up --build
 
 请在可信的本地网络运行。演示登录只用于前端体验，不提供后端身份认证。
 
-安装与排障参见[本地 Docker 环境搭建](docs/local-docker-setup.md)。打开侧栏的**模型配置**，可保存 OpenAI 兼容协议或 Anthropic 连接，分别为辅助构建和图谱问答分配模型。密钥保存在服务端，Docker 使用运行时卷持久化；也可通过环境变量设置部署默认模型。详见[模型接入](docs/question-set-evaluation.md#model-setup)。
+安装与排障参见[本地 Docker 环境搭建](docs/local-docker-setup.md)。在**模型配置**中保存 **OpenAI Chat Completions 兼容协议**或 **Anthropic Messages** 连接，分别绑定**构建（Build）**与**查询（Query）**模型。密钥保存在服务端，由 Docker 运行时卷持久化；环境变量也可提供部署默认值。没有可用模型时仍可使用确定性基线，它依据已知 Schema 别名和键匹配，不理解任意业务目标。详见[模型接入](docs/question-set-evaluation.md#model-setup)。
 
 <details>
 <summary>样例数据、持久化与演示写入设置</summary>
 
 - 在 `.env` 设置 `AUTO_SEED_DEMO_DATA=false` 可关闭自动导入样例。
 - Compose 通过 `backend_runtime` 卷保存来源数据、Import Plan、审核状态和模型连接，容器重建后仍可读取。演示重置会清理工作流数据；删除卷也会删除模型配置。
-- 旧版直接写入操作（包括演示重置和快照恢复）默认返回 HTTP 403。仅在可丢弃的本地演示中设置 `ENABLE_LEGACY_DEMO_WRITES=true` 并重启后端。常规构建使用 **Import Plan → Review Queue**。
+- 演示直接写入操作（包括演示重置和快照恢复）默认返回 HTTP 403。仅在可丢弃的本地演示中设置 `ENABLE_LEGACY_DEMO_WRITES=true` 并重启后端。常规构建使用 **Import Plan → Review Queue**。
 - Review Queue 展示审核决定与图谱应用过程，本身不构成权限边界。
 
 </details>
 
-## 体验参考流程
+## 支持的数据源
 
-1. **从数据辅助构建。** 打开**数据管道 → 导入数据**，描述目标并上传来源文件或载入样例。检查助手提出的映射、处理待确认项，预览变更后提交审核。**手动配置**保留原有的六步导入流程。
-2. **审核变更。** 在 **Review Queue** 查看候选属性与审核记录，然后批准并应用。批准和应用是两个独立步骤。
-3. **追溯参考答案。** 打开**评测与反馈 → 参考样例 · 22 题**，运行 **Q03：PF001 的第一种原料是什么？** 查看 `CONTAINS` 路径和来源记录，再点击 **Explore in graph** 核对运行时关系。
-4. **使用本体工具查询。** 向 **Analyst Agent** 提问“Which products contain chicken?”，检查答案、工具调用记录和返回的关系路径，继续追问或提交反馈。修改建议需进入 Review Queue。
-5. **评测回答。** 在**评测与反馈**中，选择确定性基线或已配置的模型运行 Agent 用例。比较历史执行，人工审核需要判断的回答，并将查询反馈转为可编辑用例。
+| 来源 | 实例数据导入 | Schema 设计 | 使用方式 |
+| --- | --- | --- | --- |
+| CSV、扁平 JSON 数组、NDJSON（`.ndjson` / `.jsonl`） | 支持 | 支持 | 根据行和列分析数据、建立映射、提出定义。 |
+| Excel（`.xlsx`） | 支持 | 暂不支持 | 选择一个工作表与表头行，预览数据后导入。 |
+| PostgreSQL / MySQL DDL（`.sql`、`.ddl`） | 不支持 | 支持 | 本地解析声明的表与键，不连接实时数据库。 |
+| Markdown（`.md`）产品文档 / SOP | 不支持 | 配合 DDL + 构建 Agent | 补充语义并引用原文的准确行号，不作为独立文档导入来源。 |
 
-如需探索新的 Schema，可进入**数据管道 → 设计本体草稿**，确认定义与来源绑定后保存或导出。这些草稿不会直接激活新的运行时 Schema。
+<details>
+<summary>输入限制与文件准备</summary>
+
+- 公开 HTTP 上传接口最多接受 **8 个文件**，单个不超过 **2 MB**，总计不超过 **8 MiB**。JSON 记录须使用一致的扁平列，不包含嵌套对象或数组。
+- XLSX 每个工作簿导入一个工作表，拒绝公式和错误单元格；请使用仅含值的工作表，将含前导零的标识符存为文本。
+- 每个 DDL 设计任务接受一个 `.sql` 或 `.ddl` 文件（最多 256 KiB、32 张表），同一任务不混入表格数据文件；仅解析文档列出的 DDL 子集。
+- DDL 设计配合构建 Agent 可附加最多 **3 个 UTF-8 Markdown 参考文档**：单个 12 KiB，总计 24 KiB、600 行。文档正文会发送给当前配置的模型服务。
+
+支持语法和完整限制参见[辅助构建与 Schema 设计](docs/assisted-build.md)。
+
+</details>
+
+## 构建流程
+
+### 将实例导入已有 Schema
+
+1. 打开**数据管道 → 导入数据**，添加来源文件并描述导入目标。
+2. 助手提出到当前运行时 Schema 的映射，包括对象类型、身份字段和关系端点。
+3. 处理待确认项，选择**确认映射并预览**，检查候选值与变更。
+4. 将审核后的预览提交到 **Review Queue**。检查每项候选，分别执行**批准**和**应用**。
+5. 返回**检查运行时图谱**，核对 Neo4j 中的对象、属性和关系。
+
+**手动配置**也提供六步导入流程。
+
+### 设计新的本体定义
+
+1. 打开**数据管道 → 设计本体草稿**，提供 CSV/JSON/NDJSON 文件或 DDL。
+2. 确定性分析建立来源结构，可选的构建 Agent 补充语义建议。
+3. 审核定义和来源绑定，完成选择，检查定义差异后保存。
+4. 导出设计包，或选择**保存定义到本体管理**。
+5. 在 **Ontology Manager** 的统一抽屉中编辑对象、属性和关系。通过**查看来源**检查溯源信息，或从**类型图**打开定义。
+
+**保存设计或 Manager 目录不等于激活运行时 Schema。** 导入与查询仍使用配置的 YAML 定义。交接边界参见[辅助构建与 Schema 设计](docs/assisted-build.md)。
+
+对于 DDL，模型只能建议展示名称、描述和带引用的审核备注；技术标识符、类型、键、绑定和关系由解析出的声明决定。产品文档和 SOP 可提供待审核的术语或规则候选，不会自动变成可执行规则。流程不会凭空生成或执行任意 SQL。
+
+体验参考流程时，可运行**评测与反馈 → 参考样例 · 22 题 → Q03：PF001 的第一种原料是什么？**，查看 `CONTAINS` 路径和来源记录，再选择 **Explore in graph**。向 **Analyst Agent** 提问“Which products contain chicken?”，检查运行时工具调用和关系路径。在**评测与反馈**中比较 Agent 执行、人工审核需要判断的回答，并将查询反馈转为可编辑用例。
 
 参考实现还包含对象与图谱探索、四状态规则评估、Agent Trace，以及图谱快照、差异比较和回滚。可通过 **Demo Center → Start Golden Demo** 进入引导式体验。
 
 <details>
-<summary>查看流程截图</summary>
+<summary>查看 v0.6.0 流程截图</summary>
 
 ### 运行概览
 
@@ -93,7 +128,7 @@ docker compose up --build
 
 ![PetFoodProduct 定义与 Schema 草稿操作](media/ontology-manager.png)
 
-Ontology Manager 展示定义与本地编辑草稿，不改变生效的 YAML。
+这张 v0.6.0 截图早于当前的 Manager 目录与统一定义抽屉。
 
 ### 图谱探索
 
@@ -117,7 +152,7 @@ Ontology Manager 展示定义与本地编辑草稿，不改变生效的 YAML。
 
 </details>
 
-视频和截图已更新为 v0.6.0 的浅色界面。视频展示辅助导入、人工审核、运行时验证，以及使用模型查询刚导入的产品。相关流程参见[辅助构建](docs/assisted-build.md)、[问答工作台](docs/query-workbench.md)和[评测与反馈](docs/question-set-evaluation.md)。
+视频和截图保留了较早的 v0.6.0 浅色界面，展示辅助导入、人工审核、运行时验证和实时模型查询。当前 Schema 设计、来源支持及 Manager 编辑已扩展，截图未涵盖这些能力。当前流程参见[辅助构建](docs/assisted-build.md)、[问答工作台](docs/query-workbench.md)和[评测与反馈](docs/question-set-evaluation.md)。
 
 [完整产品流程](docs/product-workflow.md) · [录制说明与其他截图](media/README.md)
 
@@ -127,7 +162,7 @@ Ontology Manager 展示定义与本地编辑草稿，不改变生效的 YAML。
 
 - **参考答案与 Agent 查询使用不同依据。** 参考样例读取仓库内的 CSV/YAML，图谱高亮核对运行时关系。Agent 查询调用运行时工具；返回的证据字符串不等于原始文件行或文档片段引用。
 - **评测分数只覆盖配置的检查项。** Agent 评测记录实际回答、工具和 Trace，按配置检查项计分，需要判断的回答单独人工审核。分数不代表通用 Agent 的正确率。视频使用已配置的 DeepSeek 模型，录屏和仓库均不包含密钥。
-- **Schema 编辑保存为草稿。** Ontology Manager 保存本地待审草稿；生效定义继续使用仓库中的 YAML。
+- **设计目录与运行时定义分开。** Ontology Manager 在设计目录中保存审核后的定义和来源溯源；导入与查询继续使用配置的 YAML Schema，运行时接入需要单独完成。
 - **规则结果描述样例。** 结果取决于现有数据和配置条件，不能作为兽医建议；缺少证据时，规则可能无法评估。
 
 <details>
@@ -152,7 +187,7 @@ Prompt 用于提出决策问题与建模假设，随后逐步完成：
 | 指南 | 内容 |
 | --- | --- |
 | [文档索引](docs/README.md) | 产品、架构与开发文档 |
-| [辅助构建与 Schema 设计](docs/assisted-build.md) | 多来源辅助、映射审核和本体草稿 |
+| [辅助构建与 Schema 设计](docs/assisted-build.md) | 来源支持、Agent 流程、DDL/文档辅助和 Manager 交接 |
 | [数据管道](docs/data-pipeline.md) | 来源画像、映射与 Import Plan |
 | [Review Queue](docs/review-queue-runtime.md) | 审核决定与图谱应用 |
 | [本体内核](docs/ontology-kernel.md) | Schema 定义与校验 |
