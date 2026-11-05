@@ -97,7 +97,7 @@ class SchemaDesignService:
             }
         )
 
-    def create(self, goal, files, execution_mode="auto"):
+    def create(self, goal, files, execution_mode="auto", ddl_dialect="postgres"):
         if (
             not isinstance(goal, str)
             or not goal.strip()
@@ -113,8 +113,8 @@ class SchemaDesignService:
         ]
         if ddl_files:
             if len(files) != 1:
-                raise ValueError("Use one PostgreSQL DDL file per design task")
-            sources = prepare_ddl_sources(ddl_files[0])
+                raise ValueError("Use one DDL file per design task")
+            sources = prepare_ddl_sources(ddl_files[0], ddl_dialect)
             rows = {}
         else:
             sources, rows = parse_sources(files)
@@ -146,10 +146,13 @@ class SchemaDesignService:
         if ddl_files:
             objects, links, warnings = propose_ddl(sources)
             self._shape(objects, links)
-            r.update(source_kind="ddl", objects=objects, links=links, ddl_issues=warnings, issues=warnings)
+            r.update(
+                source_kind="ddl", ddl_dialect=ddl_dialect, objects=objects, links=links,
+                ddl_issues=warnings, issues=warnings,
+            )
         with _LOCK:
             atomic(self._path(r["id"]) / "rows.json", rows)
-            message = "Parsed PostgreSQL table definitions" if ddl_files else "Uploaded bounded source profiles"
+            message = "Parsed DDL table definitions" if ddl_files else "Uploaded bounded source profiles"
             self._step(r, "create", message)
             self._save(r)
         return r

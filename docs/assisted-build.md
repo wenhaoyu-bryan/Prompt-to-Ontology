@@ -15,22 +15,25 @@ Select **Design new schema** in the assisted workspace to propose objects, prope
 
 The deterministic baseline proposes conservative string properties, unambiguous identity columns and generic reference relationships from matching keys. Those references do not establish business meaning or referential integrity. Numeric samples do not prove units; identity values must remain unique, nonblank strings, so leading zeroes are preserved. All proposals require human confirmation. Auto mode uses bounded source context and the existing provider configuration; invalid or unavailable model output explicitly falls back to the baseline.
 
-### Start from PostgreSQL DDL
+### Start from PostgreSQL or MySQL DDL
 
-In **Design schema draft**, upload one `.sql` or `.ddl` file, or select **Paste PostgreSQL DDL**. Start with explicit table definitions:
+In **Design schema draft**, upload one `.sql` or `.ddl` file, or paste the table definitions. Choose **PostgreSQL** (the default) or **MySQL** as the SQL dialect. This example uses syntax accepted by both:
 
 ```sql
 CREATE TABLE vendor (id BIGINT PRIMARY KEY, name TEXT NOT NULL);
 CREATE TABLE lot (
-    lot_no TEXT PRIMARY KEY,
-    vendor_id BIGINT NOT NULL REFERENCES vendor(id),
-    received_at TIMESTAMP
+    lot_no VARCHAR(40) PRIMARY KEY,
+    vendor_id BIGINT NOT NULL,
+    received_at TIMESTAMP,
+    FOREIGN KEY (vendor_id) REFERENCES vendor(id)
 );
 ```
 
-The parser proposes objects, typed properties and foreign-key relationships. It accepts the supported PostgreSQL `CREATE TABLE` subset, `ALTER TABLE ... ADD` for primary, foreign and unique keys, and `COMMENT ON TABLE/COLUMN` on tables declared earlier in the upload. Comments become editable descriptions. Defaults and check expressions are outside the exported metadata. The input limit is 256 KiB and 32 tables. Use the supported statements from a dump when it also contains setup, ownership, or data statements.
+The parser proposes objects, typed properties and relationships from the declared keys. Both dialects accept a subset of `CREATE TABLE` and `ALTER TABLE ... ADD` for primary, foreign and unique keys. PostgreSQL accepts `COMMENT ON TABLE/COLUMN` on tables declared earlier in the upload. For MySQL, start with the `CREATE TABLE` statements returned by `SHOW CREATE TABLE` for the tables you want to model. The MySQL subset accepts backtick identifiers, `AUTO_INCREMENT`, common InnoDB table options, and table and column comments. Use a table-level `FOREIGN KEY` declaration for relationships. Comments become editable descriptions.
 
-Physical metadata and the source hash accompany the reviewed export. The draft uses string object identities and preserves SQL types in the source mapping. A table needs a declared single-column primary key to enter the draft. Composite keys and unresolved references are reported for review. Unqualified references use the source table's schema within the upload.
+The input limit is 256 KiB and 32 tables. Use only the supported schema statements from a dump. Defaults and check expressions are outside the exported metadata. The app reads the DDL as text and records the selected dialect in source metadata.
+
+Physical metadata and the source hash accompany the reviewed export. The draft uses string object identities and preserves SQL types in the source mapping. A table needs a declared single-column primary key to be accepted as an object definition. Composite keys and unresolved references are reported for review. Unqualified references use the source table's schema within the upload.
 
 DDL is parsed locally. **Deterministic baseline** is the default and makes no model call. To request semantic suggestions, select **Build Agent · semantic suggestions**. The configured Build Agent provider receives the design goal and a bounded subset of parsed metadata, including identifiers and excerpts from comments. It can suggest object and relationship labels and descriptions, plus property descriptions. Types, keys, source bindings, and relationships come from the parsed DDL. If the model is unavailable or its response is invalid, the draft keeps the parsed definitions. Review every definition before saving.
 

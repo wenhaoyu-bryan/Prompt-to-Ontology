@@ -172,3 +172,78 @@ class SqlDdlTests(unittest.TestCase):
             parse_ddl(";".join(f"CREATE TABLE table_{n} (id INT)" for n in range(33)))
         with self.assertRaisesRegex(ValueError, "column limit"):
             parse_ddl("CREATE TABLE x (" + ", ".join(f"column_{n} INT" for n in range(101)) + ")")
+
+    def test_mysql_show_create_table_preserves_keys_comments_and_types(self):
+        vendor, lot = parse_ddl("""
+            CREATE TABLE `supply`.`vendor` (
+                `VendorID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Supplier ID',
+                `name` VARCHAR(200) NOT NULL COMMENT 'Supplier''s legal name',
+                `code` VARCHAR(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+                `active` BOOLEAN DEFAULT TRUE,
+                `priority` TINYINT(1),
+                PRIMARY KEY (`vendorid`),
+                UNIQUE KEY `vendor_code` (`code`)
+            ) ENGINE=InnoDB AUTO_INCREMENT=201 DEFAULT CHARSET=utf8mb4
+              COLLATE=utf8mb4_unicode_ci COMMENT='Vendors' ROW_FORMAT=DYNAMIC;
+            CREATE TABLE `supply`.`lot` (
+                `lot_no` VARCHAR(40) PRIMARY KEY,
+                `VendorRef` BIGINT UNSIGNED,
+                `received_at` DATETIME(6),
+                KEY `idx_vendor` (`VendorRef`)
+            ) ENGINE=InnoDB;
+            ALTER TABLE `supply`.`lot` ADD CONSTRAINT `fk_vendor`
+                FOREIGN KEY (`vendorref`) REFERENCES `vendor` (`VENDORID`)
+                ON DELETE RESTRICT ON UPDATE CASCADE;
+        """, dialect="mysql")
+        self.assertEqual(vendor["name"], "supply.vendor")
+        self.assertEqual(vendor["primary_key"], ["VendorID"])
+        self.assertEqual(vendor["unique_keys"], [["code"]])
+        self.assertEqual(vendor["comment"], "Vendors")
+        fields = {column["name"]: column for column in vendor["columns"]}
+        self.assertEqual(fields["VendorID"], {
+            "name": "VendorID", "type": "integer", "sql_type": "BIGINT UNSIGNED",
+            "required": True, "comment": "Supplier ID",
+        })
+        self.assertEqual(fields["name"]["comment"], "Supplier's legal name")
+        self.assertEqual(fields["active"]["type"], "boolean")
+        self.assertEqual(fields["priority"]["type"], "integer")
+        self.assertEqual(lot["columns"][-1]["type"], "datetime")
+        self.assertEqual(lot["columns"][-1]["sql_type"], "DATETIME(6)")
+        self.assertEqual(lot["foreign_keys"], [{
+            "columns": ["VendorRef"], "target_table": "vendor", "target_columns": ["VendorID"],
+        }])
+
+    def test_mysql_rejects_unreliable_or_unsupported_schema_statements(self):
+        for ddl in (
+            "CREATE TABLE x (id INT, ID INT)",
+            "CREATE TABLE x (id INT PRIMARY KEY, vendor_id INT REFERENCES y(id));",
+            "CREATE TABLE x (id INT PRIMARY KEY, vendor_id INT, FOREIGN KEY (vendor_id) REFERENCES y(id)) ENGINE=MyISAM;",
+            "CREATE TABLE y (id INT PRIMARY KEY) ENGINE=MyISAM; CREATE TABLE x (id INT, FOREIGN KEY (id) REFERENCES y(id)) ENGINE=InnoDB;",
+            "CREATE TABLE y (id INT PRIMARY KEY) ENGINE=NDB; CREATE TABLE x (id INT, FOREIGN KEY (id) REFERENCES y(id)) ENGINE=InnoDB;",
+            "CREATE TABLE x (id INT, FOREIGN KEY (id) REFERENCES y(id) DEFERRABLE INITIALLY DEFERRED);",
+            "CREATE TABLE x (id INT, FOREIGN KEY (id) REFERENCES y(id) ON DELETE SET DEFAULT);",
+            "CREATE TABLE x (id INT); ALTER TABLE ONLY x ADD PRIMARY KEY (id);",
+            "CREATE TABLE x (id INT PRIMARY KEY, code TEXT, UNIQUE KEY ux (code(10)));",
+            "CREATE TABLE x (id INT) /*!50100 ENGINE=MyISAM */;",
+            "CREATE TABLE x (id INT); /*!40101 SET names utf8mb4 */;",
+            "CREATE TABLE x (id INT); /*!40101 SET names utf8mb4 */",
+            "CREATE TABLE x AS SELECT 1;",
+            "CREATE TABLE x (id INT); INSERT INTO x VALUES (1);",
+        ):
+            with self.subTest(ddl=ddl), self.assertRaises(ValueError):
+                parse_ddl(ddl, dialect="mysql")
+
+    def test_mysql_executable_comment_markers_in_literals_are_text(self):
+        table, = parse_ddl(
+            "CREATE TABLE x (id INT COMMENT 'Text containing /*!') COMMENT='Example';",
+            dialect="mysql",
+        )
+        self.assertEqual(table["columns"][0]["comment"], "Text containing /*!")
+
+    def test_mysql_recognizes_ndb_storage_engine_aliases(self):
+        vendor, lot = parse_ddl("""
+            CREATE TABLE vendor (id INT PRIMARY KEY) ENGINE=NDB;
+            CREATE TABLE lot (id INT PRIMARY KEY, vendor_id INT,
+                FOREIGN KEY (vendor_id) REFERENCES vendor(id)) ENGINE=NDBCLUSTER;
+        """, dialect="mysql")
+        self.assertEqual(lot["foreign_keys"][0]["target_table"], vendor["name"])

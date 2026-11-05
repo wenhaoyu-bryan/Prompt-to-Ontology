@@ -99,6 +99,7 @@ export default function SchemaDesignWorkspace() {
   const [files, setFiles] = useState([]);
   const [showDdl, setShowDdl] = useState(false);
   const [ddlText, setDdlText] = useState("");
+  const [ddlDialect, setDdlDialect] = useState("postgres");
   const ddlMode = run ? run.source_kind === "ddl" : files.some(isDdl);
   const [goal, setGoal] = useState("");
   const [mode, setMode] = useState("auto");
@@ -244,6 +245,9 @@ export default function SchemaDesignWorkspace() {
     setParams({ mode: "schema" });
     setRun(null);
     setFiles([]);
+    setShowDdl(false);
+    setDdlText("");
+    setDdlDialect("postgres");
     setGoal("");
     setDdlExecutionMode("deterministic");
     setObjects([]);
@@ -258,6 +262,9 @@ export default function SchemaDesignWorkspace() {
         "/assisted-build/schema-design-sample-files",
       );
       setFiles(data.files);
+      setShowDdl(false);
+      setDdlText("");
+      setDdlDialect("postgres");
       setDdlExecutionMode("deterministic");
       setGoal(
         zh
@@ -289,8 +296,8 @@ export default function SchemaDesignWorkspace() {
     ) {
       message.error(
         tr(
-          "Choose CSV, JSON, NDJSON or PostgreSQL DDL under 2 MB.",
-          "请选择小于 2 MB 的 CSV、JSON、NDJSON 或 PostgreSQL DDL 文件。",
+          "Choose CSV, JSON or NDJSON under 2 MB, or PostgreSQL or MySQL DDL up to 256 KiB.",
+          "请选择 2 MB 以下的 CSV、JSON 或 NDJSON，或不超过 256 KiB 的 PostgreSQL 或 MySQL DDL。",
         ),
       );
       return false;
@@ -309,6 +316,7 @@ export default function SchemaDesignWorkspace() {
         goal,
         files,
         execution_mode: executionMode,
+        ...(ddlMode && { ddl_dialect: ddlDialect }),
       });
       choose(data);
     });
@@ -636,7 +644,7 @@ export default function SchemaDesignWorkspace() {
               <div className="ab-section-heading">
                 <div>
                   <h3>{tr("Source files", "来源文件")}</h3>
-                  <p>CSV · JSON · NDJSON · PostgreSQL DDL</p>
+                  <p>CSV · JSON · NDJSON · PostgreSQL DDL · MySQL DDL</p>
                 </div>
                 {!run && (
                   <Button size="small" disabled={pending} onClick={loadExample}>
@@ -662,20 +670,41 @@ export default function SchemaDesignWorkspace() {
                   </small>
                 </Upload.Dragger>
               )}
+              {(ddlMode || (!run && showDdl && !files.length)) && (
+                <>
+                  <label className="ab-label" htmlFor="ddl-dialect">
+                    {tr("DDL dialect", "DDL 方言")}
+                  </label>
+                  <Select
+                    id="ddl-dialect"
+                    aria-label={tr("DDL dialect", "DDL 方言")}
+                    value={run ? run.ddl_dialect || "postgres" : ddlDialect}
+                    disabled={!!run || pending}
+                    onChange={setDdlDialect}
+                    style={{ width: "100%" }}
+                    options={[
+                      { value: "postgres", label: "PostgreSQL" },
+                      { value: "mysql", label: "MySQL" },
+                    ]}
+                  />
+                </>
+              )}
               {!run && !files.length && (
                 <div className="ab-files">
                   <Button size="small" disabled={pending} onClick={() => setShowDdl(!showDdl)}>
-                    {tr("Paste PostgreSQL DDL", "粘贴 PostgreSQL DDL")}
+                    {tr("Paste DDL", "粘贴 DDL")}
                   </Button>
                   {showDdl && (
                     <Space orientation="vertical" style={{ width: "100%" }}>
                       <Input.TextArea
-                        aria-label="PostgreSQL DDL"
+                        aria-label={tr("DDL statements", "DDL 语句")}
                         rows={6}
                         maxLength={DDL_MAX_BYTES}
                         value={ddlText}
                         onChange={(event) => setDdlText(event.target.value)}
-                        placeholder="CREATE TABLE vendor (id BIGINT PRIMARY KEY, name TEXT NOT NULL);"
+                        placeholder={ddlDialect === "mysql"
+                          ? "CREATE TABLE `vendor` (`id` BIGINT PRIMARY KEY, `name` VARCHAR(120));"
+                          : "CREATE TABLE vendor (id BIGINT PRIMARY KEY, name TEXT NOT NULL);"}
                       />
                       <Button
                         disabled={!ddlText.trim()}
@@ -716,7 +745,10 @@ export default function SchemaDesignWorkspace() {
                         icon={<DeleteOutlined />}
                         onClick={() => {
                           setFiles((items) => items.filter((_, n) => n !== i));
-                          if (isDdl(f)) setDdlExecutionMode("deterministic");
+                          if (isDdl(f)) {
+                            setDdlDialect("postgres");
+                            setDdlExecutionMode("deterministic");
+                          }
                         }}
                       />
                     )}

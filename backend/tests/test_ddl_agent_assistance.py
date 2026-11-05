@@ -98,3 +98,50 @@ class DdlAgentAssistanceTests(unittest.TestCase):
             self.assertEqual(self.analyze(None)["execution_mode"], "deterministic")
         get_config.assert_called_once_with("build")
         model.assert_not_called()
+
+    def test_mysql_dialect_is_retained_from_api_to_reviewed_export(self):
+        response = self.client.post("/api/assisted-build/schema-designs", json={
+            "goal": "Track suppliers and lots",
+            "files": [{"name": "schema.sql", "content": """
+                CREATE TABLE `supply`.`vendor` (
+                    `id` BIGINT UNSIGNED PRIMARY KEY
+                ) ENGINE=InnoDB COMMENT='Vendors';
+                CREATE TABLE `supply`.`lot` (
+                    `id` BIGINT UNSIGNED PRIMARY KEY,
+                    `vendor_id` BIGINT UNSIGNED,
+                    CONSTRAINT fk_vendor FOREIGN KEY (vendor_id) REFERENCES vendor(id)
+                ) ENGINE=InnoDB;
+            """}],
+            "ddl_dialect": "mysql",
+        })
+        self.assertEqual(response.status_code, 202, response.text)
+        endpoint = "/api/assisted-build/schema-designs/" + response.json()["id"]
+        run = self.client.get(endpoint).json()
+        self.assertEqual(run["ddl_dialect"], "mysql")
+        self.assertEqual(run["execution_mode"], "deterministic")
+        self.assertEqual(run["objects"][0]["description"], "Vendors")
+        self.assertEqual(run["links"][0]["target_column"], "vendor_id")
+        for item in run["objects"] + run["links"]:
+            item["decision"] = "accepted"
+        updated = self.client.put(endpoint + "/definitions", json={
+            "expected_revision": run["revision"],
+            "objects": run["objects"],
+            "links": run["links"],
+        })
+        self.assertEqual(updated.status_code, 200, updated.text)
+        preview = self.client.post(endpoint + "/preview", json={
+            "expected_revision": updated.json()["revision"],
+        })
+        self.assertEqual(preview.status_code, 200, preview.text)
+        self.assertEqual(preview.json()["preview"]["summary"]["errors"], 0)
+        saved = self.client.post(endpoint + "/save", json={
+            "expected_revision": preview.json()["revision"],
+            "preview_hash": preview.json()["preview"]["hash"],
+        })
+        self.assertEqual(saved.status_code, 200, saved.text)
+        response = self.client.get(endpoint + "/export")
+        self.assertEqual(response.status_code, 200, response.text)
+        files = {file["name"]: file["content"] for file in response.json()["files"]}
+        source = json.loads(files["source_mappings.json"])["ddl_sources"][0]
+        self.assertEqual(source["dialect"], "mysql")
+        self.assertEqual(source["columns"][0]["sql_type"], "BIGINT UNSIGNED")

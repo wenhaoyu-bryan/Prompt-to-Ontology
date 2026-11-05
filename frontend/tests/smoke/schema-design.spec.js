@@ -282,8 +282,8 @@ test("a delayed preview cannot overwrite another design after browser Back", asy
 test("turns pasted PostgreSQL DDL into a reviewed draft with source metadata", async ({ page, request }) => {
   await page.goto("/pipeline?mode=schema");
   await page.getByLabel("Design goal", { exact: true }).fill("Describe suppliers and lots");
-  await page.getByRole("button", { name: "Paste PostgreSQL DDL" }).click();
-  await page.getByRole("textbox", { name: "PostgreSQL DDL" }).fill(
+  await page.getByRole("button", { name: "Paste DDL" }).click();
+  await page.getByRole("textbox", { name: "DDL statements" }).fill(
     "CREATE TABLE vendor (id BIGINT PRIMARY KEY, name TEXT NOT NULL);" +
     "CREATE TABLE lot (lot_no TEXT PRIMARY KEY, vendor_id BIGINT REFERENCES vendor(id));" +
     "COMMENT ON TABLE vendor IS 'A registered supplier';",
@@ -306,7 +306,10 @@ test("turns pasted PostgreSQL DDL into a reviewed draft with source metadata", a
     (request) => request.url().endsWith("/schema-designs") && request.method() === "POST",
   );
   await page.getByRole("button", { name: /Propose schema/ }).click();
-  expect((await create).postDataJSON().execution_mode).toBe("deterministic");
+  expect((await create).postDataJSON()).toMatchObject({
+    ddl_dialect: "postgres",
+    execution_mode: "deterministic",
+  });
   await expect(page.getByRole("button", { name: "View & edit", exact: true })).toHaveCount(2);
   await confirmVisible(page);
   await page.getByText("Relationships (1)", { exact: true }).click();
@@ -324,4 +327,37 @@ test("turns pasted PostgreSQL DDL into a reviewed draft with source metadata", a
   expect(exported.manifest.status).toBe("draft");
   expect(mappings.ddl_sources[0].table.comment).toBe("A registered supplier");
   expect(mappings.ddl_sources[1].table.foreign_keys[0].target_table).toBe("vendor");
+});
+
+test("uses the chosen MySQL dialect for uploaded DDL and restores it from history", async ({ page }) => {
+  await page.goto("/pipeline?mode=schema");
+  await page.getByLabel("Design goal", { exact: true }).fill("Describe suppliers from MySQL");
+  await page.locator("input[type=file]").setInputFiles({
+    name: "supplier.sql",
+    mimeType: "text/plain",
+    buffer: Buffer.from("CREATE TABLE `supplier` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY) ENGINE=InnoDB;"),
+  });
+  const dialect = page.getByRole("combobox", { name: "DDL dialect" });
+  const design = page.getByRole("region", { name: "Schema design content" });
+  await expect(dialect).toBeEnabled();
+  await expect(design.getByText("PostgreSQL", { exact: true }).filter({ visible: true })).toBeVisible();
+  await dialect.click();
+  await page.getByText("MySQL", { exact: true }).filter({ visible: true }).click();
+  const create = page.waitForRequest(
+    (request) => request.url().endsWith("/schema-designs") && request.method() === "POST",
+  );
+  await page.getByRole("button", { name: /Propose schema/ }).click();
+  expect((await create).postDataJSON()).toMatchObject({
+    ddl_dialect: "mysql",
+    execution_mode: "deterministic",
+  });
+  await expect(page.getByRole("button", { name: "View & edit", exact: true })).toHaveCount(1);
+  const id = new URL(page.url()).searchParams.get("design");
+  await page.getByRole("button", { name: /New design/ }).click();
+  await page.getByRole("button", { name: /Design history/ }).click();
+  await page.locator(".sd-history").filter({ hasText: id }).getByRole("button", { name: "Open", exact: true }).click();
+  await expect(page.getByRole("button", { name: "View & edit", exact: true })).toHaveCount(1);
+  await page.getByText("Sources & goal", { exact: true }).click();
+  await expect(dialect).toBeDisabled();
+  await expect(design.getByText("MySQL", { exact: true }).filter({ visible: true })).toBeVisible();
 });

@@ -55,7 +55,7 @@ def suggest_ddl_semantics(run):
         {
             "role": "system",
             "content": (
-                "Propose editable business labels and descriptions for a PostgreSQL ontology draft. "
+                "Propose editable business labels and descriptions for an ontology draft based on SQL metadata. "
                 "Return only JSON with a suggestions array of entries containing id and label and/or description. "
                 "Use only supplied IDs. Properties accept description only. "
                 f"Return at most {MAX_SUGGESTIONS} useful suggestions. "
@@ -68,7 +68,10 @@ def suggest_ddl_semantics(run):
         },
         {
             "role": "user",
-            "content": json.dumps({"goal": run["goal"], "candidates": candidates}, ensure_ascii=False),
+            "content": json.dumps({
+                "goal": run["goal"], "dialect": run.get("ddl_dialect", "postgres"),
+                "candidates": candidates,
+            }, ensure_ascii=False),
         },
     ])
     content = response.get("message", {}).get("content")

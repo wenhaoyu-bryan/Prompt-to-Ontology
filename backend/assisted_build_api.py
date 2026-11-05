@@ -33,6 +33,10 @@ class BuildInput(BaseModel):
     execution_mode: Literal["auto", "deterministic"] = "auto"
 
 
+class SchemaDesignInput(BuildInput):
+    ddl_dialect: Literal["postgres", "mysql"] = "postgres"
+
+
 class MappingInput(BaseModel):
     expected_revision: int = Field(ge=1)
     sources: list[dict] = Field(min_length=1, max_length=8)
@@ -199,7 +203,7 @@ def analyze_schema_design(rid, config):
 
 
 @router.post("/schema-designs", status_code=202)
-def create_schema_design(request: BuildInput, background: BackgroundTasks):
+def create_schema_design(request: SchemaDesignInput, background: BackgroundTasks):
     ddl_input = any(is_ddl_filename(f.name) for f in request.files)
     mode = request.execution_mode
     if ddl_input and "execution_mode" not in request.model_fields_set:
@@ -210,6 +214,7 @@ def create_schema_design(request: BuildInput, background: BackgroundTasks):
         request.goal.strip(),
         [f.model_dump() for f in request.files],
         mode,
+        request.ddl_dialect,
     )
     background.add_task(analyze_schema_design, run["id"], config)
     return run

@@ -11,14 +11,14 @@ def is_ddl_filename(name):
     return isinstance(name, str) and Path(name).suffix.lower() in {".sql", ".ddl"}
 
 
-def prepare_ddl_sources(file):
+def prepare_ddl_sources(file, dialect):
     from assisted_build.sql_ddl import parse_ddl
 
     content = file.get("content")
     name = file.get("name")
     if not isinstance(name, str) or not isinstance(content, str):
-        raise ValueError("Invalid PostgreSQL DDL source")
-    tables = parse_ddl(content.lstrip("\ufeff"))
+        raise ValueError("Invalid DDL source")
+    tables = parse_ddl(content.lstrip("\ufeff"), dialect=dialect)
     content_hash = hashlib.sha256(content.encode()).hexdigest()
     return [
         {
@@ -26,6 +26,7 @@ def prepare_ddl_sources(file):
             "name": table["name"],
             "filename": Path(name).name,
             "format": "ddl",
+            "dialect": dialect,
             "content_hash": content_hash,
             "row_count": 0,
             "sample_rows": [],
