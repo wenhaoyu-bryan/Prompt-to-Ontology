@@ -2,12 +2,15 @@
 
 设计本体定义，映射来源数据，在变更进入图谱前完成审核。
 
-https://github.com/user-attachments/assets/cb35e078-3699-43fc-94d3-1f6bfcd70766
-
-**103 秒产品演示 · v0.6.0 · 浅色主题 · DeepSeek** · [下载 MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.6.0/prompt-to-ontology-v0.6.0-demo.mp4) · [English](README.md)
-
+[![最新版本](https://img.shields.io/github/v/release/wenhaoyu-bryan/Prompt-to-Ontology?label=Latest%20release)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/latest)
 [![CI](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+https://github.com/user-attachments/assets/0e0b9ad5-71e1-483a-8989-9ebf2512f713
+
+**103 秒流程演示 · 浅色主题 · DeepSeek** · [下载 MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.6.0/prompt-to-ontology-v0.6.0-demo.mp4) · [English](README.md)
+
+录制于 2026-11-02，录制版本与流程详见[录制来源](media/README.md)；上方徽章显示软件最新发布版本。
 
 Prompt-to-Ontology 是一个开源本体工作台，连接来源数据、类型化对象、显式规则、人工审核和基于本体工具的 Agent。工作台将 Schema 设计与运行时数据导入、查询分开。内置 Pet Food 领域提供数据、规则和评测用例，用于运行完整参考流程；你也可以为自己的业务领域设计定义。
 

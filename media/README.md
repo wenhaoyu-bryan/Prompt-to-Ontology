@@ -2,9 +2,11 @@
 
 Captured on **2026-11-02** from **v0.6.0** in the light theme. The video follows one small assisted import through review, application, verification, and an actual DeepSeek query about the imported data.
 
-## Current demo
+The current software version is published at [Latest release](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/latest). Recording dates and captured versions describe the media, independently of the latest software release.
 
-https://github.com/user-attachments/assets/cb35e078-3699-43fc-94d3-1f6bfcd70766
+## Workflow recording (v0.6.0)
+
+https://github.com/user-attachments/assets/0e0b9ad5-71e1-483a-8989-9ebf2512f713
 
 [Download product highlights — 1:43, 1080p](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.6.0/prompt-to-ontology-v0.6.0-demo.mp4)
 
@@ -83,9 +85,11 @@ Use a GitHub CLI version that supports native attachments (`gh pr create --help`
 ```bash
 gh pr create --title 'docs: refresh product demo' \
   --body-file /tmp/demo-pr.md \
-  --attach /absolute/path/to/prompt-to-ontology-v0.6.0-demo.mp4
+  --attach /absolute/path/to/prompt-to-ontology-workflow-demo.mp4
 ```
 
-Copy the returned `https://github.com/user-attachments/assets/...` URL into a standalone paragraph immediately below the title in both READMEs. GitHub renders a native video player. Keep a Release asset as the MP4 download fallback; append an asset only when the existing release permits it, and never move an existing release tag to publish media. If an attachment command reports a partial failure, inspect the PR before retrying so it is not duplicated.
+Use a version-neutral attachment filename so the player title describes the workflow. Renaming or reuploading the same recording does not change its captured version, original filename, or SHA-256 in `demo-capture.json`.
+
+Copy the returned `https://github.com/user-attachments/assets/...` URL into a standalone paragraph below the badges in both READMEs. GitHub renders a native video player. Keep a Release asset as the MP4 download fallback; append an asset only when the existing release permits it, and never move an existing release tag to publish media. If an attachment command reports a partial failure, inspect the PR before retrying so it is not duplicated.
 
 This is a documentation/media change with release impact **None**. It does not require a new product version. CI and branch protection still apply to the PR.
