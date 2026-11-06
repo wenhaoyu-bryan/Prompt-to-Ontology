@@ -2,12 +2,15 @@
 
 Design ontology definitions, map source data, and review changes before they reach the graph.
 
-https://github.com/user-attachments/assets/cb35e078-3699-43fc-94d3-1f6bfcd70766
-
-**103-second product demo · v0.6.0 · light theme · DeepSeek** · [Download MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.6.0/prompt-to-ontology-v0.6.0-demo.mp4) · [中文](README.zh-CN.md)
-
+[![Latest release](https://img.shields.io/github/v/release/wenhaoyu-bryan/Prompt-to-Ontology?label=Latest%20release)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/latest)
 [![CI](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+https://github.com/user-attachments/assets/0e0b9ad5-71e1-483a-8989-9ebf2512f713
+
+**103-second workflow demo · light theme · DeepSeek** · [Download MP4](https://github.com/wenhaoyu-bryan/Prompt-to-Ontology/releases/download/v0.6.0/prompt-to-ontology-v0.6.0-demo.mp4) · [中文](README.zh-CN.md)
+
+Recorded on 2026-11-02. See [recording provenance](media/README.md) for the captured version and workflow; the badge above tracks the latest software release.
 
 Prompt-to-Ontology is an open-source ontology workbench for connecting source data, typed objects, explicit rules, human review, and ontology-grounded Agents. Its workspace separates schema design from runtime data import and query. The bundled Pet Food domain provides data, rules, and evaluation cases for a runnable reference workflow; you can also design definitions for your own domain.
 
